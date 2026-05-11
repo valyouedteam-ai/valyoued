@@ -1,0 +1,647 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: ValYoued — multi-asset valuation API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: estimate
+    description: Asset estimate operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /asset-types:
+    get:
+      operationId: listAssetTypes
+      tags: [estimate]
+      summary: List supported asset types and their input fields
+      responses:
+        "200":
+          description: Asset types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssetType"
+  /regions:
+    get:
+      operationId: listRegions
+      tags: [estimate]
+      summary: List supported seller regions and their currencies
+      responses:
+        "200":
+          description: Regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Region"
+  /estimates:
+    get:
+      operationId: listEstimates
+      tags: [estimate]
+      summary: List recent estimates
+      responses:
+        "200":
+          description: Recent estimates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EstimateSummary"
+    post:
+      operationId: createEstimate
+      tags: [estimate]
+      summary: Create a new asset estimate (free or pro tier)
+      parameters:
+        - in: query
+          name: pro
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstimateInput"
+      responses:
+        "200":
+          description: Estimate result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateResult"
+  /estimates/{id}:
+    get:
+      operationId: getEstimate
+      tags: [estimate]
+      summary: Get an estimate by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateResult"
+  /estimates/stats:
+    get:
+      operationId: getEstimateStats
+      tags: [estimate]
+      summary: Aggregate stats across saved estimates
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateStats"
+  /vision/extract:
+    post:
+      operationId: extractFromPhoto
+      tags: [vision]
+      summary: Extract asset attributes from an uploaded photo using Claude Vision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisionExtractInput"
+      responses:
+        "200":
+          description: Extracted attributes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisionExtractResult"
+  /listings:
+    get:
+      operationId: listListingDrafts
+      tags: [listing]
+      summary: List all saved listing ad drafts
+      responses:
+        "200":
+          description: Drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListingDraft"
+    post:
+      operationId: generateListingDraft
+      tags: [listing]
+      summary: Generate a marketplace listing ad for an existing estimate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateListingInput"
+      responses:
+        "200":
+          description: Generated and saved draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDraft"
+  /listings/{id}:
+    get:
+      operationId: getListingDraft
+      tags: [listing]
+      summary: Get a single saved listing draft
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDraft"
+    delete:
+      operationId: deleteListingDraft
+      tags: [listing]
+      summary: Delete a saved listing draft
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+    Region:
+      type: object
+      required: [name, currencyCode, currencySymbol]
+      properties:
+        name:
+          type: string
+        currencyCode:
+          type: string
+        currencySymbol:
+          type: string
+    AssetField:
+      type: object
+      required: [key, label, type, required]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, number, select, textarea]
+        required:
+          type: boolean
+        placeholder:
+          type: string
+        help:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+    AssetType:
+      type: object
+      required: [id, name, category, tagline, fields, exampleAttributes, internationallyTradeable]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          description: Group label (such as "Watches & Jewelry", "Vehicles", "Real Estate")
+        tagline:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetField"
+        exampleAttributes:
+          type: string
+        internationallyTradeable:
+          type: boolean
+          description: Whether this asset is practical to ship/sell across borders
+    EstimateInput:
+      type: object
+      required: [assetTypeId, title, condition, currentRegion, currency]
+      properties:
+        assetTypeId:
+          type: string
+        title:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        condition:
+          type: number
+        purchasePrice:
+          type: number
+          description: Original purchase price in the seller's local currency
+        currentRegion:
+          type: string
+        currency:
+          type: string
+          description: ISO 4217 currency code derived from currentRegion
+        attributes:
+          type: string
+        extraFields:
+          type: object
+          additionalProperties:
+            type: string
+          description: Free-form key/value attributes captured from the dynamic form
+    Comparable:
+      type: object
+      required: [source, description, price, year]
+      properties:
+        source:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          description: Price in the result currency
+        year:
+          type: integer
+        url:
+          type: string
+    MarketSignal:
+      type: object
+      required: [label, value, impact, rationale]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        impact:
+          type: number
+        rationale:
+          type: string
+    WorldEvent:
+      type: object
+      required: [title, summary, sentiment, scope]
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        sentiment:
+          type: string
+          enum: [positive, negative, neutral]
+        scope:
+          type: string
+          description: 'Typical values: "Global", "United Kingdom", "EU"'
+        source:
+          type: string
+        url:
+          type: string
+        publishedAt:
+          type: string
+          description: Article publication date (RFC 2822 or ISO 8601)
+    ArbitrageOption:
+      type: object
+      required: [region, marketplace, estimatedSalePrice, estimatedShipping, estimatedFees, estimatedDuties, netToSeller, currency, demandNote, recommended]
+      properties:
+        region:
+          type: string
+        marketplace:
+          type: string
+        estimatedSalePrice:
+          type: number
+        estimatedShipping:
+          type: number
+        estimatedFees:
+          type: number
+        estimatedDuties:
+          type: number
+        netToSeller:
+          type: number
+        currency:
+          type: string
+          description: Currency for the values in this row (matches result currency)
+        demandNote:
+          type: string
+        recommended:
+          type: boolean
+    NegotiationTactic:
+      type: object
+      required: [title, detail]
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+    ProInsights:
+      type: object
+      required: [negotiationTactics, talkingPoints, redFlags, optimalTiming, listingTips, walkAwayPrice, anchorPrice]
+      properties:
+        negotiationTactics:
+          type: array
+          items:
+            $ref: "#/components/schemas/NegotiationTactic"
+        talkingPoints:
+          type: array
+          items:
+            type: string
+        redFlags:
+          type: array
+          items:
+            type: string
+        optimalTiming:
+          type: string
+        listingTips:
+          type: array
+          items:
+            type: string
+        walkAwayPrice:
+          type: number
+        anchorPrice:
+          type: number
+    EstimateReport:
+      type: object
+      required: [headline, summary, baselineNarrative, marketNarrative, arbitrageNarrative, worldEventsNarrative, finalNarrative]
+      properties:
+        headline:
+          type: string
+        summary:
+          type: string
+        baselineNarrative:
+          type: string
+        marketNarrative:
+          type: string
+        arbitrageNarrative:
+          type: string
+        worldEventsNarrative:
+          type: string
+        finalNarrative:
+          type: string
+    EstimateResult:
+      type: object
+      required:
+        - id
+        - createdAt
+        - input
+        - assetType
+        - currency
+        - baselineLow
+        - baselineHigh
+        - baselineMid
+        - comparables
+        - marketSignals
+        - worldEvents
+        - netMarketFactor
+        - adjustedLow
+        - adjustedHigh
+        - adjustedMid
+        - arbitrage
+        - bestArbitrageRegion
+        - report
+        - tier
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        input:
+          $ref: "#/components/schemas/EstimateInput"
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        currency:
+          type: string
+        baselineLow:
+          type: number
+        baselineHigh:
+          type: number
+        baselineMid:
+          type: number
+        comparables:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comparable"
+        marketSignals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketSignal"
+        worldEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorldEvent"
+        netMarketFactor:
+          type: number
+        adjustedLow:
+          type: number
+        adjustedHigh:
+          type: number
+        adjustedMid:
+          type: number
+        arbitrage:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArbitrageOption"
+        bestArbitrageRegion:
+          type: string
+        report:
+          $ref: "#/components/schemas/EstimateReport"
+        tier:
+          type: string
+          enum: [free, pro]
+        proInsights:
+          $ref: "#/components/schemas/ProInsights"
+    EstimateSummary:
+      type: object
+      required: [id, title, assetTypeName, baselineMid, adjustedMid, currency, bestArbitrageRegion, createdAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        assetTypeName:
+          type: string
+        baselineMid:
+          type: number
+        adjustedMid:
+          type: number
+        currency:
+          type: string
+        bestArbitrageRegion:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    EstimateStats:
+      type: object
+      required: [count, averageBaselineUsd, averageAdjustedUsd, averageUplift, byAssetType, topArbitrageRegions]
+      properties:
+        count:
+          type: integer
+        averageBaselineUsd:
+          type: number
+        averageAdjustedUsd:
+          type: number
+        averageUplift:
+          type: number
+        byAssetType:
+          type: array
+          items:
+            type: object
+            required: [assetTypeName, count, averageAdjustedUsd]
+            properties:
+              assetTypeName:
+                type: string
+              count:
+                type: integer
+              averageAdjustedUsd:
+                type: number
+        topArbitrageRegions:
+          type: array
+          items:
+            type: object
+            required: [region, count]
+            properties:
+              region:
+                type: string
+              count:
+                type: integer
+    VisionExtractInput:
+      type: object
+      required: [assetTypeId, imageBase64, mimeType]
+      properties:
+        assetTypeId:
+          type: string
+        imageBase64:
+          type: string
+          description: Base64-encoded image content (without the data URI prefix)
+        mimeType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp, image/gif]
+    VisionExtractResult:
+      type: object
+      required: [extracted, confidence, notes]
+      properties:
+        extracted:
+          type: object
+          additionalProperties:
+            type: string
+          description: Detected attributes keyed by AssetField key (only fields the AI is confident about)
+        confidence:
+          type: number
+          description: Overall confidence 0..1
+        notes:
+          type: string
+          description: Free-form description of what the AI noticed about the item
+        suggestedTitle:
+          type: string
+        detectedAssetTypeId:
+          type: string
+          description: If the AI thinks the photo is actually a different asset type than the one selected, the suggested asset type id
+    GenerateListingInput:
+      type: object
+      required: [estimateId, platform]
+      properties:
+        estimateId:
+          type: string
+        platform:
+          type: string
+          enum: [facebook-marketplace, ebay, gumtree, craigslist, depop, vinted, vestiaire-collective, autotrader, chrono24, rightmove]
+        priceStrategy:
+          type: string
+          enum: [quick-sale, market, premium]
+          description: How aggressively to price relative to the market-adjusted estimate
+    PhotoTip:
+      type: object
+      required: [angle, description]
+      properties:
+        angle:
+          type: string
+          description: 'Typical values: "Front 3/4", "Top-down", "Serial number close-up"'
+        description:
+          type: string
+          description: What to capture and why it boosts buyer trust
+    ListingDraft:
+      type: object
+      required: [id, estimateId, platform, assetTitle, assetTypeName, draftTitle, draftBody, suggestedPrice, currency, photoTips, hashtags, proTips, createdAt]
+      properties:
+        id:
+          type: string
+        estimateId:
+          type: string
+        platform:
+          type: string
+        assetTitle:
+          type: string
+        assetTypeName:
+          type: string
+        draftTitle:
+          type: string
+        draftBody:
+          type: string
+        suggestedPrice:
+          type: number
+        currency:
+          type: string
+        photoTips:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoTip"
+        hashtags:
+          type: array
+          items:
+            type: string
+        proTips:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time

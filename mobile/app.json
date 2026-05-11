@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "ValYoued",
+    "slug": "valyoued-mobile",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0f1a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.valyoued.app"
+    },
+    "android": {
+      "package": "com.valyoued.app"
+    }
+  }
+}

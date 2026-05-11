@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "AI Valuation"
+version = "1.0.0"
+id = "artifacts/valuation-app"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24250
+
+[services.development]
+run = "pnpm --filter @workspace/valuation-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/valuation-app", "run", "build" ]
+publicDir = "artifacts/valuation-app/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24250"
+BASE_PATH = "/"
