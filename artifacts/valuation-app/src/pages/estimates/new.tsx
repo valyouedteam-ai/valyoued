@@ -19,6 +19,7 @@ import {
   Bike,
   Briefcase,
   Sparkles,
+  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,8 +33,7 @@ import {
   getListEstimatesQueryKey,
   getGetEstimateStatsQueryKey,
 } from "@workspace/api-client-react";
-import type { EstimateInput } from "@workspace/api-client-react";
-
+import type { EstimateInput, AssetType } from "@workspace/api-client-react";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,15 +41,62 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { useProTier } from "@/hooks/use-pro-tier";
 import { localizeField } from "@/lib/regional";
 import { useToast } from "@/hooks/use-toast";
 import { PhotoUploadCard } from "@/components/PhotoUploadCard";
+import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
 
 const PENDING_KEY = "valyoued.pendingEstimate";
 /** Fallback type for items that do not match a predefined class (see assetTypes.ts). */
 const GENERAL_ITEM_ASSET_TYPE_ID = "general-item";
+
+/** Mirrors server `general-item` so the wizard can render if /api/asset-types is slow or unavailable. */
+const GENERAL_ITEM_FALLBACK: AssetType = {
+  id: GENERAL_ITEM_ASSET_TYPE_ID,
+  name: "Anything Else",
+  category: "Other",
+  tagline: "Use this for any other item; describe it in detail",
+  exampleAttributes:
+    "Anything that helps a buyer understand what it is and why it has value",
+  internationallyTradeable: true,
+  fields: [
+    { key: "brand", label: "Brand / maker (if any)", type: "text", required: false },
+    {
+      key: "model",
+      label: "What is it?",
+      type: "text",
+      required: true,
+      placeholder: "Vintage Polaroid SX-70 camera",
+    },
+    { key: "year", label: "Year", type: "number", required: false },
+    {
+      key: "condition",
+      label: "Condition (1=poor, 10=mint)",
+      type: "number",
+      required: true,
+      placeholder: "8",
+    },
+    {
+      key: "purchasePrice",
+      label: "Original purchase price",
+      type: "number",
+      required: false,
+      help: "We will assume this is in your local currency.",
+    },
+    {
+      key: "extraNotes",
+      label: "Other relevant details",
+      type: "textarea",
+      required: false,
+      placeholder: "Tell us everything — materials, history, why it's special",
+      help: "Materials, history, accessories, why it's worth what you think",
+    },
+  ],
+};
+
 type PendingPayload = { input: EstimateInput; pro: boolean };
 
 const baseSchema = z.object({
@@ -99,7 +146,13 @@ function NewEstimatePageInner({
   const { isPro } = useProTier();
   const { toast } = useToast();
 
-  const { data: assetTypes } = useListAssetTypes();
+  const {
+    data: assetTypes,
+    isFetching: assetTypesFetching,
+    isError: assetTypesError,
+    error: assetTypesErr,
+    refetch: refetchAssetTypes,
+  } = useListAssetTypes();
   const { data: regions } = useListRegions();
   const createMutation = useCreateEstimate();
 
@@ -196,7 +249,9 @@ function NewEstimatePageInner({
 
   const selectedTier = form.watch("assetTier");
   const selectedTypeId = form.watch("assetTypeId");
-  const selectedType = assetTypes?.find((t) => t.id === selectedTypeId);
+  const selectedType =
+    assetTypes?.find((t) => t.id === selectedTypeId) ??
+    (selectedTypeId === GENERAL_ITEM_ASSET_TYPE_ID ? GENERAL_ITEM_FALLBACK : undefined);
 
   const selectedRegionName = form.watch("currentRegion");
   const selectedRegion = useMemo(
@@ -214,6 +269,10 @@ function NewEstimatePageInner({
     }
     return Array.from(map.entries());
   }, [assetTypes]);
+
+  const assetTypesLoading = assetTypes === undefined && assetTypesFetching;
+  const assetTypesErrMessage =
+    assetTypesErr instanceof Error ? assetTypesErr.message : String(assetTypesErr ?? "Unknown error");
 
   // Two-step asset picker: pick a top-level category first, then pick the
   // specific asset class. Avoids the long, clipped dropdown.
@@ -428,6 +487,43 @@ function NewEstimatePageInner({
                       {/* Step 1: category grid */}
                       {!selectedCategory && (
                         <>
+                        {assetTypesLoading && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1" aria-busy="true">
+                            {Array.from({ length: 9 }).map((_, i) => (
+                              <div
+                                key={i}
+                                className="h-[4.25rem] rounded-lg bg-muted/55 animate-pulse border border-border/30"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {assetTypesError && (
+                          <Alert variant="destructive" className="mt-1">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Couldn&apos;t load asset categories</AlertTitle>
+                            <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <span className="text-balance">
+                                {assetTypesErrMessage}
+                                <AssetCategoriesLoadHint error={assetTypesErr} />
+                              </span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0 border-destructive/40"
+                                onClick={() => void refetchAssetTypes()}
+                              >
+                                Retry
+                              </Button>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                        {!assetTypesLoading && !assetTypesError && grouped.length === 0 && (
+                          <p className="text-sm text-muted-foreground pt-2">
+                            The server returned no asset categories. Try again shortly or describe a custom item below.
+                          </p>
+                        )}
+                        {!assetTypesLoading && !assetTypesError && grouped.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
                           {grouped.map(([cat, list]) => {
                             const Icon = iconForCategory(cat);
@@ -450,6 +546,8 @@ function NewEstimatePageInner({
                             );
                           })}
                         </div>
+                        )}
+                        {(!!assetTypes || assetTypesError) && (
                         <div className="mt-4 pt-3 border-t border-border/60">
                           <button
                             type="button"
@@ -466,6 +564,7 @@ function NewEstimatePageInner({
                             Item not listed? Use a custom description instead
                           </button>
                         </div>
+                        )}
                         </>
                       )}
 
@@ -487,6 +586,7 @@ function NewEstimatePageInner({
                             <ArrowLeft className="h-3.5 w-3.5" />
                             Back to categories
                           </button>
+                          {currentList.length > 0 ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {currentList.map((type) => {
                               const active = field.value === type.id;
@@ -517,6 +617,17 @@ function NewEstimatePageInner({
                               );
                             })}
                           </div>
+                          ) : field.value === GENERAL_ITEM_ASSET_TYPE_ID ? (
+                            <div className="rounded-lg border border-accent/40 bg-accent/5 px-4 py-3 text-sm text-muted-foreground">
+                              <span className="font-medium text-foreground">Anything Else</span> is selected. Fill in the asset
+                              details below—you can continue without picking a sub-type.
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No types in this category matched the server response. Go back and pick another category or use a
+                              custom description.
+                            </p>
+                          )}
                         </div>
                       )}
 

@@ -16,6 +16,7 @@
     "@workspace/llm": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
+    "dotenv": "^16.4.7",
     "drizzle-orm": "catalog:",
     "express": "^5",
     "fast-xml-parser": "^5.7.1",

@@ -84,6 +84,11 @@ export default function PortfolioPage() {
     } as unknown as UseQueryOptions<Awaited<ReturnType<typeof listEstimates>>, Error>,
   });
 
+  const estimateRows = useMemo(
+    () => (Array.isArray(estimates) ? estimates : []),
+    [estimates],
+  );
+
   const [ticks, setTicks] = useState<Record<string, Tick>>({});
   const [now, setNow] = useState(() => Date.now());
   const [listingFor, setListingFor] = useState<EstimateSummary | null>(null);
@@ -94,11 +99,11 @@ export default function PortfolioPage() {
   }, []);
 
   useEffect(() => {
-    if (!estimates || estimates.length === 0) return;
+    if (estimateRows.length === 0) return;
     const interval = setInterval(() => {
       setTicks((prev) => {
         const next: Record<string, Tick> = {};
-        for (const e of estimates) {
+        for (const e of estimateRows) {
           const cur = prev[e.id]?.mult ?? 1;
           next[e.id] = makeTick(cur, Date.now() / 1000);
         }
@@ -106,22 +111,22 @@ export default function PortfolioPage() {
       });
     }, TICK_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [estimates]);
+  }, [estimateRows]);
 
   useEffect(() => {
     setTicks({});
   }, [dataUpdatedAt]);
 
   const portfolio = useMemo(() => {
-    if (!estimates) return [];
-    return estimates.map((e) => {
+    if (estimateRows.length === 0) return [];
+    return estimateRows.map((e) => {
       const tick = ticks[e.id];
       const liveValue = e.adjustedMid * (tick?.mult ?? 1);
       const changeFromBaseline = e.baselineMid > 0 ? (liveValue - e.baselineMid) / e.baselineMid : 0;
       const sessionChange = (tick?.mult ?? 1) - 1;
       return { ...e, liveValue, changeFromBaseline, sessionChange, tickDir: tick?.dir ?? "flat" };
     });
-  }, [estimates, ticks]);
+  }, [estimateRows, ticks]);
 
   // Group by asset class
   const albums = useMemo(() => {
@@ -178,7 +183,7 @@ export default function PortfolioPage() {
     );
   }
 
-  if (!estimates || estimates.length === 0) {
+  if (estimateRows.length === 0) {
     return (
       <div className="max-w-3xl mx-auto pt-12">
         <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30">

@@ -8,26 +8,56 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
 
 export default function HomePage() {
-  const { data: assetTypes, isLoading: loadingTypes } = useListAssetTypes();
+  const {
+    data: assetTypes,
+    isLoading: loadingTypes,
+    isError: assetTypesQueryError,
+    error: assetTypesErr,
+    refetch: refetchAssetTypes,
+  } = useListAssetTypes();
   const { data: estimates, isLoading: loadingEstimates } = useListEstimates();
 
+  const assetTypesErrMessage =
+    assetTypesErr instanceof Error ? assetTypesErr.message : String(assetTypesErr ?? "Unknown error");
+
+  const estimateRows = useMemo(
+    () => (Array.isArray(estimates) ? estimates : []),
+    [estimates],
+  );
+
+  /** Plain objects only — if `assetTypes` is mistakenly a string, iterating would walk characters and yield bogus rows. */
+  const assetTypeRows = useMemo(() => {
+    if (!Array.isArray(assetTypes)) return [];
+    return assetTypes.filter(
+      (t): t is (typeof assetTypes)[number] => t != null && typeof t === "object",
+    );
+  }, [assetTypes]);
+
   const assetTypesByCategory = useMemo(() => {
-    if (!assetTypes?.length) return [];
-    const map = new Map<string, typeof assetTypes>();
-    for (const t of assetTypes) {
-      const key = t.category || "Other";
+    if (!assetTypeRows.length) return [];
+    const map = new Map<string, typeof assetTypeRows>();
+    for (const t of assetTypeRows) {
+      const key =
+        typeof t.category === "string" && t.category.trim() !== "" ? t.category : "Other";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(t);
     }
     return Array.from(map.entries())
       .map(
         ([category, types]) =>
-          [category, [...types].sort((a, b) => a.name.localeCompare(b.name))] as const,
+          [
+            category,
+            [...types].sort((a, b) =>
+              (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }),
+            ),
+          ] as const,
       )
-      .sort(([a], [b]) => a.localeCompare(b));
-  }, [assetTypes]);
+      .sort(([a], [b]) => (a ?? "").localeCompare(b ?? "", undefined, { sensitivity: "base" }));
+  }, [assetTypeRows]);
 
   return (
     <div className="space-y-16 pb-16">
@@ -72,6 +102,31 @@ export default function HomePage() {
                 <div key={i} className="h-4 rounded bg-muted/50 w-full max-w-xl" />
               ))}
             </div>
+          ) : assetTypesQueryError ? (
+            <Alert variant="destructive" className="border-destructive/40 bg-destructive/5">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Couldn&apos;t load asset classes</AlertTitle>
+              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-balance text-sm">
+                  {assetTypesErrMessage}
+                  <AssetCategoriesLoadHint error={assetTypesErr} />
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-destructive/40"
+                  onClick={() => void refetchAssetTypes()}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : assetTypesByCategory.length === 0 ? (
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              No asset classes were returned. If the API is still starting, wait a moment and refresh; otherwise check the
+              server catalog and <span className="font-mono text-xs">/api/asset-types</span>.
+            </p>
           ) : (
             <dl className="space-y-3 text-sm">
               {assetTypesByCategory.map(([category, types]) => (
@@ -84,9 +139,9 @@ export default function HomePage() {
                   </dt>
                   <dd className="min-w-0 text-foreground/90 leading-relaxed">
                     {types.map((t, i) => (
-                      <span key={t.id}>
-                        <span title={t.tagline} className="cursor-default">
-                          {t.name}
+                      <span key={t.id ?? `asset-${category}-${i}`}>
+                        <span title={t.tagline ?? undefined} className="cursor-default">
+                          {t.name ?? "Unnamed type"}
                         </span>
                         {i < types.length - 1 ? <span className="text-muted-foreground">, </span> : null}
                       </span>
@@ -114,7 +169,7 @@ export default function HomePage() {
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
           </div>
-        ) : estimates?.length === 0 ? (
+        ) : estimateRows.length === 0 ? (
           <Card className="bg-card/30 border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <AlertCircle className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
@@ -127,7 +182,7 @@ export default function HomePage() {
           </Card>
         ) : (
           <div className="flex flex-col gap-3">
-            {estimates?.slice(0, 5).map((est) => (
+            {estimateRows.slice(0, 5).map((est) => (
               <Link key={est.id} href={`/estimates/${est.id}`}>
                 <div className="group flex items-center justify-between p-4 rounded-lg border border-border bg-card/50 hover:bg-card hover:border-accent/30 transition-all cursor-pointer">
                   <div className="flex items-center gap-4">

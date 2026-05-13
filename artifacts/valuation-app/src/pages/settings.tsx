@@ -22,6 +22,44 @@ type BillingInfo = {
   stripeStub?: boolean;
 };
 
+type BillingActionJson = { url?: string; error?: string; stub?: boolean };
+
+/** Many proxies and Express defaults return an empty body on 500; `res.json()` then throws. */
+async function parseBillingJsonBody(res: Response): Promise<{ ok: true; body: BillingActionJson } | { ok: false; error: string }> {
+  let raw = "";
+  try {
+    raw = await res.text();
+  } catch {
+    return {
+      ok: false,
+      error:
+        `${res.status} ${res.statusText}`.trim() ||
+        (!res.ok ? "Could not read error response body" : "Could not read response body"),
+    };
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    if (!res.ok) {
+      const fallback = `${res.status} ${res.statusText}`.trim();
+      return { ok: false, error: fallback || "Empty error response from server" };
+    }
+    return { ok: true, body: {} };
+  }
+
+  try {
+    return { ok: true, body: JSON.parse(trimmed) as BillingActionJson };
+  } catch {
+    const hint = trimmed.length > 220 ? `${trimmed.slice(0, 219)}…` : trimmed;
+    return {
+      ok: false,
+      error:
+        `${res.status} ${res.statusText}`.trim() +
+        (hint ? `: ${hint}` : ""),
+    };
+  }
+}
+
 async function postBilling(
   path: string,
   getToken: () => Promise<string | null | undefined>,
@@ -36,8 +74,16 @@ async function postBilling(
     },
     body: "{}",
   });
-  const data = (await res.json()) as { url?: string; error?: string; stub?: boolean };
-  if (!res.ok) return { error: data.error ?? res.statusText };
+
+  const parsed = await parseBillingJsonBody(res);
+  if (!parsed.ok) return { error: parsed.error };
+
+  const data = parsed.body;
+  if (!res.ok) {
+    const code = `${res.status} ${res.statusText}`.trim();
+    return { error: data.error ?? code ?? "Billing request failed" };
+  }
+
   return data;
 }
 
@@ -57,9 +103,15 @@ function SettingsPageInner({
         credentials: apiFetchCredentials(),
         headers: token ? { authorization: `Bearer ${token}` } : {},
       });
-      if (res.ok) {
-        const j = (await res.json()) as BillingInfo;
+      if (!res.ok) return;
+      const raw = await res.text();
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+      try {
+        const j = JSON.parse(trimmed) as BillingInfo;
         setBilling(j);
+      } catch {
+        /* ignore malformed body */
       }
     } catch {
       /* ignore */

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useGetEstimate, getGetEstimateQueryKey } from "@workspace/api-client-react";
-import { formatMoney, formatPercent, formatDate } from "@/lib/format";
+import { formatMoney, formatPercent, formatDate, formatIsoDateTime } from "@/lib/format";
 import {
   Printer,
   ArrowLeft,
@@ -75,9 +75,29 @@ export default function EstimateReportPage() {
 
   // The report unlocks if the estimate was generated as Pro OR the user has Pro mode on now.
   const isPro = estimate.tier === "pro" || globalPro;
-  const uplift = estimate.netMarketFactor - 1;
-  const ccy = estimate.currency;
-  const isMobile = estimate.assetType.internationallyTradeable;
+  const uplift = (estimate.netMarketFactor ?? 1) - 1;
+  const ccy = estimate.currency ?? "USD";
+  const assetTypeName = estimate.assetType?.name ?? "Asset";
+  const isMobile = estimate.assetType?.internationallyTradeable ?? false;
+  const estimateTitle = estimate.input?.title ?? "Untitled";
+  const sellerRegion = estimate.input?.currentRegion ?? estimate.bestArbitrageRegion ?? "";
+  const estimateIdResolved = (estimate.id ?? id) || "";
+  const refShort = estimateIdResolved ? estimateIdResolved.slice(0, 8) : "—";
+  const partialReport = estimate.report;
+  const report = {
+    headline: partialReport?.headline ?? estimateTitle,
+    summary:
+      partialReport?.summary ??
+      "Legacy dossier — narrative sections may be incomplete.",
+    baselineNarrative: partialReport?.baselineNarrative ?? "",
+    marketNarrative: partialReport?.marketNarrative ?? "",
+    arbitrageNarrative: partialReport?.arbitrageNarrative ?? "",
+    worldEventsNarrative: partialReport?.worldEventsNarrative ?? "",
+    finalNarrative: partialReport?.finalNarrative ?? "",
+  };
+  const marketSignals = estimate.marketSignals ?? [];
+  const arbitrageRows = estimate.arbitrage ?? [];
+  const comparables = estimate.comparables ?? [];
   const fmt = (v: number, compact = false) => formatMoney(v, ccy, compact);
 
   return (
@@ -104,9 +124,9 @@ export default function EstimateReportPage() {
       </div>
 
       <GenerateListingDialog
-        estimateId={estimate.id}
-        estimateTitle={estimate.input.title}
-        assetTypeName={estimate.assetType.name}
+        estimateId={estimateIdResolved}
+        estimateTitle={estimateTitle}
+        assetTypeName={assetTypeName}
         open={listingOpen}
         onOpenChange={setListingOpen}
       />
@@ -114,7 +134,7 @@ export default function EstimateReportPage() {
       <header className="space-y-6 mb-12">
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant="outline" className="font-mono bg-background px-3 py-1 text-xs tracking-widest uppercase border-border/50 shadow-sm">
-            {estimate.assetType.name}
+            {assetTypeName}
           </Badge>
           <Badge
             variant={isPro ? "default" : "secondary"}
@@ -125,17 +145,17 @@ export default function EstimateReportPage() {
             {isPro ? "PRO TIER" : "FREE TIER"}
           </Badge>
           <Badge variant="outline" className="font-mono px-3 py-1 text-xs tracking-widest border-border/50">
-            {estimate.input.currentRegion} · {ccy}
+            {sellerRegion ? `${sellerRegion} · ${ccy}` : ccy}
           </Badge>
           <span className="text-xs text-muted-foreground font-mono">{formatDate(estimate.createdAt)}</span>
-          <span className="text-xs text-muted-foreground font-mono ml-auto">REF: {estimate.id.substring(0, 8)}</span>
+          <span className="text-xs text-muted-foreground font-mono ml-auto">REF: {refShort}</span>
         </div>
 
         <div>
           <h1 className="text-4xl md:text-5xl font-sans font-bold text-foreground leading-tight">
-            {estimate.report.headline}
+            {report.headline}
           </h1>
-          <p className="text-xl text-muted-foreground mt-4 max-w-3xl font-sans italic">"{estimate.report.summary}"</p>
+          <p className="text-xl text-muted-foreground mt-4 max-w-3xl font-sans italic">"{report.summary}"</p>
         </div>
       </header>
 
@@ -156,7 +176,7 @@ export default function EstimateReportPage() {
                 Range: {fmt(estimate.baselineLow, true)} – {fmt(estimate.baselineHigh, true)}
               </div>
               <p className="text-sm mt-4 text-foreground/80 leading-relaxed border-t border-border/50 pt-4">
-                {estimate.report.baselineNarrative}
+                {report.baselineNarrative}
               </p>
             </CardContent>
           </Card>
@@ -191,7 +211,7 @@ export default function EstimateReportPage() {
                 Range: {fmt(estimate.adjustedLow, true)} – {fmt(estimate.adjustedHigh, true)}
               </div>
               <p className="text-sm mt-4 text-foreground/80 leading-relaxed border-t border-border/50 pt-4">
-                {estimate.report.marketNarrative}
+                {report.marketNarrative}
               </p>
             </CardContent>
           </Card>
@@ -252,7 +272,7 @@ export default function EstimateReportPage() {
           </section>
         )}
 
-        {isPro && estimate.marketSignals.length > 0 && (
+        {isPro && marketSignals.length > 0 && (
           <section className="print-break-inside-avoid overflow-hidden border border-border/50 rounded-lg bg-sidebar text-sidebar-foreground">
             <div className="px-4 py-2 border-b border-sidebar-border bg-sidebar/80 flex items-center justify-between">
               <span className="text-xs font-mono uppercase tracking-widest text-sidebar-foreground/70 flex items-center gap-2">
@@ -262,7 +282,7 @@ export default function EstimateReportPage() {
             </div>
             <div className="relative flex overflow-x-hidden group">
               <div className="py-3 animate-ticker whitespace-nowrap flex group-hover:[animation-play-state:paused]">
-                {[...estimate.marketSignals, ...estimate.marketSignals].map((signal, i) => {
+                {[...marketSignals, ...marketSignals].map((signal, i) => {
                   const su = signal.impact - 1;
                   const pos = su > 0;
                   const neg = su < 0;
@@ -306,7 +326,7 @@ export default function EstimateReportPage() {
                 Macro · Legislation · News
               </span>
             </div>
-            <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">{estimate.report.worldEventsNarrative}</p>
+            <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">{report.worldEventsNarrative}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {estimate.worldEvents.map((ev, i) => {
@@ -382,7 +402,7 @@ export default function EstimateReportPage() {
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mb-2 max-w-3xl">{estimate.report.arbitrageNarrative}</p>
+          <p className="text-sm text-muted-foreground mb-2 max-w-3xl">{report.arbitrageNarrative}</p>
           <p className="text-xs text-muted-foreground mb-4 max-w-3xl italic">
             Friction includes marketplace fees, insured cross-border shipping, and import duties / VAT, so "Net to Seller" is what actually lands in your account.
           </p>
@@ -405,7 +425,7 @@ export default function EstimateReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {estimate.arbitrage.map((option, i) => {
+                {arbitrageRows.map((option, i) => {
                   const friction = option.estimatedFees + option.estimatedShipping + option.estimatedDuties;
                   const slug = matchPlatformSlug(option.marketplace);
                   const postUrl = slug ? PLATFORM_URL[slug] : null;
@@ -476,7 +496,7 @@ export default function EstimateReportPage() {
         )}
 
         {/* Comparables – PRO ONLY */}
-        {isPro && estimate.comparables.length > 0 && (
+        {isPro && comparables.length > 0 && (
         <section className="space-y-4 print-break-inside-avoid">
           <h3 className="text-xl font-sans">Recent Sales &amp; Live Listings</h3>
           <p className="text-sm text-muted-foreground max-w-3xl -mt-2">
@@ -484,9 +504,9 @@ export default function EstimateReportPage() {
             items on the marketplaces where this asset class actually trades.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {estimate.comparables.map((comp, i) => {
-              const livePlatforms = platformsForAssetType(estimate.assetType.name);
-              const searchQuery = `${estimate.input.title} ${comp.description}`.slice(0, 90);
+            {comparables.map((comp, i) => {
+              const livePlatforms = platformsForAssetType(assetTypeName);
+              const searchQuery = `${estimateTitle} ${comp.description}`.slice(0, 90);
               return (
                 <Card key={i} className="bg-card/50 border-border/50 shadow-sm flex flex-col">
                   <CardHeader className="p-4 pb-2">
@@ -664,10 +684,10 @@ export default function EstimateReportPage() {
         )}
 
         <div className="pt-12 border-t border-border mt-16 text-center pb-8">
-          <p className="font-sans italic text-xl text-foreground mb-4">"{estimate.report.finalNarrative}"</p>
+          <p className="font-sans italic text-xl text-foreground mb-4">"{report.finalNarrative}"</p>
           <div className="text-xs text-muted-foreground font-mono space-y-1">
             <p>GENERATED BY VALYOUED ALGORITHMIC APPRAISAL ENGINE</p>
-            <p>REF: {estimate.id} // {new Date(estimate.createdAt).toISOString()}</p>
+            <p>REF: {estimateIdResolved || "—"} · {formatIsoDateTime(estimate.createdAt)}</p>
             <p className="opacity-50 mt-4">This report is an estimate based on aggregated market data and AI modeling. It does not constitute formal financial or legal advice.</p>
           </div>
         </div>

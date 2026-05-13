@@ -32,6 +32,22 @@ export function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
 }
 
-export function formatDate(dateString: string) {
-  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" }).format(new Date(dateString));
+export function formatDate(dateInput: string | Date | number | null | undefined) {
+  if (dateInput === null || dateInput === undefined || dateInput === "") {
+    return "—";
+  }
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (Number.isNaN(d.getTime())) {
+    return "—";
+  }
+  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" }).format(d);
+}
+
+/** ISO-8601 UTC, or em dash when missing / invalid. */
+export function formatIsoDateTime(dateInput: string | Date | number | null | undefined) {
+  if (dateInput === null || dateInput === undefined || dateInput === "") {
+    return "—";
+  }
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  return Number.isNaN(d.getTime()) ? "—" : d.toISOString();
 }
