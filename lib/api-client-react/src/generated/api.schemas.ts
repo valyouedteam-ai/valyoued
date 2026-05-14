@@ -9,6 +9,33 @@ export interface HealthStatus {
   status: string;
 }
 
+/**
+ * frankfurter when live ECB feed was merged with static fallbacks; static when live FX is off or the fetch failed
+ */
+export type FxRatesResponseSource =
+  (typeof FxRatesResponseSource)[keyof typeof FxRatesResponseSource];
+
+export const FxRatesResponseSource = {
+  frankfurter: "frankfurter",
+  static: "static",
+} as const;
+
+/**
+ * Multiply an amount in currency C by rates[C] (after uppercasing) to approximate USD
+ */
+export type FxRatesResponseRates = { [key: string]: number };
+
+export interface FxRatesResponse {
+  /** frankfurter when live ECB feed was merged with static fallbacks; static when live FX is off or the fetch failed */
+  source: FxRatesResponseSource;
+  /** ECB rate date from Frankfurter when source is frankfurter */
+  asOf?: string | null;
+  /** ISO-8601 timestamp when this snapshot was built on the API */
+  fetchedAt: string;
+  /** Multiply an amount in currency C by rates[C] (after uppercasing) to approximate USD */
+  rates: FxRatesResponseRates;
+}
+
 export interface Region {
   name: string;
   currencyCode: string;
@@ -190,7 +217,7 @@ export interface EstimateSummary {
 export type EstimateStatsByAssetTypeItem = {
   assetTypeName: string;
   count: number;
-  /** Mean adjusted midpoint for this asset type, USD equivalent (static FX). */
+  /** Mean adjusted midpoint for this asset type, USD equivalent via GET /fx/rates table. */
   averageAdjustedUsd: number;
 };
 
@@ -201,9 +228,9 @@ export type EstimateStatsTopArbitrageRegionsItem = {
 
 export interface EstimateStats {
   count: number;
-  /** Mean baseline midpoint, converted to USD via static FX (approximate). */
+  /** Mean baseline midpoint to USD using the same multiplier table as GET /fx/rates (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate). */
   averageBaselineUsd: number;
-  /** Mean adjusted midpoint, converted to USD via static FX (approximate). */
+  /** Mean adjusted midpoint to USD using the same multiplier table as GET /fx/rates (approximate). */
   averageAdjustedUsd: number;
   /** Mean of (adjustedMid / baselineMid − 1) per estimate, using each row's native amounts. */
   averageUplift: number;

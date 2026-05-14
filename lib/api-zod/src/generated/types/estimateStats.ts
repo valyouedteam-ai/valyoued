@@ -10,9 +10,9 @@ import type { EstimateStatsTopArbitrageRegionsItem } from "./estimateStatsTopArb
 
 export interface EstimateStats {
   count: number;
-  /** Mean baseline midpoint, converted to USD via static FX (approximate). */
+  /** Mean baseline midpoint to USD using the same multiplier table as GET /fx/rates (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate). */
   averageBaselineUsd: number;
-  /** Mean adjusted midpoint, converted to USD via static FX (approximate). */
+  /** Mean adjusted midpoint to USD using the same multiplier table as GET /fx/rates (approximate). */
   averageAdjustedUsd: number;
   /** Mean of (adjustedMid / baselineMid − 1) per estimate, using each row's native amounts. */
   averageUplift: number;

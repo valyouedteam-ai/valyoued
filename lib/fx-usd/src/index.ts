@@ -19,9 +19,52 @@ export const FX_TO_USD: Readonly<Record<string, number>> = {
   ZAR: 0.054,
 };
 
-export function convertToUsdApprox(amount: number, currencyCode: string | null | undefined): number {
+/**
+ * Frankfurter returns `rates` with USD base: units of foreign currency per 1 USD.
+ * This map is the inverse: multiply an amount in `CCY` by `out[CCY]` to get USD.
+ */
+export function usdMultipliersFromFrankfurterUsdBaseRates(
+  rates: Record<string, number>,
+): Record<string, number> {
+  const out: Record<string, number> = { USD: 1 };
+  for (const [ccy, unitsPerUsd] of Object.entries(rates)) {
+    const C = ccy.trim().toUpperCase();
+    if (C === "USD") continue;
+    if (typeof unitsPerUsd === "number" && Number.isFinite(unitsPerUsd) && unitsPerUsd > 0) {
+      out[C] = 1 / unitsPerUsd;
+    }
+  }
+  return out;
+}
+
+/** Merge live ECB/Frankfurter multipliers over static hints (static fills missing CCYs e.g. AED). */
+export function mergeUsdMultipliers(
+  staticTable: Readonly<Record<string, number>>,
+  liveOverrides: Readonly<Record<string, number>> | null | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = { ...staticTable };
+  if (!liveOverrides) return out;
+  for (const [k, v] of Object.entries(liveOverrides)) {
+    const c = k.trim().toUpperCase();
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+      out[c] = v;
+    }
+  }
+  return out;
+}
+
+/**
+ * @param multipliers optional map (multiply amount in `currency` to get USD). When omitted, uses
+ *   {@link FX_TO_USD}. Unknown currencies fall back to the static table, then `1`.
+ */
+export function convertToUsdApprox(
+  amount: number,
+  currencyCode: string | null | undefined,
+  multipliers?: Readonly<Record<string, number>> | null,
+): number {
   if (!Number.isFinite(amount)) return 0;
   const c = (currencyCode ?? "USD").trim().toUpperCase();
-  const rate = FX_TO_USD[c] ?? 1;
+  const table = multipliers ?? FX_TO_USD;
+  const rate = table[c] ?? FX_TO_USD[c] ?? 1;
   return amount * rate;
 }

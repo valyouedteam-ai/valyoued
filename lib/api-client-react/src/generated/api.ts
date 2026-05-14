@@ -24,6 +24,7 @@ import type {
   EstimateResult,
   EstimateStats,
   EstimateSummary,
+  FxRatesResponse,
   GenerateListingInput,
   HealthStatus,
   ListingDraft,
@@ -108,6 +109,85 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Multipliers to convert row currencies to approximate USD (aligned with the portfolio dashboard and
+`GET /estimates/stats`). When `FX_LIVE_ENABLED` is set on the API server, rates are refreshed from
+Frankfurter (ECB) and cached; currencies missing from the feed keep static fallback values.
+
+ * @summary USD normalization multipliers
+ */
+export const getGetFxRatesUrl = () => {
+  return `/api/fx/rates`;
+};
+
+export const getFxRates = async (
+  options?: RequestInit,
+): Promise<FxRatesResponse> => {
+  return customFetch<FxRatesResponse>(getGetFxRatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFxRatesQueryKey = () => {
+  return [`/api/fx/rates`] as const;
+};
+
+export const getGetFxRatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFxRates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFxRates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFxRatesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFxRates>>> = ({
+    signal,
+  }) => getFxRates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFxRates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFxRatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFxRates>>
+>;
+export type GetFxRatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary USD normalization multipliers
+ */
+
+export function useGetFxRates<
+  TData = Awaited<ReturnType<typeof getFxRates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFxRates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFxRatesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -528,8 +608,9 @@ export function useGetEstimate<
 /**
  * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
 and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
-using static FX hints shared with the portfolio dashboard. `averageUplift` is the unweighted mean
-of per-row (adjustedMid / baselineMid − 1) ratios (pure numbers; not currency-converted).
+using the same multiplier table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static
+hints). `averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
+(pure numbers; not currency-converted).
 
  * @summary Aggregate stats across saved estimates
  */

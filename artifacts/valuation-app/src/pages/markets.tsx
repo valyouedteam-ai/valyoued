@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useMemo } from "react";
-import { useGetEstimateStats, useListEstimates } from "@workspace/api-client-react";
+import { useGetEstimateStats, useListEstimates, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
 import { formatDistanceToNow } from "date-fns";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,14 @@ import { useProTier } from "@/hooks/use-pro-tier";
 export default function MarketsPage() {
   const { data: stats, isLoading: statsLoading } = useGetEstimateStats();
   const { data: estimates, isLoading: listLoading } = useListEstimates();
+  const { data: fxSnap } = useGetFxRates({
+    query: {
+      queryKey: getGetFxRatesQueryKey(),
+      staleTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  });
   const { isPro } = useProTier();
 
   const rows = useMemo(() => (Array.isArray(estimates) ? estimates : []), [estimates]);
@@ -43,14 +51,23 @@ export default function MarketsPage() {
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
           Portfolio-level view of where your valuations point for net seller outcomes and demand by
-          region. Summary figures below use USD equivalents from static FX hints (same as{" "}
+          region. Summary figures use USD equivalents from the same multiplier table as{" "}
           <Link href="/portfolio" className="text-accent hover:underline">
             My Portfolio
-          </Link>
-          ), not live market FX. Per-asset friction tables (fees, shipping, duties) and live
-          marketplace links live on each valuation report with{" "}
+          </Link>{" "}
+          (<code className="font-mono text-[0.85em]">GET /api/fx/rates</code>
+          ): ECB/Frankfurter when the API has <code className="font-mono text-[0.85em]">FX_LIVE_ENABLED</code>,
+          otherwise static fallbacks—not bank spot rates. Per-asset friction tables (fees, shipping,
+          duties) and live marketplace links live on each valuation report with{" "}
           <span className="font-medium text-foreground">Pro</span> enabled.
         </p>
+        {fxSnap ? (
+          <p className="text-xs font-mono text-muted-foreground">
+            Current FX snapshot:{" "}
+            <span className="text-foreground">{fxSnap.source === "frankfurter" ? "ECB blend" : "static"}</span>
+            {fxSnap.source === "frankfurter" && fxSnap.asOf ? ` · rate date ${fxSnap.asOf}` : null}
+          </p>
+        ) : null}
         {!isPro ? (
           <p className="text-sm text-muted-foreground max-w-2xl">
             Turn on <strong className="text-foreground">Pro Mode</strong> in the sidebar to unlock
@@ -88,7 +105,7 @@ export default function MarketsPage() {
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
               <CardDescription className="text-xs">
-                Avg. baseline, USD equiv. (static FX)
+                Avg. baseline, USD equiv. (API FX table)
               </CardDescription>
               <CardTitle className="text-2xl font-mono tabular-nums">
                 {formatMoney(stats.averageBaselineUsd, "USD", true)}
@@ -98,7 +115,7 @@ export default function MarketsPage() {
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
               <CardDescription className="text-xs">
-                Avg. adjusted, USD equiv. (static FX)
+                Avg. adjusted, USD equiv. (API FX table)
               </CardDescription>
               <CardTitle className="text-2xl font-mono tabular-nums">
                 {formatMoney(stats.averageAdjustedUsd, "USD", true)}
@@ -155,8 +172,11 @@ export default function MarketsPage() {
               By asset class
             </CardTitle>
             <CardDescription>
-              Mean adjusted midpoint by asset type, converted to USD with the same static FX table as
-              the portfolio dashboard. Open a report for the original row currency.
+              Mean adjusted midpoint by asset type, USD equivalent via the API FX table (see{" "}
+              <Link href="/portfolio" className="text-accent hover:underline">
+                portfolio
+              </Link>
+              ). Open a report for the original row currency.
             </CardDescription>
           </CardHeader>
           <CardContent>

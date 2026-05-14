@@ -15,6 +15,33 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * Multipliers to convert row currencies to approximate USD (aligned with the portfolio dashboard and
+`GET /estimates/stats`). When `FX_LIVE_ENABLED` is set on the API server, rates are refreshed from
+Frankfurter (ECB) and cached; currencies missing from the feed keep static fallback values.
+
+ * @summary USD normalization multipliers
+ */
+export const GetFxRatesResponse = zod.object({
+  source: zod
+    .enum(["frankfurter", "static"])
+    .describe(
+      "frankfurter when live ECB feed was merged with static fallbacks; static when live FX is off or the fetch failed",
+    ),
+  asOf: zod
+    .string()
+    .nullish()
+    .describe("ECB rate date from Frankfurter when source is frankfurter"),
+  fetchedAt: zod
+    .string()
+    .describe("ISO-8601 timestamp when this snapshot was built on the API"),
+  rates: zod
+    .record(zod.string(), zod.number())
+    .describe(
+      "Multiply an amount in currency C by rates[C] (after uppercasing) to approximate USD",
+    ),
+});
+
+/**
  * @summary List supported asset types and their input fields
  */
 export const ListAssetTypesResponseItem = zod.object({
@@ -386,8 +413,9 @@ export const GetEstimateResponse = zod.object({
 /**
  * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
 and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
-using static FX hints shared with the portfolio dashboard. `averageUplift` is the unweighted mean
-of per-row (adjustedMid / baselineMid − 1) ratios (pure numbers; not currency-converted).
+using the same multiplier table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static
+hints). `averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
+(pure numbers; not currency-converted).
 
  * @summary Aggregate stats across saved estimates
  */
@@ -396,12 +424,12 @@ export const GetEstimateStatsResponse = zod.object({
   averageBaselineUsd: zod
     .number()
     .describe(
-      "Mean baseline midpoint, converted to USD via static FX (approximate).",
+      "Mean baseline midpoint to USD using the same multiplier table as GET \/fx\/rates (ECB\/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate).",
     ),
   averageAdjustedUsd: zod
     .number()
     .describe(
-      "Mean adjusted midpoint, converted to USD via static FX (approximate).",
+      "Mean adjusted midpoint to USD using the same multiplier table as GET \/fx\/rates (approximate).",
     ),
   averageUplift: zod
     .number()
@@ -415,7 +443,7 @@ export const GetEstimateStatsResponse = zod.object({
       averageAdjustedUsd: zod
         .number()
         .describe(
-          "Mean adjusted midpoint for this asset type, USD equivalent (static FX).",
+          "Mean adjusted midpoint for this asset type, USD equivalent via GET \/fx\/rates table.",
         ),
     }),
   ),

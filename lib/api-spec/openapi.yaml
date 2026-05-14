@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: fx
+    description: FX hints for USD normalization
   - name: estimate
     description: Asset estimate operations
 paths:
@@ -25,6 +27,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /fx/rates:
+    get:
+      operationId: getFxRates
+      tags: [fx]
+      summary: USD normalization multipliers
+      description: |
+        Multipliers to convert row currencies to approximate USD (aligned with the portfolio dashboard and
+        `GET /estimates/stats`). When `FX_LIVE_ENABLED` is set on the API server, rates are refreshed from
+        Frankfurter (ECB) and cached; currencies missing from the feed keep static fallback values.
+      responses:
+        "200":
+          description: FX snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FxRatesResponse"
   /asset-types:
     get:
       operationId: listAssetTypes
@@ -116,8 +134,9 @@ paths:
       description: |
         Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
         and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
-        using static FX hints shared with the portfolio dashboard. `averageUplift` is the unweighted mean
-        of per-row (adjustedMid / baselineMid − 1) ratios (pure numbers; not currency-converted).
+        using the same multiplier table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static
+        hints). `averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
+        (pure numbers; not currency-converted).
       responses:
         "200":
           description: Stats
@@ -221,6 +240,26 @@ components:
         status:
           type: string
       required: [status]
+    FxRatesResponse:
+      type: object
+      required: [source, rates, fetchedAt]
+      properties:
+        source:
+          type: string
+          enum: [frankfurter, static]
+          description: frankfurter when live ECB feed was merged with static fallbacks; static when live FX is off or the fetch failed
+        asOf:
+          type: string
+          nullable: true
+          description: ECB rate date from Frankfurter when source is frankfurter
+        fetchedAt:
+          type: string
+          description: ISO-8601 timestamp when this snapshot was built on the API
+        rates:
+          type: object
+          additionalProperties:
+            type: number
+          description: Multiply an amount in currency C by rates[C] (after uppercasing) to approximate USD
     Region:
       type: object
       required: [name, currencyCode, currencySymbol]
@@ -532,10 +571,10 @@ components:
           type: integer
         averageBaselineUsd:
           type: number
-          description: Mean baseline midpoint, converted to USD via static FX (approximate).
+          description: Mean baseline midpoint to USD using the same multiplier table as GET /fx/rates (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate).
         averageAdjustedUsd:
           type: number
-          description: Mean adjusted midpoint, converted to USD via static FX (approximate).
+          description: Mean adjusted midpoint to USD using the same multiplier table as GET /fx/rates (approximate).
         averageUplift:
           type: number
           description: Mean of (adjustedMid / baselineMid − 1) per estimate, using each row's native amounts.
@@ -551,7 +590,7 @@ components:
                 type: integer
               averageAdjustedUsd:
                 type: number
-                description: Mean adjusted midpoint for this asset type, USD equivalent (static FX).
+                description: Mean adjusted midpoint for this asset type, USD equivalent via GET /fx/rates table.
         topArbitrageRegions:
           type: array
           items:

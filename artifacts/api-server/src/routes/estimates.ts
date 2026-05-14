@@ -18,6 +18,7 @@ import { REGIONS, getRegion } from "../lib/regions";
 import { generateEstimate } from "../lib/estimate";
 import { requireAuth, getUserId, type AuthedRequest } from "../middlewares/requireAuth";
 import { recordPlatformEvent } from "../lib/platformEvents";
+import { getFxRateSnapshot } from "../lib/fxRates";
 import { convertToUsdApprox } from "@workspace/fx-usd";
 
 const router: IRouter = Router();
@@ -207,12 +208,14 @@ router.get("/estimates/stats", async (req, res): Promise<void> => {
   const rows = userId
     ? await db.select().from(estimatesTable).where(eq(estimatesTable.userId, userId))
     : [];
+  const fx = await getFxRateSnapshot();
+  const mult = fx.rates;
   const count = rows.length;
   const averageBaselineUsd = count
-    ? rows.reduce((s, r) => s + convertToUsdApprox(r.baselineMid, r.currency), 0) / count
+    ? rows.reduce((s, r) => s + convertToUsdApprox(r.baselineMid, r.currency, mult), 0) / count
     : 0;
   const averageAdjustedUsd = count
-    ? rows.reduce((s, r) => s + convertToUsdApprox(r.adjustedMid, r.currency), 0) / count
+    ? rows.reduce((s, r) => s + convertToUsdApprox(r.adjustedMid, r.currency, mult), 0) / count
     : 0;
   const averageUplift = count
     ? rows.reduce(
@@ -225,7 +228,7 @@ router.get("/estimates/stats", async (req, res): Promise<void> => {
   for (const r of rows) {
     const cur = byTypeMap.get(r.assetTypeName) ?? { count: 0, totalAdjustedUsd: 0 };
     cur.count += 1;
-    cur.totalAdjustedUsd += convertToUsdApprox(r.adjustedMid, r.currency);
+    cur.totalAdjustedUsd += convertToUsdApprox(r.adjustedMid, r.currency, mult);
     byTypeMap.set(r.assetTypeName, cur);
   }
   const byAssetType = Array.from(byTypeMap.entries()).map(([assetTypeName, v]) => ({

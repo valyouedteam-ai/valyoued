@@ -24,7 +24,7 @@ import {
   Legend,
 } from "recharts";
 import type { UseQueryOptions } from "@tanstack/react-query";
-import { useListEstimates, listEstimates } from "@workspace/api-client-react";
+import { useListEstimates, listEstimates, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
 import type { EstimateSummary } from "@workspace/api-client-react";
 import { convertToUsdApprox } from "@workspace/fx-usd";
 import { formatMoney, formatPercent } from "@/lib/format";
@@ -61,6 +61,15 @@ export default function PortfolioPage() {
     query: {
       refetchInterval: POLL_INTERVAL_MS,
     } as unknown as UseQueryOptions<Awaited<ReturnType<typeof listEstimates>>, Error>,
+  });
+
+  const { data: fxSnap } = useGetFxRates({
+    query: {
+      queryKey: getGetFxRatesQueryKey(),
+      staleTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
   });
 
   const estimateRows = useMemo(
@@ -110,6 +119,7 @@ export default function PortfolioPage() {
   // Group by asset class
   const albums = useMemo(() => {
     if (!portfolio.length) return [];
+    const mult = fxSnap?.rates;
     const map = new Map<string, typeof portfolio>();
     for (const p of portfolio) {
       const arr = map.get(p.assetTypeName) ?? [];
@@ -118,13 +128,13 @@ export default function PortfolioPage() {
     }
     return Array.from(map.entries())
       .map(([name, items]) => {
-        const totalUsd = items.reduce((s, i) => s + convertToUsdApprox(i.liveValue, i.currency), 0);
-        const baselineUsd = items.reduce((s, i) => s + convertToUsdApprox(i.baselineMid, i.currency), 0);
+        const totalUsd = items.reduce((s, i) => s + convertToUsdApprox(i.liveValue, i.currency, mult), 0);
+        const baselineUsd = items.reduce((s, i) => s + convertToUsdApprox(i.baselineMid, i.currency, mult), 0);
         const change = baselineUsd > 0 ? (totalUsd - baselineUsd) / baselineUsd : 0;
         return { name, items, totalUsd, baselineUsd, change };
       })
       .sort((a, b) => b.totalUsd - a.totalUsd);
-  }, [portfolio]);
+  }, [portfolio, fxSnap?.rates]);
 
   const totalPortfolioUsd = albums.reduce((s, a) => s + a.totalUsd, 0);
   const totalBaselineUsd = albums.reduce((s, a) => s + a.baselineUsd, 0);
@@ -240,6 +250,24 @@ export default function PortfolioPage() {
             </div>
             <div className="text-xs text-muted-foreground mt-2 font-mono">
               cost basis {formatMoney(totalBaselineUsd, "USD")}
+            </div>
+            <div className="text-[10px] text-muted-foreground/90 mt-1.5 font-mono leading-snug">
+              USD-eq ·{" "}
+              {!fxSnap ? (
+                "FX rates loading…"
+              ) : (
+                <>
+                  {fxSnap.source === "frankfurter"
+                    ? `ECB ${fxSnap.asOf ?? "—"}`
+                    : "Static fallbacks"}
+                  {(() => {
+                    const d = new Date(fxSnap.fetchedAt);
+                    return Number.isNaN(d.getTime())
+                      ? ""
+                      : ` · refetched ${formatDistanceToNow(d, { addSuffix: true })}`;
+                  })()}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

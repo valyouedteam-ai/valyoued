@@ -9,6 +9,6 @@
 export type EstimateStatsByAssetTypeItem = {
   assetTypeName: string;
   count: number;
-  /** Mean adjusted midpoint for this asset type, USD equivalent (static FX). */
+  /** Mean adjusted midpoint for this asset type, USD equivalent via GET /fx/rates table. */
   averageAdjustedUsd: number;
 };
