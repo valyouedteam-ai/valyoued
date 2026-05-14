@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuthStubContext } from "@/context/AuthStubContext";
-import { useAuth } from "@clerk/react";
+import { useAuth, useClerk } from "@clerk/react";
 import {
   ArrowLeft,
   CreditCard,
@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Shield,
   Sparkles,
+  UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,8 +90,10 @@ async function postBilling(
 
 function SettingsPageInner({
   getToken,
+  onOpenProfile,
 }: {
   getToken: () => Promise<string | null | undefined>;
+  onOpenProfile?: () => void;
 }) {
   const { toast } = useToast();
   const [billing, setBilling] = useState<BillingInfo | null>(null);
@@ -281,6 +284,38 @@ function SettingsPageInner({
             </p>
           </CardContent>
         </Card>
+
+        <Card className="border-border/80 bg-card/40 backdrop-blur-sm md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <UserRound className="h-5 w-5 text-accent" />
+              Account &amp; profile
+            </CardTitle>
+            <CardDescription>
+              Name, avatar, email, password, two-factor authentication, and social sign-in (for
+              example Google) are managed by Clerk under GDPR-compatible processing. ValYoued stores
+              valuation and listing drafts; it does not hold your password.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto gap-2"
+              disabled={!onOpenProfile}
+              onClick={() => onOpenProfile?.()}
+            >
+              <UserRound className="h-4 w-4" />
+              Manage profile in Clerk
+            </Button>
+            {!onOpenProfile ? (
+              <p className="text-xs text-muted-foreground mt-3">
+                Profile management is available when signing in with Clerk (disabled in dev auth
+                stub).
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -288,7 +323,15 @@ function SettingsPageInner({
 
 function SettingsWithClerk() {
   const { getToken } = useAuth();
-  return <SettingsPageInner getToken={getToken} />;
+  const { openUserProfile } = useClerk();
+  return (
+    <SettingsPageInner
+      getToken={getToken}
+      onOpenProfile={() => {
+        void openUserProfile();
+      }}
+    />
+  );
 }
 
 export default function SettingsPage() {

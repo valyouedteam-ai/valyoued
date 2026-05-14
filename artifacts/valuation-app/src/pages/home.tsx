@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useListAssetTypes, useListEstimates } from "@workspace/api-client-react";
 import { formatMoney } from "@/lib/format";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowRight, Calculator, FileText, TrendingUp, AlertCircle } from "lucide-react";
+import { ArrowRight, Calculator, FileText, Globe2, TrendingUp, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,7 +70,7 @@ export default function HomePage() {
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-sans text-pretty">
           Know what your collectibles are worth, from watches and wine to cars, art, and more. ValYoued pulls together live market context, comparable sales, and regional buyer demand so you can set a fair price and see where it might sell best.
         </p>
-        <div className="pt-4 flex flex-col sm:flex-row gap-4">
+        <div className="pt-4 flex flex-col sm:flex-row gap-4 flex-wrap">
           <Link href="/estimate/new">
             <Button size="lg" className="h-12 px-8 text-base shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
               <Calculator className="mr-2 h-5 w-5" />
@@ -81,6 +81,12 @@ export default function HomePage() {
             <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-transparent border-border/50 hover:bg-card">
               <TrendingUp className="mr-2 h-5 w-5" />
               View Market Stats
+            </Button>
+          </Link>
+          <Link href="/markets">
+            <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-transparent border-border/50 hover:bg-card">
+              <Globe2 className="mr-2 h-5 w-5" />
+              Cross-market insights
             </Button>
           </Link>
         </div>

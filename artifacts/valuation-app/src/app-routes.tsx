@@ -12,6 +12,7 @@ import NewEstimatePage from "@/pages/estimates/new";
 import EstimatesPage from "@/pages/estimates/index";
 import EstimateReportPage from "@/pages/estimates/[id]";
 import PortfolioPage from "@/pages/portfolio";
+import MarketsPage from "@/pages/markets";
 import ListingsPage from "@/pages/listings";
 import SettingsPage from "@/pages/settings";
 import AdminDashboardPage from "@/pages/admin";
@@ -82,6 +83,7 @@ function AppShellSwitch() {
       <Route path="/estimates/:id" component={EstimateReportPage} />
       <Route path="/portfolio" component={PortfolioPage} />
       <Route path="/stats" component={PortfolioPage} />
+      <Route path="/markets" component={MarketsPage} />
       <Route path="/listings" component={ListingsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/admin" component={AdminDashboardPage} />
