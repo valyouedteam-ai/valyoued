@@ -3,13 +3,48 @@ import { useMemo } from "react";
 import { useListAssetTypes, useListEstimates } from "@workspace/api-client-react";
 import { formatMoney } from "@/lib/format";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowRight, Calculator, FileText, Globe2, TrendingUp, AlertCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Calculator,
+  ChevronRight,
+  FileText,
+  Globe2,
+  Layers,
+  Sparkles,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
+
+const quickLinks = [
+  {
+    href: "/estimate/new",
+    title: "New valuation",
+    desc: "Structured form, photo assist, instant report.",
+    icon: Calculator,
+    emphasis: true as const,
+  },
+  {
+    href: "/portfolio",
+    title: "Portfolio",
+    desc: "Diversification and USD-equivalent totals.",
+    icon: Layers,
+    emphasis: false as const,
+  },
+  {
+    href: "/markets",
+    title: "Cross-market",
+    desc: "Regional hints and links into each dossier.",
+    icon: Globe2,
+    emphasis: false as const,
+  },
+];
 
 export default function HomePage() {
   const {
@@ -29,7 +64,6 @@ export default function HomePage() {
     [estimates],
   );
 
-  /** Plain objects only — if `assetTypes` is mistakenly a string, iterating would walk characters and yield bogus rows. */
   const assetTypeRows = useMemo(() => {
     if (!Array.isArray(assetTypes)) return [];
     return assetTypes.filter(
@@ -60,159 +94,211 @@ export default function HomePage() {
   }, [assetTypeRows]);
 
   return (
-    <div className="space-y-16 pb-16">
-      {/* Hero Section */}
-      <section className="space-y-6 pt-8">
-        <h1 className="text-5xl md:text-7xl font-sans leading-[1.1] text-foreground">
-          Know the market. <br />
-          <span className="italic text-muted-foreground">Before you enter it.</span>
-        </h1>
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-sans text-pretty">
-          Know what your collectibles are worth, from watches and wine to cars, art, and more. ValYoued pulls together live market context, comparable sales, and regional buyer demand so you can set a fair price and see where it might sell best.
-        </p>
-        <div className="pt-4 flex flex-col sm:flex-row gap-4 flex-wrap">
-          <Link href="/estimate/new">
-            <Button size="lg" className="h-12 px-8 text-base shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
-              <Calculator className="mr-2 h-5 w-5" />
-              Start Valuation
-            </Button>
-          </Link>
-          <Link href="/stats">
-            <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-transparent border-border/50 hover:bg-card">
-              <TrendingUp className="mr-2 h-5 w-5" />
-              View Market Stats
-            </Button>
-          </Link>
-          <Link href="/markets">
-            <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-transparent border-border/50 hover:bg-card">
-              <Globe2 className="mr-2 h-5 w-5" />
-              Cross-market insights
-            </Button>
-          </Link>
-        </div>
-      </section>
-
-      {/* Asset classes (compact reference) */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight font-sans">Supported asset classes</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Grouped by category. Start a valuation to choose a specific class and enter details.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-border/60 bg-card/40 px-4 py-3">
-          {loadingTypes ? (
-            <div className="space-y-3 animate-pulse">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-4 rounded bg-muted/50 w-full max-w-xl" />
-              ))}
-            </div>
-          ) : assetTypesQueryError ? (
-            <Alert variant="destructive" className="border-destructive/40 bg-destructive/5">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Couldn&apos;t load asset classes</AlertTitle>
-              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-balance text-sm">
-                  {assetTypesErrMessage}
-                  <AssetCategoriesLoadHint error={assetTypesErr} />
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 border-destructive/40"
-                  onClick={() => void refetchAssetTypes()}
-                >
-                  Retry
-                </Button>
-              </AlertDescription>
-            </Alert>
-          ) : assetTypesByCategory.length === 0 ? (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              No asset classes were returned. If the API is still starting, wait a moment and refresh; otherwise check the
-              server catalog and <span className="font-mono text-xs">/api/asset-types</span>.
+    <div className="space-y-14 pb-8">
+      <section className="space-y-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl space-y-4">
+            <p className="text-ui-caps text-muted-foreground">ValYoued workspace</p>
+            <h1 className="whitespace-nowrap text-[clamp(0.8125rem,calc((100vw-2rem)/22),2rem)] font-semibold leading-tight tracking-tight text-foreground md:leading-[1.08]">
+              Price with context.{" "}
+              <span className="text-muted-foreground font-normal">Act with clarity.</span>
+            </h1>
+            <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+              One place for valuations, portfolio view, and marketplace-ready drafts, tuned for
+              collectibles and alternative assets.
             </p>
-          ) : (
-            <dl className="space-y-3 text-sm">
-              {assetTypesByCategory.map(([category, types]) => (
-                <div
-                  key={category}
-                  className="flex flex-col gap-1 sm:flex-row sm:gap-6 sm:items-start border-b border-border/40 pb-3 last:border-0 last:pb-0"
+          </div>
+          <Link href="/stats" className="shrink-0">
+            <Button variant="outline" className="rounded-full border-border/80 shadow-sm">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Portfolio analytics
+            </Button>
+          </Link>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          {quickLinks.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link key={item.href} href={item.href}>
+                <Card
+                  className={`group h-full border-border/70 transition-all hover:shadow-md ${
+                    item.emphasis
+                      ? "border-accent/25 bg-card ring-1 ring-accent/10"
+                      : "bg-card/80 hover:border-accent/20"
+                  }`}
                 >
-                  <dt className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:w-44 sm:pt-0.5">
-                    {category}
-                  </dt>
-                  <dd className="min-w-0 text-foreground/90 leading-relaxed">
-                    {types.map((t, i) => (
-                      <span key={t.id ?? `asset-${category}-${i}`}>
-                        <span title={t.tagline ?? undefined} className="cursor-default">
-                          {t.name ?? "Unnamed type"}
-                        </span>
-                        {i < types.length - 1 ? <span className="text-muted-foreground">, </span> : null}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
+                  <CardContent className="flex h-full flex-col gap-4 p-6">
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                        item.emphasis ? "bg-accent text-accent-foreground" : "bg-muted text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h2 className="font-semibold tracking-tight text-foreground group-hover:text-accent transition-colors">
+                        {item.title}
+                      </h2>
+                      <p className="text-sm leading-snug text-muted-foreground">{item.desc}</p>
+                    </div>
+                    <div className="flex items-center text-sm font-medium text-accent">
+                      Open
+                      <ChevronRight className="ml-0.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
-      {/* Recent Estimates Strip */}
-      <section className="space-y-6 border-t border-border pt-12">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-sans">Recent Market Activity</h2>
-          <Link href="/estimates" className="text-sm font-medium text-accent hover:underline inline-flex items-center">
-            View all <ArrowRight className="ml-1 h-4 w-4" />
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Asset classes</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Browse what we support. Expand a category to see types.
+            </p>
+          </div>
+          <Badge variant="secondary" className="rounded-full font-normal">
+            <Sparkles className="mr-1 h-3 w-3" />
+            {assetTypeRows.length > 0 ? `${assetTypeRows.length} types` : "Catalog"}
+          </Badge>
+        </div>
+
+        <Card className="overflow-hidden border-border/70 shadow-sm">
+          <CardContent className="p-0">
+            {loadingTypes ? (
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : assetTypesQueryError ? (
+              <div className="p-5">
+                <Alert variant="destructive" className="border-destructive/30">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Couldn&apos;t load asset classes</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-balance text-sm">{assetTypesErrMessage}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => void refetchAssetTypes()}
+                    >
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                  <AssetCategoriesLoadHint error={assetTypesErr} />
+                </Alert>
+              </div>
+            ) : assetTypesByCategory.length === 0 ? (
+              <p className="p-5 text-sm text-muted-foreground">
+                No asset classes returned. Check <span className="font-mono text-xs">/api/asset-types</span>.
+              </p>
+            ) : (
+              <Accordion type="multiple" className="divide-y divide-border/60">
+                {assetTypesByCategory.map(([category, types]) => (
+                  <AccordionItem key={category} value={category} className="border-0 px-5">
+                    <AccordionTrigger className="py-4 text-sm font-semibold hover:no-underline">
+                      <span className="flex items-center gap-2">
+                        {category}
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {types.length} type{types.length === 1 ? "" : "s"}
+                        </span>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 pt-0 text-sm leading-relaxed text-muted-foreground">
+                      {types.map((t, i) => (
+                        <span key={t.id ?? `${category}-${i}`}>
+                          <span title={t.tagline ?? undefined} className="text-foreground/90">
+                            {t.name ?? "Unnamed"}
+                          </span>
+                          {i < types.length - 1 ? <span className="text-border"> · </span> : null}
+                        </span>
+                      ))}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold tracking-tight">Recent activity</h2>
+          <Link
+            href="/estimates"
+            className="inline-flex items-center text-sm font-medium text-accent hover:underline"
+          >
+            All valuations
+            <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </div>
 
         {loadingEstimates ? (
           <div className="space-y-3">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-[4.5rem] w-full rounded-xl" />
+            <Skeleton className="h-[4.5rem] w-full rounded-xl" />
           </div>
         ) : estimateRows.length === 0 ? (
-          <Card className="bg-card/30 border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <AlertCircle className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
-              <h3 className="text-lg font-sans mb-1">No estimates yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">Run your first valuation to see market activity.</p>
-              <Link href="/estimate/new">
-                <Button variant="outline" size="sm">Create Estimate</Button>
+          <Card className="border-dashed border-border/80 bg-muted/20">
+            <CardContent className="flex flex-col items-center justify-center py-14 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                <FileText className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold">No valuations yet</h3>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Run a first pass. You&apos;ll see it here with value and best region.
+              </p>
+              <Link href="/estimate/new" className="mt-6">
+                <Button className="rounded-full">Start valuation</Button>
               </Link>
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col gap-3">
+          <ul className="space-y-2">
             {estimateRows.slice(0, 5).map((est) => (
-              <Link key={est.id} href={`/estimates/${est.id}`}>
-                <div className="group flex items-center justify-between p-4 rounded-lg border border-border bg-card/50 hover:bg-card hover:border-accent/30 transition-all cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center text-accent">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-foreground group-hover:text-accent transition-colors">{est.title}</h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
-                        <Badge variant="secondary" className="font-mono text-[10px] rounded-sm">{est.assetTypeName}</Badge>
-                        <span className="text-muted-foreground">
-                          {formatDistanceToNow(new Date(est.createdAt), { addSuffix: true })}
-                        </span>
+              <li key={est.id}>
+                <Link href={`/estimates/${est.id}`}>
+                  <div className="group flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm transition-all hover:border-accent/25 hover:shadow sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground group-hover:text-accent transition-colors">
+                          {est.title}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="rounded-md text-[10px] font-medium">
+                            {est.assetTypeName}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(est.createdAt), { addSuffix: true })}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-left sm:text-right">
+                      <p className="font-mono text-sm font-semibold tabular-nums">
+                        {formatMoney(est.adjustedMid, est.currency)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Best region · {est.bestArbitrageRegion || "N/A"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right hidden sm:block">
-                    <div className="font-mono font-medium">{formatMoney(est.adjustedMid, est.currency)}</div>
-                    <div className="text-xs text-muted-foreground font-mono">Best: {est.bestArbitrageRegion}</div>
-                  </div>
-                </div>
-              </Link>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
     </div>

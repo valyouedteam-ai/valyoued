@@ -15,17 +15,16 @@ export default function SignUpPage() {
       : `${basePath}/dashboard`;
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[hsl(222,47%,7%)] px-4 py-10 relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent/30 blur-[120px]" />
-        <div className="absolute -bottom-40 right-1/4 w-[400px] h-[400px] rounded-full bg-purple-500/20 blur-[100px]" />
+    <div className="mesh-bg relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 py-10">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 right-1/4 h-[420px] w-[420px] rounded-full bg-[hsl(258_45%_55%/0.08)] blur-[90px]" />
       </div>
-      <div className="relative w-full max-w-md flex flex-col items-center gap-6">
+      <div className="relative flex w-full max-w-md flex-col items-center gap-6">
         <div className="text-center">
-          <div className="text-4xl font-sans font-semibold text-white tracking-tight">
+          <div className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Your valuation is ready
           </div>
-          <div className="text-sm text-white/60 mt-3 max-w-sm">
+          <div className="mt-3 max-w-sm text-sm text-muted-foreground">
             Create a free account to unlock your AI-generated valuation, save it to your portfolio,
             and get listing drafts for marketplaces worldwide.
           </div>

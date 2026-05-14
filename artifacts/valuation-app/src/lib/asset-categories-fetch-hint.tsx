@@ -1,6 +1,6 @@
 import { ApiError } from "@workspace/api-client-react";
 
-/** Explains classification fetch failures — HTTP 5xx ≠ “can't reach backend”. */
+/** Explains classification fetch failures (HTTP 5xx is not always "can't reach backend"). */
 export function AssetCategoriesLoadHint({ error }: { error: unknown }) {
   if (error instanceof ApiError) {
     const st = error.status;
@@ -8,7 +8,7 @@ export function AssetCategoriesLoadHint({ error }: { error: unknown }) {
       return (
         <span className="block mt-1 opacity-90 font-normal text-balance">
           The browser reached your API, but the server failed (HTTP {st}). Check the terminal where{" "}
-          <code className="text-xs px-1 rounded bg-background/50">api-server</code> runs—common local causes are a missing or wrong{" "}
+          <code className="text-xs px-1 rounded bg-background/50">api-server</code> runs. Common local causes are a missing or wrong{" "}
           <code className="text-xs px-1 rounded bg-background/50">DATABASE_URL</code>, Postgres not running, or an uncaught backend error.
           Routing is usually fine when you see HTTP 500; fix the API process rather than only Vite proxy settings.
         </span>

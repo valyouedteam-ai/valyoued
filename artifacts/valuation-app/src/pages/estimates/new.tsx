@@ -91,7 +91,7 @@ const GENERAL_ITEM_FALLBACK: AssetType = {
       label: "Other relevant details",
       type: "textarea",
       required: false,
-      placeholder: "Tell us everything — materials, history, why it's special",
+      placeholder: "Tell us everything: materials, history, why it's special",
       help: "Materials, history, accessories, why it's worth what you think",
     },
   ],
@@ -620,7 +620,7 @@ function NewEstimatePageInner({
                           ) : field.value === GENERAL_ITEM_ASSET_TYPE_ID ? (
                             <div className="rounded-lg border border-accent/40 bg-accent/5 px-4 py-3 text-sm text-muted-foreground">
                               <span className="font-medium text-foreground">Anything Else</span> is selected. Fill in the asset
-                              details below—you can continue without picking a sub-type.
+                              details below. You can continue without picking a sub-type.
                             </div>
                           ) : (
                             <p className="text-sm text-muted-foreground">

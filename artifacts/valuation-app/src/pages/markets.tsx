@@ -1,7 +1,6 @@
 import { Link } from "wouter";
 import { useMemo } from "react";
-import { useGetEstimateStats, useListEstimates, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
-import { formatDistanceToNow } from "date-fns";
+import { useGetEstimateStats, useListEstimates } from "@workspace/api-client-react";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,14 +20,6 @@ import { useProTier } from "@/hooks/use-pro-tier";
 export default function MarketsPage() {
   const { data: stats, isLoading: statsLoading } = useGetEstimateStats();
   const { data: estimates, isLoading: listLoading } = useListEstimates();
-  const { data: fxSnap } = useGetFxRates({
-    query: {
-      queryKey: getGetFxRatesQueryKey(),
-      staleTime: 30 * 60 * 1000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  });
   const { isPro } = useProTier();
 
   const rows = useMemo(() => (Array.isArray(estimates) ? estimates : []), [estimates]);
@@ -47,31 +38,22 @@ export default function MarketsPage() {
           </Badge>
         </div>
         <h1 className="text-4xl md:text-5xl font-sans font-bold text-foreground leading-tight">
-          Arbitrage &amp; marketplace context
+          Regions and pricing context
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
-          Portfolio-level view of where your valuations point for net seller outcomes and demand by
-          region. Summary figures use USD equivalents from the same multiplier table as{" "}
+          See which regions show up most often as the strongest match across your saved valuations.
+          Dollar amounts here use the same rough exchange math as your{" "}
           <Link href="/portfolio" className="text-accent hover:underline">
-            My Portfolio
+            portfolio
           </Link>{" "}
-          (<code className="font-mono text-[0.85em]">GET /api/fx/rates</code>
-          ): ECB/Frankfurter when the API has <code className="font-mono text-[0.85em]">FX_LIVE_ENABLED</code>,
-          otherwise static fallbacks—not bank spot rates. Per-asset friction tables (fees, shipping,
-          duties) and live marketplace links live on each valuation report with{" "}
-          <span className="font-medium text-foreground">Pro</span> enabled.
+          so you can compare totals at a glance. They are guides, not live bank rates. Open any
+          report for fees, shipping, and marketplace links, especially with{" "}
+          <span className="font-medium text-foreground">Pro</span> turned on.
         </p>
-        {fxSnap ? (
-          <p className="text-xs font-mono text-muted-foreground">
-            Current FX snapshot:{" "}
-            <span className="text-foreground">{fxSnap.source === "frankfurter" ? "ECB blend" : "static"}</span>
-            {fxSnap.source === "frankfurter" && fxSnap.asOf ? ` · rate date ${fxSnap.asOf}` : null}
-          </p>
-        ) : null}
         {!isPro ? (
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Turn on <strong className="text-foreground">Pro Mode</strong> in the sidebar to unlock
-            full regional arbitrage grids and comparables inside any report.
+            Turn on <strong className="text-foreground">Pro</strong> with the toggle in the header
+            for full regional detail and comparables inside each report.
           </p>
         ) : null}
       </header>
@@ -104,9 +86,7 @@ export default function MarketsPage() {
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">
-                Avg. baseline, USD equiv. (API FX table)
-              </CardDescription>
+              <CardDescription className="text-xs">Avg. baseline (approx. USD)</CardDescription>
               <CardTitle className="text-2xl font-mono tabular-nums">
                 {formatMoney(stats.averageBaselineUsd, "USD", true)}
               </CardTitle>
@@ -114,9 +94,7 @@ export default function MarketsPage() {
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">
-                Avg. adjusted, USD equiv. (API FX table)
-              </CardDescription>
+              <CardDescription className="text-xs">Avg. adjusted value (approx. USD)</CardDescription>
               <CardTitle className="text-2xl font-mono tabular-nums">
                 {formatMoney(stats.averageAdjustedUsd, "USD", true)}
               </CardTitle>
@@ -130,11 +108,11 @@ export default function MarketsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Globe2 className="h-5 w-5 text-accent" />
-              Regions appearing as &quot;best net&quot;
+              Where valuations lean by region
             </CardTitle>
             <CardDescription>
-              How often each region showed up as the top arbitrage destination across your dossiers.
-              Open a report for marketplace-level net-to-seller lines.
+              Counts how often each region was flagged as the top pick. Open a valuation report for
+              the full breakdown and seller links.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -172,11 +150,11 @@ export default function MarketsPage() {
               By asset class
             </CardTitle>
             <CardDescription>
-              Mean adjusted midpoint by asset type, USD equivalent via the API FX table (see{" "}
+              Average adjusted value by type, using the same approximate US dollar conversion as{" "}
               <Link href="/portfolio" className="text-accent hover:underline">
-                portfolio
+                your portfolio
               </Link>
-              ). Open a report for the original row currency.
+              . Reports still show each item in its own currency.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -188,7 +166,7 @@ export default function MarketsPage() {
                   <TableRow>
                     <TableHead>Asset type</TableHead>
                     <TableHead className="text-right">Items</TableHead>
-                    <TableHead className="text-right">Avg. adj. (USD ~)</TableHead>
+                    <TableHead className="text-right">Avg. (approx. USD)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -237,7 +215,7 @@ export default function MarketsPage() {
                   <TableHead>Asset</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Adjusted</TableHead>
-                  <TableHead>Best region (hint)</TableHead>
+                  <TableHead>Top region (hint)</TableHead>
                   <TableHead className="w-[120px]" />
                 </TableRow>
               </TableHeader>
@@ -249,7 +227,7 @@ export default function MarketsPage() {
                     <TableCell className="text-right font-mono text-sm">
                       {formatMoney(e.adjustedMid, e.currency)}
                     </TableCell>
-                    <TableCell className="text-sm">{e.bestArbitrageRegion || "—"}</TableCell>
+                    <TableCell className="text-sm">{e.bestArbitrageRegion || "N/A"}</TableCell>
                     <TableCell className="text-right">
                       <Link href={`/estimates/${e.id}`}>
                         <Button variant="ghost" size="sm" className="gap-1">
@@ -276,13 +254,6 @@ export default function MarketsPage() {
           )}
         </CardContent>
       </Card>
-
-      <p className="text-xs text-muted-foreground font-mono">
-        Updated from your account data ·{" "}
-        {rows[0]?.createdAt
-          ? `latest ${formatDistanceToNow(new Date(rows[0].createdAt), { addSuffix: true })}`
-          : "—"}
-      </p>
     </div>
   );
 }

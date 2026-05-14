@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useHealthCheck } from "@workspace/api-client-react";
 import { useUser, useClerk } from "@clerk/react";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu, Sparkles } from "lucide-react";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,181 +11,322 @@ import {
   Briefcase,
   Globe2,
   LibrarySquare,
-  Sparkles,
   Megaphone,
   Settings,
-  Shield,
+  ShieldHalf,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useProTier } from "@/hooks/use-pro-tier";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 
-const navItems = [
+type NavItem = { href: string; label: string; icon: typeof LibrarySquare };
+
+const navWorkspace: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: LibrarySquare },
-  { href: "/estimate/new", label: "New Valuation", icon: Calculator },
+  { href: "/estimate/new", label: "Valuate", icon: Calculator },
   { href: "/estimates", label: "History", icon: LayoutDashboard },
-  { href: "/portfolio", label: "My Portfolio", icon: Briefcase },
-  { href: "/markets", label: "Cross-market", icon: Globe2 },
-  { href: "/listings", label: "Ad Drafts", icon: Megaphone },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/admin", label: "Admin", icon: Shield },
 ];
 
-function UserMenuStub() {
+const navInsights: NavItem[] = [
+  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+  { href: "/markets", label: "Markets", icon: Globe2 },
+  { href: "/listings", label: "Listings", icon: Megaphone },
+];
+
+function NavLink({
+  item,
+  active,
+  onNavigate,
+  className,
+  block,
+}: {
+  item: NavItem;
+  active: boolean;
+  onNavigate?: () => void;
+  className?: string;
+  block?: boolean;
+}) {
+  const Icon = item.icon;
   return (
-    <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md bg-sidebar-accent/40 border border-sidebar-border">
-      <div className="h-8 w-8 rounded-full bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center text-sm font-semibold ring-1 ring-sidebar-primary/40 shrink-0">
-        D
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-xs font-medium text-sidebar-foreground truncate">Dev (auth stub)</div>
-        <div className="text-ui-meta text-sidebar-foreground/50">No Clerk session</div>
-      </div>
-    </div>
+    <Link href={item.href} onClick={onNavigate} className={cn(block && "block w-full")}>
+      <span
+        className={cn(
+          "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-all",
+          block && "w-full flex",
+          active
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          className,
+        )}
+      >
+        <Icon className={cn("h-4 w-4 shrink-0", active ? "opacity-100" : "opacity-80")} />
+        {item.label}
+      </span>
+    </Link>
   );
 }
 
-function UserMenuClerk() {
+function UserMenuStub({ compact }: { compact?: boolean }) {
+  return (
+    <Link
+      href="/profile"
+      aria-label="View profile"
+      className={cn(
+        "flex items-center gap-2 rounded-full border border-border/80 bg-card px-2 py-1 pr-3 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        compact && "pr-2",
+      )}
+    >
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+        D
+      </div>
+      {!compact ? (
+        <div className="min-w-0">
+          <div className="truncate text-xs font-medium">Dev stub</div>
+          <div className="text-ui-meta text-muted-foreground">No session</div>
+        </div>
+      ) : null}
+    </Link>
+  );
+}
+
+function UserMenuClerk({ compact }: { compact?: boolean }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   if (!isLoaded || !user) return null;
   const display =
-    user.fullName ||
-    user.primaryEmailAddress?.emailAddress ||
-    user.username ||
-    "Account";
+    user.fullName || user.primaryEmailAddress?.emailAddress || user.username || "Account";
   const initial = (display[0] ?? "?").toUpperCase();
   return (
-    <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md bg-sidebar-accent/40 border border-sidebar-border">
-      <div className="h-8 w-8 rounded-full bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center text-sm font-semibold ring-1 ring-sidebar-primary/40 shrink-0 overflow-hidden">
-        {user.imageUrl ? (
-          <img src={user.imageUrl} alt={display} className="h-full w-full object-cover" />
-        ) : (
-          initial
+    <div
+      className={cn(
+        "flex items-center gap-1 rounded-full border border-border/80 bg-card py-1 pl-1 shadow-sm",
+        compact ? "pr-1" : "pr-2",
+      )}
+    >
+      <Link
+        href="/profile"
+        aria-label="View profile"
+        className={cn(
+          "flex min-w-0 items-center gap-2 rounded-full py-0.5 pl-0.5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          compact ? "pr-0.5" : "pr-1",
         )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-xs font-medium text-sidebar-foreground truncate">{display}</div>
-      </div>
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold">
+          {user.imageUrl ? (
+            <img src={user.imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initial
+          )}
+        </div>
+        {!compact ? (
+          <div className="hidden min-w-0 max-w-[140px] sm:block">
+            <div className="truncate text-xs font-medium">{display}</div>
+          </div>
+        ) : null}
+      </Link>
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
         onClick={() => signOut()}
         title="Sign out"
         data-testid="sign-out-btn"
       >
-        <LogOut className="h-3.5 w-3.5" />
+        <LogOut className="h-4 w-4" />
       </Button>
     </div>
   );
 }
 
-function UserMenu() {
+function UserMenu({ compact }: { compact?: boolean }) {
   const authStub = useAuthStubContext();
-  if (authStub) return <UserMenuStub />;
-  return <UserMenuClerk />;
+  if (authStub) return <UserMenuStub compact={compact} />;
+  return <UserMenuClerk compact={compact} />;
+}
+
+function ProToggle({ className }: { className?: string }) {
+  const { isPro, setIsPro } = useProTier();
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2.5 rounded-full border px-3 py-1.5 shadow-sm transition-colors",
+        isPro ? "border-accent/30 bg-accent/10" : "border-border/80 bg-card",
+        className,
+      )}
+    >
+      <Sparkles className={cn("h-4 w-4", isPro ? "text-accent" : "text-muted-foreground")} />
+      <Label htmlFor="pro-mode-header" className="cursor-pointer text-xs font-medium text-foreground">
+        Pro
+      </Label>
+      <Switch id="pro-mode-header" checked={isPro} onCheckedChange={setIsPro} className="scale-90" />
+    </div>
+  );
+}
+
+function MobileNavSheet() {
+  const [open, setOpen] = useState(false);
+  const [location] = useLocation();
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="icon" className="shrink-0 rounded-full md:hidden" aria-label="Open menu">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="flex w-[min(100vw-2rem,320px)] flex-col gap-0 p-0">
+        <SheetHeader className="border-b border-border px-6 py-5 text-left">
+          <SheetTitle className="font-brand text-xl">Menu</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-5">
+          <div>
+            <div className="text-ui-caps text-muted-foreground mb-2 px-2">Workspace</div>
+            <div className="flex flex-col gap-1">
+              {navWorkspace.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  block
+                  active={location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href))}
+                  onNavigate={() => setOpen(false)}
+                  className="w-full !justify-start rounded-xl"
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-ui-caps text-muted-foreground mb-2 px-2">Insights</div>
+            <div className="flex flex-col gap-1">
+              {navInsights.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  block
+                  active={location === item.href || location.startsWith(item.href)}
+                  onNavigate={() => setOpen(false)}
+                  className="w-full !justify-start rounded-xl"
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 px-2">
+            <p className="w-full text-ui-caps text-muted-foreground px-2">Shortcuts</p>
+            <Link href="/settings" onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
+              <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Settings">
+                <Settings className="h-4 w-4 shrink-0" />
+                Settings
+              </Button>
+            </Link>
+            <Link href="/admin" onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
+              <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Team dashboard">
+                <ShieldHalf className="h-4 w-4 shrink-0" />
+                Team
+              </Button>
+            </Link>
+          </div>
+        </div>
+        <div className="mt-auto space-y-4 border-t border-border px-4 py-5">
+          <ProToggle className="w-full justify-between" />
+          <UserMenu />
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { data: health } = useHealthCheck();
-  const { isPro, setIsPro } = useProTier();
+  const isMobile = useIsMobile();
+
+  const isActive = (href: string) =>
+    location === href || (href !== "/dashboard" && location.startsWith(href));
 
   return (
-    <div className="min-h-[100dvh] flex flex-col md:flex-row bg-background selection:bg-accent/30 selection:text-accent-foreground">
-      <aside className="no-print w-full md:w-64 border-b md:border-b-0 md:border-r border-sidebar-border bg-sidebar shrink-0 flex flex-col relative overflow-hidden">
-        <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-sidebar-primary/20 blur-3xl" />
-
-        <div className="p-6 relative">
-          <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 rounded-lg bg-white/95 flex items-center justify-center shadow-md ring-1 ring-sidebar-primary/40 group-hover:ring-sidebar-primary transition-all">
+    <div className="no-print flex min-h-[100dvh] flex-col bg-background">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4">
+          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition-opacity hover:opacity-90">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-sm ring-1 ring-border/60">
               <img src={LOGO_URL} alt="ValYoued" className="h-7 w-7 object-contain" />
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-2xl font-brand font-semibold text-sidebar-foreground tracking-tight">
-                ValYoued
-              </span>
-            </div>
+            <span className="font-brand text-xl text-foreground hidden min-[400px]:inline">
+              ValYoued
+            </span>
           </Link>
-        </div>
 
-        <div className="px-6 mb-6 relative">
-          <div className={cn(
-            "flex items-center justify-between p-3 rounded-lg border transition-all",
-            isPro
-              ? "bg-gradient-to-r from-sidebar-primary/20 to-sidebar-primary/5 border-sidebar-primary/40 shadow-[0_0_24px_-8px_hsl(217_91%_60%/0.6)]"
-              : "bg-sidebar-accent/40 border-sidebar-border"
-          )}>
-            <Label htmlFor="pro-mode" className="text-sm font-medium text-sidebar-foreground cursor-pointer flex items-center gap-2">
-              <Sparkles className={cn(
-                "h-4 w-4 transition-colors",
-                isPro ? "text-sidebar-primary" : "text-sidebar-foreground/40"
-              )} />
-              <span className="flex flex-col gap-0.5">
-                <span>Pro Mode</span>
-                <span className="text-ui-meta text-sidebar-foreground/65">
-                  {isPro ? "Full report" : "Essentials"}
-                </span>
-              </span>
-            </Label>
-            <Switch
-              id="pro-mode"
-              checked={isPro}
-              onCheckedChange={setIsPro}
-              className="data-[state=checked]:bg-sidebar-primary"
+          <nav className="hidden min-w-0 flex-1 justify-center md:flex">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none rounded-full border border-border/60 bg-muted/40 p-1">
+              {navWorkspace.map((item) => (
+                <NavLink key={item.href} item={item} active={isActive(item.href)} />
+              ))}
+              <Separator orientation="vertical" className="mx-1 h-7 bg-border/80" />
+              {navInsights.map((item) => (
+                <NavLink key={item.href} item={item} active={isActive(item.href)} />
+              ))}
+            </div>
+          </nav>
+
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            <div
+              className={cn(
+                "hidden h-2 w-2 shrink-0 rounded-full sm:block",
+                health?.status === "ok"
+                  ? "bg-accent shadow-[0_0_0_3px_hsl(var(--accent)/0.22)]"
+                  : "bg-destructive",
+              )}
+              title={health?.status === "ok" ? "API online" : "API unreachable"}
+              role="status"
+              aria-label={health?.status === "ok" ? "API online" : "API error"}
             />
-          </div>
-        </div>
-
-        <nav className="flex-1 px-4 pb-4 space-y-1 overflow-y-auto relative">
-          <div className="text-ui-caps text-sidebar-foreground/45 mb-4 px-2">Navigation</div>
-          {navItems.map((item) => {
-            const isActive =
-              location === item.href ||
-              (item.href !== "/dashboard" && location.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_hsl(var(--sidebar-primary)/0.4)]"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-                )}
+            {!isMobile ? <ProToggle className="hidden lg:flex" /> : null}
+            <Link href="/settings" title="Settings" aria-label="Settings" className="hidden md:block">
+              <Button
+                variant={isActive("/settings") ? "secondary" : "ghost"}
+                size="icon"
+                className={cn("h-9 w-9 shrink-0 rounded-full", isActive("/settings") && "ring-1 ring-border")}
               >
-                <item.icon className={cn("h-4 w-4 transition-colors", isActive ? "text-sidebar-primary" : "")} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 mt-auto border-t border-sidebar-border relative space-y-3">
-          <UserMenu />
-          <div className="flex items-center gap-2 px-2 text-ui-caps text-sidebar-foreground/55">
-            <div className={cn(
-              "h-1.5 w-1.5 rounded-full animate-pulse",
-              health?.status === "ok" ? "bg-sidebar-primary shadow-[0_0_8px_hsl(var(--sidebar-primary))]" : "bg-destructive"
-            )} />
-            {health?.status === "ok" ? "System · Online" : "System · Error"}
+                <Settings className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/admin" title="Team dashboard" aria-label="Team dashboard" className="hidden md:block">
+              <Button
+                variant={isActive("/admin") ? "secondary" : "ghost"}
+                size="icon"
+                className={cn("h-9 w-9 shrink-0 rounded-full", isActive("/admin") && "ring-1 ring-border")}
+              >
+                <ShieldHalf className="h-4 w-4" />
+              </Button>
+            </Link>
+            <UserMenu compact />
+            <MobileNavSheet />
           </div>
         </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col min-w-0 h-[100dvh] overflow-y-auto overflow-x-hidden relative">
-        <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
-        <div className="pointer-events-none fixed inset-0 z-50 opacity-[0.012] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
-        <div className="flex-1 p-4 md:p-8 lg:p-12 relative">
-          <div className="max-w-7xl mx-auto h-full w-full">
-            {children}
+        {isMobile ? (
+          <div className="flex items-center justify-center border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
+            <ProToggle />
           </div>
+        ) : null}
+      </header>
+
+      <main className="mesh-bg flex-1">
+        <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]">
+          <div className="grid-bg absolute inset-0" />
         </div>
+        <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">{children}</div>
       </main>
     </div>
   );

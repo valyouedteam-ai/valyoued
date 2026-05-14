@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, useAuth } from "@clerk/react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthStubContext } from "@/context/AuthStubContext";
@@ -64,34 +63,32 @@ function ClerkProviderWithRouter() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
       appearance={{
-        theme: dark,
-        cssLayerName: "clerk",
         variables: {
-          colorPrimary: "hsl(217, 91%, 60%)",
-          colorBackground: "hsl(222, 40%, 10%)",
-          colorForeground: "hsl(220, 30%, 96%)",
-          colorMutedForeground: "hsl(220, 15%, 70%)",
-          colorInput: "hsl(222, 40%, 14%)",
-          colorInputForeground: "hsl(220, 30%, 96%)",
-          colorNeutral: "hsl(222, 30%, 25%)",
-          fontFamily: '"Inter", system-ui, sans-serif',
+          colorPrimary: "hsl(175, 55%, 38%)",
+          colorBackground: "hsl(40, 20%, 98%)",
+          colorForeground: "hsl(224, 30%, 14%)",
+          colorMutedForeground: "hsl(220, 10%, 44%)",
+          colorInput: "hsl(220, 16%, 94%)",
+          colorInputForeground: "hsl(224, 30%, 14%)",
+          colorNeutral: "hsl(220, 14%, 88%)",
+          fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
           borderRadius: "0.5rem",
         },
         elements: {
           rootBox: "w-full flex justify-center",
           cardBox:
-            "bg-[hsl(222,40%,10%)] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl border border-white/10",
+            "bg-[hsl(40,20%,98%)] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl border border-black/[0.06]",
           card: "!shadow-none !border-0 !bg-transparent !rounded-none",
           footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-          headerTitle: "text-white",
-          headerSubtitle: "text-white/60",
-          formFieldLabel: "text-white/80",
-          footerActionLink: "text-cyan-300 hover:text-cyan-200",
-          footerActionText: "text-white/60",
-          dividerText: "text-white/50",
+          headerTitle: "text-[hsl(224,30%,14%)]",
+          headerSubtitle: "text-[hsl(220,10%,44%)]",
+          formFieldLabel: "text-[hsl(224,30%,14%)]",
+          footerActionLink: "text-teal-600 hover:text-teal-700",
+          footerActionText: "text-[hsl(220,10%,44%)]",
+          dividerText: "text-[hsl(220,10%,50%)]",
           formButtonPrimary:
-            "bg-accent hover:bg-accent/90 text-white shadow-[0_0_24px_-6px_hsl(217_91%_60%/0.6)]",
-          socialButtonsBlockButtonText: "text-white/90",
+            "bg-[hsl(175,55%,38%)] hover:bg-[hsl(175,55%,34%)] text-white shadow-md",
+          socialButtonsBlockButtonText: "text-[hsl(224,30%,14%)]",
         },
       }}
     >

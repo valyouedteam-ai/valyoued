@@ -34,20 +34,20 @@ export function formatNumber(value: number) {
 
 export function formatDate(dateInput: string | Date | number | null | undefined) {
   if (dateInput === null || dateInput === undefined || dateInput === "") {
-    return "—";
+    return "N/A";
   }
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
   if (Number.isNaN(d.getTime())) {
-    return "—";
+    return "N/A";
   }
   return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" }).format(d);
 }
 
-/** ISO-8601 UTC, or em dash when missing / invalid. */
+/** ISO-8601 UTC, or N/A when missing / invalid. */
 export function formatIsoDateTime(dateInput: string | Date | number | null | undefined) {
   if (dateInput === null || dateInput === undefined || dateInput === "") {
-    return "—";
+    return "N/A";
   }
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
-  return Number.isNaN(d.getTime()) ? "—" : d.toISOString();
+  return Number.isNaN(d.getTime()) ? "N/A" : d.toISOString();
 }

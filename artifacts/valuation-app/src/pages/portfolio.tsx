@@ -258,7 +258,7 @@ export default function PortfolioPage() {
               ) : (
                 <>
                   {fxSnap.source === "frankfurter"
-                    ? `ECB ${fxSnap.asOf ?? "—"}`
+                    ? `ECB ${fxSnap.asOf ?? "N/A"}`
                     : "Static fallbacks"}
                   {(() => {
                     const d = new Date(fxSnap.fetchedAt);

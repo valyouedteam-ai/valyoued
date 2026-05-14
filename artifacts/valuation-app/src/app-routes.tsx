@@ -15,6 +15,7 @@ import PortfolioPage from "@/pages/portfolio";
 import MarketsPage from "@/pages/markets";
 import ListingsPage from "@/pages/listings";
 import SettingsPage from "@/pages/settings";
+import ProfilePage from "@/pages/profile";
 import AdminDashboardPage from "@/pages/admin";
 import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
@@ -86,6 +87,7 @@ function AppShellSwitch() {
       <Route path="/markets" component={MarketsPage} />
       <Route path="/listings" component={ListingsPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/profile" component={ProfilePage} />
       <Route path="/admin" component={AdminDashboardPage} />
       <Route component={NotFound} />
     </Switch>

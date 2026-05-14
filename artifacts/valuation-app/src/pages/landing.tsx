@@ -5,10 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DEALS } from "@/components/Globe";
 
-// Globe is heavy (three.js); lazy-load so the hero text paints first.
-const Globe = lazy(() =>
-  import("@/components/Globe").then((m) => ({ default: m.Globe })),
-);
+const Globe = lazy(() => import("@/components/Globe").then((m) => ({ default: m.Globe })));
 
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
@@ -19,7 +16,6 @@ function LiveDealTicker() {
     const t = setInterval(() => setIdx((i) => (i + 1) % DEALS.length), 2400);
     return () => clearInterval(t);
   }, []);
-  // Show 4 deals at once, rotating.
   const visible = [
     DEALS[idx % DEALS.length],
     DEALS[(idx + 1) % DEALS.length],
@@ -27,27 +23,27 @@ function LiveDealTicker() {
     DEALS[(idx + 3) % DEALS.length],
   ];
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-2">
-      <div className="text-ui-caps text-cyan-300/80 flex items-center gap-2 justify-center">
-        <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-        Live deals · global market
+    <div className="w-full space-y-3">
+      <div className="text-ui-caps flex items-center gap-2 text-muted-foreground">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+        Sample liquidity routes
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {visible.map((d, i) => (
           <div
             key={`${d.id}-${i}`}
-            className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-md bg-white/5 border border-white/10 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-1"
+            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-sm"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="text-[10px] text-ui-caps text-white/45 w-16 shrink-0">{d.category}</div>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="text-ui-caps w-14 shrink-0 text-white/50">{d.category}</div>
               <div className="min-w-0">
-                <div className="text-sm text-white truncate">{d.asset}</div>
-                <div className="text-ui-meta text-white/50">
-                  {d.city} to {d.buyerCity}
+                <div className="truncate text-sm text-white">{d.asset}</div>
+                <div className="text-ui-meta text-white/45">
+                  {d.city} → {d.buyerCity}
                 </div>
               </div>
             </div>
-            <div className="text-sm font-sans tabular-nums font-medium text-cyan-300 shrink-0">{d.price}</div>
+            <div className="shrink-0 text-sm font-medium tabular-nums text-teal-300">{d.price}</div>
           </div>
         ))}
       </div>
@@ -57,143 +53,138 @@ function LiveDealTicker() {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-[100dvh] bg-[hsl(222,47%,6%)] text-white relative overflow-hidden">
-      {/* Background glow */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[1100px] h-[1100px] rounded-full bg-accent/15 blur-[140px]" />
-        <div className="absolute bottom-[-200px] right-[-100px] w-[600px] h-[600px] rounded-full bg-cyan-500/10 blur-[120px]" />
+    <div className="min-h-[100dvh] bg-[hsl(40,20%,97%)] text-foreground">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-[20%] top-0 h-[min(70vh,520px)] w-[70%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(175_45%_45%/0.12),transparent_70%)] blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-[min(60vh,480px)] w-[55%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(258_45%_55%/0.08),transparent_70%)] blur-3xl" />
       </div>
 
-      {/* Top nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-white/95 flex items-center justify-center shadow ring-1 ring-accent/40">
-            <img src={LOGO_URL} alt="ValYoued" className="h-6 w-6 object-contain" />
+      <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-md ring-1 ring-border/80">
+            <img src={LOGO_URL} alt="ValYoued" className="h-7 w-7 object-contain" />
           </div>
-          <div className="leading-tight">
-            <div className="text-xl font-brand font-semibold tracking-tight">ValYoued</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 md:gap-2">
+          <span className="font-brand text-2xl text-foreground">ValYoued</span>
+        </Link>
+        <div className="flex items-center gap-1 sm:gap-2">
           <Link href="/about">
-            <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10" data-testid="nav-about">
+            <Button variant="ghost" className="text-muted-foreground hover:text-foreground" data-testid="nav-about">
               How it works
             </Button>
           </Link>
           <Link href="/sign-in">
-            <Button variant="ghost" className="text-white hover:bg-white/10" data-testid="nav-sign-in">
+            <Button variant="ghost" className="hidden sm:inline-flex" data-testid="nav-sign-in">
               Sign in
             </Button>
           </Link>
-            <Link href="/start">
-              <Button className="bg-accent hover:bg-accent/90" data-testid="nav-get-started">
-              Get a free valuation <ArrowRight className="ml-2 h-4 w-4" />
+          <Link href="/start">
+            <Button className="rounded-full shadow-sm" data-testid="nav-get-started">
+              Free valuation <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative z-10 px-6 pt-8 pb-12 max-w-6xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto space-y-5">
-          <Badge variant="outline" className="border-accent/35 bg-accent/10 text-accent-foreground px-3 py-1 text-ui-caps">
-            Multi-asset valuations
+      <section className="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-16 pt-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:pt-8">
+        <div className="space-y-8">
+          <Badge variant="secondary" className="rounded-full border border-border/80 px-3 py-1 text-ui-caps">
+            Multi-asset · AI-assisted
           </Badge>
-          <h1
-            className="text-5xl md:text-7xl font-semibold tracking-tight leading-[1.05] text-white"
-            style={{ fontFamily: "var(--app-font-display)" }}
-          >
-            Know what it&apos;s worth.
-            <br />
-            Sell with confidence.
+          <h1 className="text-4xl font-semibold leading-[1.12] tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05]">
+            Know what it&apos;s worth,{" "}
+            <span className="brand-gradient"> before you list.</span>
           </h1>
-          <p className="text-lg text-white/70 max-w-2xl mx-auto">
-            Turn your assets into opportunities with real-time AI valuation, global markets, and
-            smart portfolio growth.
+          <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
+            Structured valuations, regional demand, and listing copy tuned for marketplaces, from
+            watches and bags to cars, art, and more.
           </p>
-          <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
+          <div className="flex flex-wrap gap-3">
             <Link href="/start">
-              <Button
-                size="lg"
-                className="h-12 px-6 text-base bg-accent hover:bg-accent/90"
-                data-testid="hero-start-cta"
-              >
-                Start your first valuation <ArrowRight className="ml-2 h-5 w-5" />
+              <Button size="lg" className="h-12 rounded-full px-7 shadow-md" data-testid="hero-start-cta">
+                Start your valuation
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link href="/sign-in">
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-12 px-6 text-base border-white/20 bg-white/5 hover:bg-white/10 text-white"
-              >
+              <Button size="lg" variant="outline" className="h-12 rounded-full border-border/80 px-7 shadow-sm">
                 I have an account
               </Button>
             </Link>
           </div>
+          <div className="flex flex-wrap gap-6 border-t border-border/60 pt-8 text-sm text-muted-foreground">
+            <div>
+              <div className="text-2xl font-semibold tabular-nums text-foreground">40+</div>
+              asset classes
+            </div>
+            <div>
+              <div className="text-2xl font-semibold tabular-nums text-foreground">Pro</div>
+              arbitrage + tactics
+            </div>
+            <div>
+              <div className="text-2xl font-semibold tabular-nums text-foreground">1-click</div>
+              listing drafts
+            </div>
+          </div>
         </div>
 
-        {/* Globe + ticker */}
-        <div className="mt-10 relative">
-          <Suspense
-            fallback={
-              <div className="h-[560px] flex items-center justify-center">
-                <div className="h-12 w-12 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-              </div>
-            }
-          >
-            <Globe height={560} />
-          </Suspense>
-          <div className="mt-2">
-            <LiveDealTicker />
+        <div className="relative">
+          <div className="overflow-hidden rounded-[1.75rem] border border-border/80 bg-[hsl(222,28%,10%)] shadow-2xl ring-1 ring-black/5">
+            <Suspense
+              fallback={
+                <div className="flex h-[400px] items-center justify-center lg:h-[480px]">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-accent" />
+                </div>
+              }
+            >
+              <Globe height={480} />
+            </Suspense>
+            <div className="border-t border-white/10 bg-gradient-to-t from-black/40 to-transparent p-5">
+              <LiveDealTicker />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Feature row */}
-      <section className="relative z-10 px-6 pb-24 max-w-5xl mx-auto">
-        <div className="grid md:grid-cols-3 gap-4">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+        <div className="grid gap-5 md:grid-cols-3">
           {[
             {
               icon: Globe2,
               title: "Global price discovery",
-              body:
-                "We compare your asset against listings, auctions, and registries across 30+ markets to find where it's worth most.",
+              body: "Regional demand, fees, and friction so you see where net proceeds may land.",
             },
             {
               icon: Zap,
-              title: "From photo to valuation",
-              body:
-                "Snap a picture and our vision model fills out the spec sheet. A full report with arbitrage notes in under a minute.",
+              title: "Photo to structured data",
+              body: "Upload once; vision fills matching fields so you spend time on judgment, not typing.",
             },
             {
               icon: ShieldCheck,
-              title: "Listing-ready ad copy",
-              body:
-                "Choose a marketplace and we generate a buyer-tested ad: title, description, hashtags, photo tips, and a one-click jump into their listing form.",
+              title: "Listing-ready copy",
+              body: "Pick a platform and get title, body, hashtags, and tips aligned to buyer norms.",
             },
           ].map((f) => (
             <div
               key={f.title}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm hover:border-accent/30 transition-colors"
+              className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm transition-shadow hover:shadow-md"
             >
-              <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center mb-3">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-accent">
                 <f.icon className="h-5 w-5" />
               </div>
-              <div className="text-base font-semibold mb-1">{f.title}</div>
-              <div className="text-sm text-white/60">{f.body}</div>
+              <h3 className="mb-2 font-semibold tracking-tight">{f.title}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">{f.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <footer className="relative z-10 px-6 pb-10 max-w-5xl mx-auto border-t border-white/10 pt-8 flex flex-col sm:flex-row gap-4 justify-between items-center text-sm text-white/50">
+      <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-border/70 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:px-6">
         <span>© {new Date().getFullYear()} ValYoued</span>
-        <div className="flex gap-6">
-          <Link href="/privacy" className="hover:text-white transition-colors">
+        <div className="flex gap-8">
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
             Privacy
           </Link>
-          <Link href="/about" className="hover:text-white transition-colors">
+          <Link href="/about" className="hover:text-foreground transition-colors">
             How it works
           </Link>
         </div>
