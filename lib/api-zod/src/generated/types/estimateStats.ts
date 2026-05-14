@@ -10,8 +10,11 @@ import type { EstimateStatsTopArbitrageRegionsItem } from "./estimateStatsTopArb
 
 export interface EstimateStats {
   count: number;
+  /** Mean baseline midpoint, converted to USD via static FX (approximate). */
   averageBaselineUsd: number;
+  /** Mean adjusted midpoint, converted to USD via static FX (approximate). */
   averageAdjustedUsd: number;
+  /** Mean of (adjustedMid / baselineMid − 1) per estimate, using each row's native amounts. */
   averageUplift: number;
   byAssetType: EstimateStatsByAssetTypeItem[];
   topArbitrageRegions: EstimateStatsTopArbitrageRegionsItem[];

@@ -526,6 +526,11 @@ export function useGetEstimate<
 }
 
 /**
+ * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
+and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
+using static FX hints shared with the portfolio dashboard. `averageUplift` is the unweighted mean
+of per-row (adjustedMid / baselineMid − 1) ratios (pure numbers; not currency-converted).
+
  * @summary Aggregate stats across saved estimates
  */
 export const getGetEstimateStatsUrl = () => {

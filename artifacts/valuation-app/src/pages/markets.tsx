@@ -43,8 +43,12 @@ export default function MarketsPage() {
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
           Portfolio-level view of where your valuations point for net seller outcomes and demand by
-          region. Per-asset friction tables (fees, shipping, duties) and live marketplace links live
-          on each valuation report with{" "}
+          region. Summary figures below use USD equivalents from static FX hints (same as{" "}
+          <Link href="/portfolio" className="text-accent hover:underline">
+            My Portfolio
+          </Link>
+          ), not live market FX. Per-asset friction tables (fees, shipping, duties) and live
+          marketplace links live on each valuation report with{" "}
           <span className="font-medium text-foreground">Pro</span> enabled.
         </p>
         {!isPro ? (
@@ -83,7 +87,9 @@ export default function MarketsPage() {
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Avg. baseline (stored currency)</CardDescription>
+              <CardDescription className="text-xs">
+                Avg. baseline, USD equiv. (static FX)
+              </CardDescription>
               <CardTitle className="text-2xl font-mono tabular-nums">
                 {formatMoney(stats.averageBaselineUsd, "USD", true)}
               </CardTitle>
@@ -91,7 +97,9 @@ export default function MarketsPage() {
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Avg. adjusted (stored currency)</CardDescription>
+              <CardDescription className="text-xs">
+                Avg. adjusted, USD equiv. (static FX)
+              </CardDescription>
               <CardTitle className="text-2xl font-mono tabular-nums">
                 {formatMoney(stats.averageAdjustedUsd, "USD", true)}
               </CardTitle>
@@ -147,8 +155,8 @@ export default function MarketsPage() {
               By asset class
             </CardTitle>
             <CardDescription>
-              Average adjusted midpoint by asset type in your history (numeric fields as returned by
-              the API — use reports for currency-specific detail).
+              Mean adjusted midpoint by asset type, converted to USD with the same static FX table as
+              the portfolio dashboard. Open a report for the original row currency.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -160,7 +168,7 @@ export default function MarketsPage() {
                   <TableRow>
                     <TableHead>Asset type</TableHead>
                     <TableHead className="text-right">Items</TableHead>
-                    <TableHead className="text-right">Avg. adjusted</TableHead>
+                    <TableHead className="text-right">Avg. adj. (USD ~)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

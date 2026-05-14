@@ -26,6 +26,7 @@ import {
 import type { UseQueryOptions } from "@tanstack/react-query";
 import { useListEstimates, listEstimates } from "@workspace/api-client-react";
 import type { EstimateSummary } from "@workspace/api-client-react";
+import { convertToUsdApprox } from "@workspace/fx-usd";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,24 +41,6 @@ import { iconForAssetType } from "@/lib/asset-icons";
 const TICK_INTERVAL_MS = 2500;
 const POLL_INTERVAL_MS = 60_000;
 
-// Rough cross-currency normalization for the diversification pie (USD-equivalent)
-const FX_TO_USD: Record<string, number> = {
-  USD: 1,
-  GBP: 1.27,
-  EUR: 1.08,
-  CAD: 0.74,
-  AUD: 0.66,
-  JPY: 0.0064,
-  CHF: 1.13,
-  HKD: 0.128,
-  SGD: 0.74,
-  AED: 0.27,
-  INR: 0.012,
-  CNY: 0.14,
-  NZD: 0.6,
-  ZAR: 0.054,
-};
-
 const PALETTE = [
   "#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981",
   "#06b6d4", "#ef4444", "#84cc16", "#f97316", "#6366f1",
@@ -71,10 +54,6 @@ function makeTick(prev: number, seed: number): Tick {
   const next = Math.max(0.985, Math.min(1.015, prev + drift + noise));
   const dir: Tick["dir"] = next > prev + 0.0001 ? "up" : next < prev - 0.0001 ? "down" : "flat";
   return { mult: next, dir };
-}
-
-function toUsd(value: number, currency: string): number {
-  return value * (FX_TO_USD[currency] ?? 1);
 }
 
 export default function PortfolioPage() {
@@ -139,8 +118,8 @@ export default function PortfolioPage() {
     }
     return Array.from(map.entries())
       .map(([name, items]) => {
-        const totalUsd = items.reduce((s, i) => s + toUsd(i.liveValue, i.currency), 0);
-        const baselineUsd = items.reduce((s, i) => s + toUsd(i.baselineMid, i.currency), 0);
+        const totalUsd = items.reduce((s, i) => s + convertToUsdApprox(i.liveValue, i.currency), 0);
+        const baselineUsd = items.reduce((s, i) => s + convertToUsdApprox(i.baselineMid, i.currency), 0);
         const change = baselineUsd > 0 ? (totalUsd - baselineUsd) / baselineUsd : 0;
         return { name, items, totalUsd, baselineUsd, change };
       })

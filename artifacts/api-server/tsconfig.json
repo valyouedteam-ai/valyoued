@@ -12,7 +12,7 @@
       "path": "../../lib/db"
     },
     {
-      "path": "../../lib/api-zod"
+      "path": "../../lib/fx-usd"
     }
   ]
 }

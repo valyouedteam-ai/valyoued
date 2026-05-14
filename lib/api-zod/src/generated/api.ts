@@ -384,18 +384,39 @@ export const GetEstimateResponse = zod.object({
 });
 
 /**
+ * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
+and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
+using static FX hints shared with the portfolio dashboard. `averageUplift` is the unweighted mean
+of per-row (adjustedMid / baselineMid − 1) ratios (pure numbers; not currency-converted).
+
  * @summary Aggregate stats across saved estimates
  */
 export const GetEstimateStatsResponse = zod.object({
   count: zod.number(),
-  averageBaselineUsd: zod.number(),
-  averageAdjustedUsd: zod.number(),
-  averageUplift: zod.number(),
+  averageBaselineUsd: zod
+    .number()
+    .describe(
+      "Mean baseline midpoint, converted to USD via static FX (approximate).",
+    ),
+  averageAdjustedUsd: zod
+    .number()
+    .describe(
+      "Mean adjusted midpoint, converted to USD via static FX (approximate).",
+    ),
+  averageUplift: zod
+    .number()
+    .describe(
+      "Mean of (adjustedMid \/ baselineMid − 1) per estimate, using each row's native amounts.",
+    ),
   byAssetType: zod.array(
     zod.object({
       assetTypeName: zod.string(),
       count: zod.number(),
-      averageAdjustedUsd: zod.number(),
+      averageAdjustedUsd: zod
+        .number()
+        .describe(
+          "Mean adjusted midpoint for this asset type, USD equivalent (static FX).",
+        ),
     }),
   ),
   topArbitrageRegions: zod.array(

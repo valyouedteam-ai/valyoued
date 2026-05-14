@@ -113,6 +113,11 @@ paths:
       operationId: getEstimateStats
       tags: [estimate]
       summary: Aggregate stats across saved estimates
+      description: |
+        Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
+        and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
+        using static FX hints shared with the portfolio dashboard. `averageUplift` is the unweighted mean
+        of per-row (adjustedMid / baselineMid − 1) ratios (pure numbers; not currency-converted).
       responses:
         "200":
           description: Stats
@@ -527,10 +532,13 @@ components:
           type: integer
         averageBaselineUsd:
           type: number
+          description: Mean baseline midpoint, converted to USD via static FX (approximate).
         averageAdjustedUsd:
           type: number
+          description: Mean adjusted midpoint, converted to USD via static FX (approximate).
         averageUplift:
           type: number
+          description: Mean of (adjustedMid / baselineMid − 1) per estimate, using each row's native amounts.
         byAssetType:
           type: array
           items:
@@ -543,6 +551,7 @@ components:
                 type: integer
               averageAdjustedUsd:
                 type: number
+                description: Mean adjusted midpoint for this asset type, USD equivalent (static FX).
         topArbitrageRegions:
           type: array
           items:
