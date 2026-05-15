@@ -1,6 +1,5 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useHealthCheck } from "@workspace/api-client-react";
 import { useUser, useClerk } from "@clerk/react";
 import { LogOut, Menu, Sparkles } from "lucide-react";
 import { useAuthStubContext } from "@/context/AuthStubContext";
@@ -249,7 +248,6 @@ function MobileNavSheet() {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { data: health } = useHealthCheck();
   const isMobile = useIsMobile();
 
   const isActive = (href: string) =>
@@ -281,17 +279,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            <div
-              className={cn(
-                "hidden h-2 w-2 shrink-0 rounded-full sm:block",
-                health?.status === "ok"
-                  ? "bg-accent shadow-[0_0_0_3px_hsl(var(--accent)/0.22)]"
-                  : "bg-destructive",
-              )}
-              title={health?.status === "ok" ? "API online" : "API unreachable"}
-              role="status"
-              aria-label={health?.status === "ok" ? "API online" : "API error"}
-            />
             {!isMobile ? <ProToggle className="hidden lg:flex" /> : null}
             <Link href="/settings" title="Settings" aria-label="Settings" className="hidden md:block">
               <Button

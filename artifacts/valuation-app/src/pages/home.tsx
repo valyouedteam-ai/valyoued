@@ -103,10 +103,6 @@ export default function HomePage() {
               Price with context.{" "}
               <span className="text-muted-foreground font-normal">Act with clarity.</span>
             </h1>
-            <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-              One place for valuations, portfolio view, and marketplace-ready drafts, tuned for
-              collectibles and alternative assets.
-            </p>
           </div>
           <Link href="/stats" className="shrink-0">
             <Button variant="outline" className="rounded-full border-border/80 shadow-sm">
@@ -115,6 +111,10 @@ export default function HomePage() {
             </Button>
           </Link>
         </div>
+        <p className="text-base leading-relaxed text-muted-foreground sm:text-lg text-balance w-full">
+          One place for valuations, portfolio view, and marketplace-ready drafts, tuned for collectibles and
+          alternative assets.
+        </p>
 
         <div className="grid gap-4 sm:grid-cols-3">
           {quickLinks.map((item) => {

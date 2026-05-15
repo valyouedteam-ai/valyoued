@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, Link } from "wouter";
 import { useGetEstimate, getGetEstimateQueryKey } from "@workspace/api-client-react";
-import { formatMoney, formatPercent, formatDate, formatIsoDateTime } from "@/lib/format";
+import {
+  formatMoney,
+  formatPercent,
+  formatDate,
+  stripRedundantOuterQuotes,
+} from "@/lib/format";
 import {
   Printer,
   ArrowLeft,
@@ -47,6 +52,31 @@ export default function EstimateReportPage() {
     query: { enabled: !!id, queryKey: getGetEstimateQueryKey(id) },
   });
 
+  const syncedReportId = useRef<string | null>(null);
+  useEffect(() => {
+    if (isLoading || !estimate?.id) return;
+    if (syncedReportId.current === estimate.id) return;
+    syncedReportId.current = estimate.id;
+    setIsPro(estimate.tier === "pro");
+  }, [isLoading, estimate?.id, estimate?.tier, setIsPro]);
+
+  const proInsightsSanitized = useMemo(() => {
+    if (!estimate?.proInsights) return null;
+    const p = estimate.proInsights;
+    const sq = stripRedundantOuterQuotes;
+    return {
+      ...p,
+      negotiationTactics: p.negotiationTactics.map((t) => ({
+        title: sq(t.title),
+        detail: sq(t.detail),
+      })),
+      talkingPoints: (p.talkingPoints ?? []).map(sq),
+      redFlags: (p.redFlags ?? []).map(sq),
+      listingTips: (p.listingTips ?? []).map(sq),
+      optimalTiming: sq(p.optimalTiming ?? ""),
+    };
+  }, [estimate]);
+
   if (isLoading) {
     return (
       <div className="max-w-5xl mx-auto space-y-8 animate-pulse">
@@ -73,28 +103,33 @@ export default function EstimateReportPage() {
     );
   }
 
-  // The report unlocks if the estimate was generated as Pro OR the user has Pro mode on now.
-  const isPro = estimate.tier === "pro" || globalPro;
+  // What was saved with this estimate (API / billing). Header toggle only expands/collapses the UI.
+  const savedTierPro = estimate.tier === "pro";
+  const showExpandedPro = globalPro;
+
   const uplift = (estimate.netMarketFactor ?? 1) - 1;
   const ccy = estimate.currency ?? "USD";
   const assetTypeName = estimate.assetType?.name ?? "Asset";
   const isMobile = estimate.assetType?.internationallyTradeable ?? false;
+  const stripQ = stripRedundantOuterQuotes;
   const estimateTitle = estimate.input?.title ?? "Untitled";
   const sellerRegion = estimate.input?.currentRegion ?? estimate.bestArbitrageRegion ?? "";
   const estimateIdResolved = (estimate.id ?? id) || "";
-  const refShort = estimateIdResolved ? estimateIdResolved.slice(0, 8) : "N/A";
   const partialReport = estimate.report;
   const report = {
-    headline: partialReport?.headline ?? estimateTitle,
+    headline: stripQ(partialReport?.headline ?? estimateTitle),
     summary:
-      partialReport?.summary ??
-      "Legacy dossier. Narrative sections may be incomplete.",
-    baselineNarrative: partialReport?.baselineNarrative ?? "",
-    marketNarrative: partialReport?.marketNarrative ?? "",
-    arbitrageNarrative: partialReport?.arbitrageNarrative ?? "",
-    worldEventsNarrative: partialReport?.worldEventsNarrative ?? "",
-    finalNarrative: partialReport?.finalNarrative ?? "",
+      stripQ(
+        partialReport?.summary ??
+          "Legacy dossier. Narrative sections may be incomplete.",
+      ),
+    baselineNarrative: stripQ(partialReport?.baselineNarrative ?? ""),
+    marketNarrative: stripQ(partialReport?.marketNarrative ?? ""),
+    arbitrageNarrative: stripQ(partialReport?.arbitrageNarrative ?? ""),
+    worldEventsNarrative: stripQ(partialReport?.worldEventsNarrative ?? ""),
+    finalNarrative: stripQ(partialReport?.finalNarrative ?? ""),
   };
+
   const marketSignals = estimate.marketSignals ?? [];
   const arbitrageRows = estimate.arbitrage ?? [];
   const comparables = estimate.comparables ?? [];
@@ -137,25 +172,24 @@ export default function EstimateReportPage() {
             {assetTypeName}
           </Badge>
           <Badge
-            variant={isPro ? "default" : "secondary"}
+            variant={savedTierPro ? "default" : "secondary"}
             className={`font-mono px-3 py-1 text-xs tracking-widest uppercase shadow-sm ${
-              isPro ? "bg-accent hover:bg-accent text-accent-foreground" : ""
+              savedTierPro ? "bg-accent hover:bg-accent text-accent-foreground" : ""
             }`}
           >
-            {isPro ? "PRO TIER" : "FREE TIER"}
+            {savedTierPro ? "PRO REPORT" : "FREE REPORT"}
           </Badge>
           <Badge variant="outline" className="font-mono px-3 py-1 text-xs tracking-widest border-border/50">
             {sellerRegion ? `${sellerRegion} · ${ccy}` : ccy}
           </Badge>
           <span className="text-xs text-muted-foreground font-mono">{formatDate(estimate.createdAt)}</span>
-          <span className="text-xs text-muted-foreground font-mono ml-auto">REF: {refShort}</span>
         </div>
 
         <div>
           <h1 className="text-4xl md:text-5xl font-sans font-bold text-foreground leading-tight">
             {report.headline}
           </h1>
-          <p className="text-xl text-muted-foreground mt-4 max-w-3xl font-sans italic">"{report.summary}"</p>
+          <p className="text-xl text-muted-foreground mt-4 max-w-3xl font-sans italic">{report.summary}</p>
         </div>
       </header>
 
@@ -217,7 +251,7 @@ export default function EstimateReportPage() {
           </Card>
         </section>
 
-        {!isPro && (
+        {!showExpandedPro && (
           <section className="print-break-inside-avoid">
             <Card className="relative overflow-hidden border-accent/40 bg-gradient-to-br from-card via-card to-accent/5 shadow-lg">
               <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
@@ -229,14 +263,25 @@ export default function EstimateReportPage() {
                   </div>
                   <div className="flex-1">
                     <CardTitle className="text-2xl font-sans font-semibold">
-                      Unlock the full <span className="brand-gradient">Pro Report</span>
+                      {savedTierPro ? (
+                        <>
+                          Pro detail hidden — turn on <span className="brand-gradient">Pro preview</span>
+                        </>
+                      ) : (
+                        <>
+                          Unlock the full <span className="brand-gradient">Pro Report</span>
+                        </>
+                      )}
                     </CardTitle>
                     <CardDescription className="text-base mt-1">
-                      You're seeing the headline price. Pro adds everything you need to actually sell well.
+                      {savedTierPro
+                        ? "The header Pro toggle is off. Switch it on to show market signals, world events, comparables, and execution strategy for this report."
+                        : "You're seeing the headline price. Pro adds everything you need to actually sell well."}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
+              {!savedTierPro ? (
               <CardContent className="relative">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                   {[
@@ -262,17 +307,18 @@ export default function EstimateReportPage() {
                   className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg glow-accent w-full sm:w-auto"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Activate Pro Mode
+                  Activate Pro preview
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-mono mt-3 uppercase tracking-wider">
-                  Toggle anytime · No payment in this preview
+                  Toggle anytime · Uses the Pro switch in the header
                 </p>
               </CardContent>
+              ) : null}
             </Card>
           </section>
         )}
 
-        {isPro && marketSignals.length > 0 && (
+        {showExpandedPro && marketSignals.length > 0 && (
           <section className="print-break-inside-avoid overflow-hidden border border-border/50 rounded-lg bg-sidebar text-sidebar-foreground">
             <div className="px-4 py-2 border-b border-sidebar-border bg-sidebar/80 flex items-center justify-between">
               <span className="text-xs font-mono uppercase tracking-widest text-sidebar-foreground/70 flex items-center gap-2">
@@ -305,7 +351,7 @@ export default function EstimateReportPage() {
                         </div>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs font-sans p-3 bg-card border-border shadow-xl">
-                        <p className="text-sm">{signal.rationale}</p>
+                        <p className="text-sm">{stripQ(signal.rationale)}</p>
                       </TooltipContent>
                     </Tooltip>
                   );
@@ -316,7 +362,7 @@ export default function EstimateReportPage() {
         )}
 
         {/* World Events – PRO ONLY */}
-        {isPro && estimate.worldEvents && estimate.worldEvents.length > 0 && (
+        {showExpandedPro && estimate.worldEvents && estimate.worldEvents.length > 0 && (
           <section className="space-y-4 print-break-inside-avoid">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-sans flex items-center gap-2">
@@ -348,7 +394,7 @@ export default function EstimateReportPage() {
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-base font-sans leading-snug flex items-start gap-2">
                           <CircleDot className={`h-4 w-4 mt-1 shrink-0 ${dot}`} />
-                          {ev.title}
+                          {stripQ(ev.title)}
                         </CardTitle>
                         <Badge variant="outline" className="font-mono text-[10px] uppercase shrink-0">
                           {ev.scope}
@@ -356,7 +402,7 @@ export default function EstimateReportPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-foreground/80 leading-relaxed">{ev.summary}</p>
+                      <p className="text-sm text-foreground/80 leading-relaxed">{stripQ(ev.summary)}</p>
                       {(ev.source || ev.url || ev.publishedAt) && (
                         <div className="text-xs text-muted-foreground mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
                           {ev.source && <span className="font-mono uppercase tracking-wider">{ev.source}</span>}
@@ -389,7 +435,7 @@ export default function EstimateReportPage() {
         )}
 
         {/* Arbitrage – PRO ONLY */}
-        {isPro && (
+        {showExpandedPro && (
         <section className="space-y-4 print-break-inside-avoid">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-sans flex items-center gap-2">
@@ -496,7 +542,7 @@ export default function EstimateReportPage() {
         )}
 
         {/* Comparables – PRO ONLY */}
-        {isPro && comparables.length > 0 && (
+        {showExpandedPro && comparables.length > 0 && (
         <section className="space-y-4 print-break-inside-avoid">
           <h3 className="text-xl font-sans">Recent Sales &amp; Live Listings</h3>
           <p className="text-sm text-muted-foreground max-w-3xl -mt-2">
@@ -558,7 +604,7 @@ export default function EstimateReportPage() {
         )}
 
         {/* Pro Execution Strategy – PRO ONLY (estimate must have been generated as pro) */}
-        {isPro && estimate.proInsights && (
+        {showExpandedPro && proInsightsSanitized && (
         <section className="mt-16 print-break-inside-avoid relative">
             <div className="rounded-xl border border-accent/30 bg-accent/5 p-6 md:p-8 space-y-8 shadow-sm">
               <div className="flex items-center gap-3 mb-6 border-b border-accent/20 pb-4">
@@ -578,7 +624,7 @@ export default function EstimateReportPage() {
                       <Target className="h-4 w-4 text-accent" /> Negotiation Tactics
                     </h4>
                     <div className="space-y-4">
-                      {estimate.proInsights.negotiationTactics.map((tactic, i) => (
+                      {proInsightsSanitized.negotiationTactics.map((tactic, i) => (
                         <div key={i} className="bg-card border border-border/50 rounded-lg p-4 shadow-sm">
                           <h5 className="font-bold text-foreground mb-1">{tactic.title}</h5>
                           <p className="text-sm text-foreground/80 leading-relaxed">{tactic.detail}</p>
@@ -593,7 +639,7 @@ export default function EstimateReportPage() {
                         <AlertTriangle className="h-4 w-4 text-destructive" /> Red Flags
                       </h4>
                       <ul className="space-y-2">
-                        {estimate.proInsights.redFlags.map((flag, i) => (
+                        {proInsightsSanitized.redFlags.map((flag, i) => (
                           <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
                             <span className="text-destructive mt-0.5">•</span> {flag}
                           </li>
@@ -605,7 +651,7 @@ export default function EstimateReportPage() {
                         <Zap className="h-4 w-4 text-accent" /> Listing Tips
                       </h4>
                       <ul className="space-y-2">
-                        {estimate.proInsights.listingTips.map((tip, i) => (
+                        {proInsightsSanitized.listingTips.map((tip, i) => (
                           <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
                             <span className="text-accent mt-0.5">•</span> {tip}
                           </li>
@@ -622,7 +668,7 @@ export default function EstimateReportPage() {
                       <CardDescription>Initial listing or ask</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-mono font-bold text-accent">{fmt(estimate.proInsights.anchorPrice)}</div>
+                      <div className="text-3xl font-mono font-bold text-accent">{fmt(proInsightsSanitized.anchorPrice)}</div>
                     </CardContent>
                   </Card>
 
@@ -632,7 +678,7 @@ export default function EstimateReportPage() {
                       <CardDescription>Absolute minimum acceptable</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-mono font-bold text-destructive">{fmt(estimate.proInsights.walkAwayPrice)}</div>
+                      <div className="text-3xl font-mono font-bold text-destructive">{fmt(proInsightsSanitized.walkAwayPrice)}</div>
                     </CardContent>
                   </Card>
 
@@ -640,7 +686,7 @@ export default function EstimateReportPage() {
                     <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                       <Clock className="h-3.5 w-3.5 text-accent" /> When to Sell
                     </h4>
-                    <p className="text-sm font-medium">{estimate.proInsights.optimalTiming}</p>
+                    <p className="text-sm font-medium">{proInsightsSanitized.optimalTiming}</p>
                     <div className="pt-3 border-t border-border/40">
                       <p className="text-xs text-muted-foreground mb-2">
                         Ready to list it now? Generate a marketplace-ready ad in seconds.
@@ -684,11 +730,16 @@ export default function EstimateReportPage() {
         )}
 
         <div className="pt-12 border-t border-border mt-16 text-center pb-8">
-          <p className="font-sans italic text-xl text-foreground mb-4">"{report.finalNarrative}"</p>
-          <div className="text-xs text-muted-foreground font-mono space-y-1">
-            <p>GENERATED BY VALYOUED ALGORITHMIC APPRAISAL ENGINE</p>
-            <p>REF: {estimateIdResolved || "N/A"} · {formatIsoDateTime(estimate.createdAt)}</p>
-            <p className="opacity-50 mt-4">This report is an estimate based on aggregated market data and AI modeling. It does not constitute formal financial or legal advice.</p>
+          <p className="font-sans italic text-xl text-foreground mb-4 max-w-3xl mx-auto leading-relaxed">
+            {report.finalNarrative}
+          </p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground/80">Generated by ValYoued</p>
+            <p className="opacity-80">{formatDate(estimate.createdAt)}</p>
+            <p className="opacity-50 mt-4 max-w-xl mx-auto leading-relaxed">
+              This report is an estimate based on aggregated market data and AI modeling. It does not
+              constitute formal financial or legal advice.
+            </p>
           </div>
         </div>
       </div>

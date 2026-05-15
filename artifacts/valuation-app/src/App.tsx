@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthStubContext } from "@/context/AuthStubContext";
 import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { AppRoutes } from "@/app-routes";
+import { ProTierProvider } from "@/hooks/use-pro-tier";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,16 +105,18 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={basePath}>
-          {AUTH_STUB_MODE ? (
-            <AuthStubContext.Provider value={true}>
-              <StubApiBridge />
-              <AppRoutes authStub />
-            </AuthStubContext.Provider>
-          ) : (
-            <AuthStubContext.Provider value={false}>
-              <ClerkProviderWithRouter />
-            </AuthStubContext.Provider>
-          )}
+          <ProTierProvider>
+            {AUTH_STUB_MODE ? (
+              <AuthStubContext.Provider value={true}>
+                <StubApiBridge />
+                <AppRoutes authStub />
+              </AuthStubContext.Provider>
+            ) : (
+              <AuthStubContext.Provider value={false}>
+                <ClerkProviderWithRouter />
+              </AuthStubContext.Provider>
+            )}
+          </ProTierProvider>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

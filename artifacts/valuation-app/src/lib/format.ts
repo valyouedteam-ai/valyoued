@@ -1,3 +1,21 @@
+/**
+ * Removes one pair of outer double quotes (ASCII or curly) when the whole string is wrapped that way — common LLM artifact.
+ */
+export function stripRedundantOuterQuotes(value: string): string {
+  const s = value.trim();
+  if (s.length < 2) return value;
+  const pairs: Array<[string, string]> = [
+    ['"', '"'],
+    ["\u201c", "\u201d"],
+  ];
+  for (const [open, close] of pairs) {
+    if (s.startsWith(open) && s.endsWith(close)) {
+      return s.slice(open.length, s.length - close.length).trim();
+    }
+  }
+  return value;
+}
+
 export function formatMoney(value: number, currency = "USD", compact = false) {
   if (value === null || value === undefined || isNaN(value)) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(0);

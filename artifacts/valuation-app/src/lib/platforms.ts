@@ -25,7 +25,7 @@ export const PLATFORM_URL: Record<string, string> = {
   vinted: "https://www.vinted.com/items/new",
   "vestiaire-collective": "https://www.vestiairecollective.com/sell-clothes-online/",
   autotrader: "https://www.autotrader.co.uk/sell-my-car",
-  chrono24: "https://www.chrono24.com/info/sell-watch.htm",
+  chrono24: "https://www.chrono24.com/offer/index.htm",
   watchcharts: "https://watchcharts.com/sell",
   "bring-a-trailer": "https://bringatrailer.com/auctions/submit/",
   rightmove: "https://www.rightmove.co.uk/sell-your-home.html",

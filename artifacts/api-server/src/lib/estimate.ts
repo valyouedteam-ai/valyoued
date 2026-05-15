@@ -150,6 +150,7 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
 
 Rules:
 - ${arbitrageInstruction}
+- Never wrap report copy or pro insight strings in quotation marks — use plain prose only (no leading/trailing " characters).
 - World events MUST be GROUNDED in the LIVE NEWS HEADLINES above. Pick the 3-6 most relevant articles, copy their source/url/publishedAt verbatim, and explain in 1-2 sentences how each ONE specifically moves the price of THIS asset for THIS seller. Do NOT invent URLs.
 - If none of the live articles are relevant (rare), you may add ONE training-knowledge entry with source:"General market context" and url:"". All other entries must come from the live list.
 - The worldEventsNarrative should synthesise across the events you cite — naming countries, policies, and price impacts.
