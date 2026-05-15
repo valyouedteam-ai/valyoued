@@ -86,7 +86,8 @@ CRITICAL RULES:
 5. NEVER guess year-of-purchase, mileage, or original price — those need owner input.
 6. If the photo is blurry, generic, or doesn't clearly show a ${input.assetType.name.toLowerCase()}, return an empty extracted object and set confidence to 0.
 7. The "notes" field should describe condition signals (scratches, wear, completeness) the buyer would care about.
-8. NO prose before or after the JSON. NO markdown fences.`;
+8. "notes" and "suggestedTitle" MUST be JSON strings (never numbers or null).
+9. NO prose before or after the JSON. NO markdown fences.`;
 
   let raw: string;
   try {
@@ -120,12 +121,7 @@ CRITICAL RULES:
     .replace(/```\s*$/i, "")
     .trim();
 
-  let parsed: {
-    extracted?: Record<string, unknown>;
-    confidence?: number;
-    notes?: string;
-    suggestedTitle?: string;
-  };
+  let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
   } catch (err) {
@@ -137,9 +133,25 @@ CRITICAL RULES:
     };
   }
 
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    logger.error({ parsed }, "Vision JSON was not an object");
+    return {
+      extracted: {},
+      confidence: 0,
+      notes: "Could not analyze the image automatically — please fill the form manually.",
+    };
+  }
+
+  const p = parsed as Record<string, unknown>;
+  const rawExtracted = p.extracted;
+  const extractedSource =
+    rawExtracted && typeof rawExtracted === "object" && !Array.isArray(rawExtracted)
+      ? (rawExtracted as Record<string, unknown>)
+      : {};
+
   const validKeys = new Set(visualFields.map((f) => f.key));
   const extracted: Record<string, string> = {};
-  for (const [k, v] of Object.entries(parsed.extracted ?? {})) {
+  for (const [k, v] of Object.entries(extractedSource)) {
     if (!validKeys.has(k)) continue;
     if (v == null) continue;
     const str = String(v).trim();
@@ -147,10 +159,28 @@ CRITICAL RULES:
     extracted[k] = str;
   }
 
+  let confidence = 0.5;
+  if (typeof p.confidence === "number" && Number.isFinite(p.confidence)) {
+    confidence = Math.max(0, Math.min(1, p.confidence));
+  }
+
+  const notes =
+    typeof p.notes === "string"
+      ? p.notes
+      : p.notes != null && typeof p.notes !== "object"
+        ? String(p.notes)
+        : "";
+
+  let suggestedTitle: string | undefined;
+  if (typeof p.suggestedTitle === "string") {
+    const t = p.suggestedTitle.trim();
+    suggestedTitle = t || undefined;
+  }
+
   return {
     extracted,
-    confidence: typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
-    notes: parsed.notes ?? "",
-    suggestedTitle: parsed.suggestedTitle?.trim() || undefined,
+    confidence,
+    notes,
+    suggestedTitle,
   };
 }

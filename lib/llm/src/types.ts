@@ -13,7 +13,10 @@ export interface ChatTurn {
   content: ChatContent;
 }
 
-/** Built-in providers; add a new id + factory branch to support another vendor. */
+/**
+ * Built-in chat/vision backends. Call sites use `getLlm()` + `defaultModel()` only;
+ * swapping vendors is an env + factory change (add a new id here, a provider module, and a branch in `createLlmProvider`).
+ */
 export type LlmProviderId = "anthropic" | "openai";
 
 export interface LlmProvider {

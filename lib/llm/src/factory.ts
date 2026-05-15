@@ -3,13 +3,23 @@ import OpenAI from "openai";
 import { createAnthropicProvider } from "./providers/anthropic.js";
 import { createOpenAiProvider } from "./providers/openai.js";
 import type { LlmProvider, LlmProviderId } from "./types.js";
+import {
+  inferProviderIdFromEnv,
+  resolveAnthropicApiKey,
+  resolveAnthropicBaseUrl,
+  resolveOpenAiApiKey,
+  resolveOpenAiBaseUrl,
+} from "./env.js";
 
 export function getConfiguredProviderId(): LlmProviderId {
-  const raw = (process.env.LLM_PROVIDER ?? "anthropic").toLowerCase().trim();
-  if (raw === "anthropic" || raw === "openai") return raw;
-  throw new Error(
-    `LLM_PROVIDER must be "anthropic" or "openai", got: "${process.env.LLM_PROVIDER}"`,
-  );
+  const raw = process.env.LLM_PROVIDER?.toLowerCase().trim();
+  if (raw) {
+    if (raw === "anthropic" || raw === "openai") return raw;
+    throw new Error(
+      `LLM_PROVIDER must be "anthropic" or "openai", got: "${process.env.LLM_PROVIDER}"`,
+    );
+  }
+  return inferProviderIdFromEnv();
 }
 
 /**
@@ -26,27 +36,28 @@ export function defaultModel(): string {
 export function createLlmProvider(): LlmProvider {
   const id = getConfiguredProviderId();
   if (id === "anthropic") {
+    const apiKey = resolveAnthropicApiKey(id);
     const baseURL =
-      process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL ??
-      process.env.ANTHROPIC_BASE_URL;
-    const apiKey =
-      process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY ??
-      process.env.ANTHROPIC_API_KEY;
-    if (!baseURL || !apiKey) {
+      resolveAnthropicBaseUrl() ?? (apiKey ? "https://api.anthropic.com" : undefined);
+    if (!apiKey) {
       throw new Error(
-        "Anthropic requires AI_INTEGRATIONS_ANTHROPIC_BASE_URL and AI_INTEGRATIONS_ANTHROPIC_API_KEY " +
-          "(Replit integration), or ANTHROPIC_BASE_URL and ANTHROPIC_API_KEY.",
+        "Anthropic: set ANTHROPIC_API_KEY (or Replit AI_INTEGRATIONS_ANTHROPIC_API_KEY), or use LLM_PROVIDER=anthropic with LLM_API_KEY.",
       );
+    }
+    if (!baseURL) {
+      throw new Error("Anthropic base URL could not be resolved.");
     }
     const client = new Anthropic({ apiKey, baseURL });
     return createAnthropicProvider(client);
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = resolveOpenAiApiKey(id);
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is required when LLM_PROVIDER=openai.');
+    throw new Error(
+      'OpenAI: set OPENAI_API_KEY, or use LLM_PROVIDER=openai with LLM_API_KEY.',
+    );
   }
-  const baseURL = process.env.OPENAI_BASE_URL;
+  const baseURL = resolveOpenAiBaseUrl();
   const client = new OpenAI({
     apiKey,
     ...(baseURL ? { baseURL } : {}),

@@ -17,7 +17,10 @@ const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig(async ({ mode }) => {
   const loaded = loadEnv(mode, envDir, "");
-  const hasClerkKey = Boolean(loaded.VITE_CLERK_PUBLISHABLE_KEY?.trim());
+  const clerkPublishable =
+    loaded.VITE_CLERK_PUBLISHABLE_KEY?.trim() ||
+    loaded.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim();
+  const hasClerkKey = Boolean(clerkPublishable);
   const stubExplicitOn = loaded.VITE_AUTH_STUB_MODE === "1";
   const stubExplicitOff = loaded.VITE_AUTH_STUB_MODE === "0";
   /** Local dev without Clerk: stub auth unless a publishable key exists or stub was explicitly disabled. */
@@ -43,6 +46,7 @@ export default defineConfig(async ({ mode }) => {
 
   return {
     envDir,
+    envPrefix: ["VITE_", "NEXT_PUBLIC_"],
     base: basePath,
     define: autoStubDev
       ? { "import.meta.env.VITE_AUTH_STUB_MODE": JSON.stringify("1") }

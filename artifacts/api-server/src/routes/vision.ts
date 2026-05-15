@@ -63,7 +63,19 @@ router.post("/vision/extract", requireAuth, visionLimit, async (req, res): Promi
       },
     });
   } catch (err) {
-    logger.error({ err }, "Vision extraction error");
+    const extra =
+      err && typeof err === "object"
+        ? {
+            name: "name" in err ? String((err as { name?: unknown }).name) : undefined,
+            message: "message" in err ? String((err as { message?: unknown }).message) : undefined,
+            status:
+              "status" in err && (err as { status?: unknown }).status != null
+                ? Number((err as { status?: unknown }).status)
+                : undefined,
+            code: "code" in err ? String((err as { code?: unknown }).code) : undefined,
+          }
+        : {};
+    logger.error({ err, ...extra }, "Vision extraction error");
     res.status(502).json({
       error: "Could not analyze the image. Try again or fill the form manually.",
     });
