@@ -294,14 +294,6 @@ function SettingsPageInner({
             >
               Manage subscription / invoices
             </Button>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              For EU VAT or merchant-of-record setups,{" "}
-              <strong className="text-foreground">Paddle</strong> or{" "}
-              <strong className="text-foreground">Lemon Squeezy</strong> can use comparable economics with fewer
-              tax filings. Wire their webhooks into{" "}
-              <code className="font-sans text-[11px]">billing_subscriptions</code> using the same contract as the default
-              integration.
-            </p>
           </CardContent>
         </Card>
 
@@ -343,11 +335,6 @@ function SettingsPageInner({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Automatic order: pinned currency (if any), then a coarse country from your connection when the API
-              sees a supported edge header (Cloudflare, Vercel, or CloudFront), then your browser locale.
-              Unknown cases default to EUR. Not for tax or bank rates.
-            </p>
           </CardContent>
         </Card>
 

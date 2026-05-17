@@ -41,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { useProTier } from "@/hooks/use-pro-tier";
@@ -506,10 +506,6 @@ function NewEstimatePageInner({
               <CardTitle className="text-lg font-sans">
                 Classification: {selectedTier === "luxury" ? "Luxury / collectible" : "Everyday"}
               </CardTitle>
-              <CardDescription>
-                Categories below are filtered for this track. Switch the choice above to see phones & TVs versus watches
-                &amp; bags, etc.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField

@@ -1,52 +1,64 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Globe2, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Globe2, MapPin, Route, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DEALS } from "@/components/Globe";
 
 const Globe = lazy(() => import("@/components/Globe").then((m) => ({ default: m.Globe })));
 
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 
-function LiveDealTicker() {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % DEALS.length), 2400);
-    return () => clearInterval(t);
-  }, []);
-  const visible = [
-    DEALS[idx % DEALS.length],
-    DEALS[(idx + 1) % DEALS.length],
-    DEALS[(idx + 2) % DEALS.length],
-    DEALS[(idx + 3) % DEALS.length],
+function GlobeCaption() {
+  const hints = [
+    {
+      icon: MapPin,
+      title: "City pins",
+      body: "Light dots mark example sell-side markets across regions.",
+    },
+    {
+      icon: Route,
+      title: "Arcs between cities",
+      body: "Curved lines are a visual metaphor for cross-border interest—not live trades or order flow.",
+    },
+    {
+      icon: Sparkles,
+      title: "Your valuation",
+      body: "In the product, the same idea powers real comparables, fees, and where net proceeds may land for your item.",
+    },
   ];
+
   return (
-    <div className="w-full space-y-3">
-      <div className="text-ui-caps flex items-center gap-2 text-muted-foreground">
-        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-        Sample liquidity routes
+    <div className="w-full space-y-4">
+      <div className="space-y-1.5">
+        <p className="text-ui-caps tracking-normal text-sky-200/90">How to read this</p>
+        <h3 className="text-lg font-semibold leading-snug text-white">
+          The globe is a preview, not a data feed
+        </h3>
+        <p className="text-sm leading-relaxed text-white/65">
+          It spins through stylized geography so you can see the question ValYoued keeps asking: where could this
+          asset resonate, and what might that mean before you list?
+        </p>
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {visible.map((d, i) => (
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {hints.map(({ icon: Icon, title, body }) => (
           <div
-            key={`${d.id}-${i}`}
-            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-sm"
+            key={title}
+            className="rounded-xl border border-white/10 bg-white/[0.06] px-3.5 py-3 backdrop-blur-sm"
           >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="text-ui-caps w-14 shrink-0 text-white/50">{d.category}</div>
-              <div className="min-w-0">
-                <div className="truncate text-sm text-white">{d.asset}</div>
-                <div className="text-ui-meta text-white/45">
-                  {d.city} → {d.buyerCity}
-                </div>
-              </div>
+            <div className="mb-2 flex items-center gap-2 text-sky-200/95">
+              <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={2.25} aria-hidden />
+              <span className="text-sm font-semibold text-white">{title}</span>
             </div>
-            <div className="shrink-0 text-sm font-medium tabular-nums text-teal-300">{d.price}</div>
+            <p className="text-[13px] leading-snug text-white/60">{body}</p>
           </div>
         ))}
       </div>
+
+      <p className="text-[11px] leading-snug text-white/45">
+        Illustration only · For real ranges and listing help, run a valuation with your photos and details.
+      </p>
     </div>
   );
 }
@@ -96,12 +108,12 @@ export default function LandingPage() {
             Multi-asset · AI-assisted
           </Badge>
           <h1 className="text-4xl font-semibold leading-[1.12] tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05]">
-            Know what it&apos;s worth,{" "}
-            <span className="brand-gradient"> before you list.</span>
+            Track what you own in one place,{" "}
+            <span className="brand-gradient">sell when the window is right.</span>
           </h1>
           <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Structured valuations, regional demand, and listing copy tuned for marketplaces, from
-            watches and bags to cars, art, and more.
+            Structured valuations you can revisit, regional demand shifts, and listing copy tuned for marketplaces—so
+            you&apos;re not guessing when to move.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link href="/start">
@@ -144,7 +156,7 @@ export default function LandingPage() {
               <Globe height={480} />
             </Suspense>
             <div className="border-t border-white/10 bg-gradient-to-t from-black/40 to-transparent p-5">
-              <LiveDealTicker />
+              <GlobeCaption />
             </div>
           </div>
         </div>
