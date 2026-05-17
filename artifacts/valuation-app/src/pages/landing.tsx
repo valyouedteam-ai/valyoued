@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Globe2, MapPin, Route, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Globe2, ShieldCheck, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -8,60 +8,6 @@ const Globe = lazy(() => import("@/components/Globe").then((m) => ({ default: m.
 
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
-
-function GlobeCaption() {
-  const hints = [
-    {
-      icon: MapPin,
-      title: "City pins",
-      body: "Light dots mark example sell-side markets across regions.",
-    },
-    {
-      icon: Route,
-      title: "Arcs between cities",
-      body: "Curved lines are a visual metaphor for cross-border interest—not live trades or order flow.",
-    },
-    {
-      icon: Sparkles,
-      title: "Your valuation",
-      body: "In the product, the same idea powers real comparables, fees, and where net proceeds may land for your item.",
-    },
-  ];
-
-  return (
-    <div className="w-full space-y-4">
-      <div className="space-y-1.5">
-        <p className="text-ui-caps tracking-normal text-sky-200/90">How to read this</p>
-        <h3 className="text-lg font-semibold leading-snug text-white">
-          The globe is a preview, not a data feed
-        </h3>
-        <p className="text-sm leading-relaxed text-white/65">
-          It spins through stylized geography so you can see the question ValYoued keeps asking: where could this
-          asset resonate, and what might that mean before you list?
-        </p>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {hints.map(({ icon: Icon, title, body }) => (
-          <div
-            key={title}
-            className="rounded-xl border border-white/10 bg-white/[0.06] px-3.5 py-3 backdrop-blur-sm"
-          >
-            <div className="mb-2 flex items-center gap-2 text-sky-200/95">
-              <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={2.25} aria-hidden />
-              <span className="text-sm font-semibold text-white">{title}</span>
-            </div>
-            <p className="text-[13px] leading-snug text-white/60">{body}</p>
-          </div>
-        ))}
-      </div>
-
-      <p className="text-[11px] leading-snug text-white/45">
-        Illustration only · For real ranges and listing help, run a valuation with your photos and details.
-      </p>
-    </div>
-  );
-}
 
 export default function LandingPage() {
   return (
@@ -112,7 +58,7 @@ export default function LandingPage() {
             <span className="brand-gradient">sell when the window is right.</span>
           </h1>
           <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Structured valuations you can revisit, regional demand shifts, and listing copy tuned for marketplaces—so
+            Structured valuations you can revisit, regional demand shifts, and listing copy tuned for marketplaces, so
             you&apos;re not guessing when to move.
           </p>
           <div className="flex flex-wrap gap-3">
@@ -155,9 +101,6 @@ export default function LandingPage() {
             >
               <Globe height={480} />
             </Suspense>
-            <div className="border-t border-white/10 bg-gradient-to-t from-black/40 to-transparent p-5">
-              <GlobeCaption />
-            </div>
           </div>
         </div>
       </section>
