@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation, Redirect } from "wouter";
-import { Show } from "@clerk/react";
+import { useAuth } from "@clerk/react";
 import { useListEstimates } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import HomePage from "@/pages/home";
@@ -20,17 +20,19 @@ import AdminDashboardPage from "@/pages/admin";
 import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 
-function HomeOrLanding() {
+function AuthLoading() {
   return (
-    <>
-      <Show when="signed-in">
-        <Redirect to="/recent" />
-      </Show>
-      <Show when="signed-out">
-        <LandingPage />
-      </Show>
-    </>
+    <div className="min-h-[50vh] flex items-center justify-center bg-background">
+      <div className="h-10 w-10 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+    </div>
   );
+}
+
+function HomeOrLanding() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return <AuthLoading />;
+  if (isSignedIn) return <Redirect to="/recent" />;
+  return <LandingPage />;
 }
 
 function LatestEstimateRedirect() {
@@ -49,14 +51,10 @@ function LatestEstimateRedirect() {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <Show when="signed-in">{children}</Show>
-      <Show when="signed-out">
-        <Redirect to="/sign-in" />
-      </Show>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return <AuthLoading />;
+  if (!isSignedIn) return <Redirect to="/sign-in" />;
+  return <>{children}</>;
 }
 
 function StubFullBleedSwitch() {
