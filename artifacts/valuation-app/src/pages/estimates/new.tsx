@@ -218,8 +218,8 @@ function NewEstimatePageInner({
     if (!createMutation.isPending) return;
     const messages = [
       "Pulling comparable sales...",
-      "Reading market signals...",
-      "Scanning world events & legislation...",
+      "Gathering price context...",
+      "Scanning world events & news...",
       "Mapping international arbitrage...",
       "Synthesizing narrative...",
       "Finalizing report...",

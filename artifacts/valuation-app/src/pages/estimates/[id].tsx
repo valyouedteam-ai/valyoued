@@ -8,11 +8,7 @@ import {
   stripRedundantOuterQuotes,
 } from "@/lib/format";
 import {
-  Printer,
   ArrowLeft,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Scale,
   Globe2,
   Zap,
@@ -130,7 +126,6 @@ export default function EstimateReportPage() {
     finalNarrative: stripQ(partialReport?.finalNarrative ?? ""),
   };
 
-  const marketSignals = estimate.marketSignals ?? [];
   const arbitrageRows = estimate.arbitrage ?? [];
   const comparables = estimate.comparables ?? [];
   const fmt = (v: number, compact = false) => formatMoney(v, ccy, compact);
@@ -151,9 +146,6 @@ export default function EstimateReportPage() {
             data-testid="report-list-btn"
           >
             <Megaphone className="h-4 w-4 mr-2" /> Generate listing ad
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="bg-card hover:bg-accent hover:text-accent-foreground">
-            <Printer className="h-4 w-4 mr-2" /> Print / Save PDF
           </Button>
         </div>
       </div>
@@ -275,7 +267,7 @@ export default function EstimateReportPage() {
                     </CardTitle>
                     <CardDescription className="text-base mt-1">
                       {savedTierPro
-                        ? "The header Pro toggle is off. Switch it on to show market signals, world events, comparables, and execution strategy for this report."
+                        ? "The header Pro toggle is off. Switch it on to show world events, comparables, and execution strategy for this report."
                         : "You're seeing the headline price. Pro adds everything you need to actually sell well."}
                     </CardDescription>
                   </div>
@@ -288,7 +280,6 @@ export default function EstimateReportPage() {
                     { icon: Clock, label: "When to sell", desc: "Optimal timing window for your market" },
                     { icon: Newspaper, label: "World events impact", desc: "Live news + how each story moves your price" },
                     { icon: Globe2, label: isMobile ? "International arbitrage" : "Local market analysis", desc: isMobile ? "Best country & marketplace to net the most" : "Best local marketplace, fees & buyer pool" },
-                    { icon: Zap, label: "Live market signals", desc: "Real-time demand factors with rationale" },
                     { icon: Scale, label: "Verified comparables", desc: "Recent sold prices that ground the estimate" },
                     { icon: Target, label: "Anchor & walk-away prices", desc: "Negotiation tactics, red flags, listing tips" },
                   ].map((f) => (
@@ -318,59 +309,13 @@ export default function EstimateReportPage() {
           </section>
         )}
 
-        {showExpandedPro && marketSignals.length > 0 && (
-          <section className="print-break-inside-avoid overflow-hidden border border-border/50 rounded-lg bg-sidebar text-sidebar-foreground">
-            <div className="px-4 py-2 border-b border-sidebar-border bg-sidebar/80 flex items-center justify-between">
-              <span className="text-xs font-mono uppercase tracking-widest text-sidebar-foreground/70 flex items-center gap-2">
-                <Zap className="h-3 w-3 text-accent" /> Live Market Signals
-              </span>
-              <span className="text-[10px] font-mono text-sidebar-foreground/50">LIVE DATA FEED</span>
-            </div>
-            <div className="relative flex overflow-x-hidden group">
-              <div className="py-3 animate-ticker whitespace-nowrap flex group-hover:[animation-play-state:paused]">
-                {[...marketSignals, ...marketSignals].map((signal, i) => {
-                  const su = signal.impact - 1;
-                  const pos = su > 0;
-                  const neg = su < 0;
-                  return (
-                    <Tooltip key={`${signal.label}-${i}`}>
-                      <TooltipTrigger asChild>
-                        <div className="inline-flex items-center mx-6 cursor-help transition-opacity hover:opacity-80">
-                          <span className="text-sm font-semibold mr-2">{signal.label}</span>
-                          <span className="text-sm font-mono text-sidebar-foreground/70 mr-3">{signal.value}</span>
-                          <Badge
-                            variant="outline"
-                            className={`px-1.5 py-0 border-0 rounded text-xs font-mono ${
-                              pos ? "bg-green-500/20 text-green-400" : neg ? "bg-red-500/20 text-red-400" : "bg-sidebar-accent text-sidebar-foreground"
-                            }`}
-                          >
-                            {pos ? <TrendingUp className="h-3 w-3 mr-1" /> : neg ? <TrendingDown className="h-3 w-3 mr-1" /> : <Minus className="h-3 w-3 mr-1" />}
-                            {pos ? "+" : ""}
-                            {(su * 100).toFixed(1)}%
-                          </Badge>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs font-sans p-3 bg-card border-border shadow-xl">
-                        <p className="text-sm">{stripQ(signal.rationale)}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
         {/* World Events – PRO ONLY */}
         {showExpandedPro && estimate.worldEvents && estimate.worldEvents.length > 0 && (
           <section className="space-y-4 print-break-inside-avoid">
-            <div className="flex items-center justify-between">
+            <div>
               <h3 className="text-xl font-sans flex items-center gap-2">
                 <Newspaper className="h-5 w-5 text-muted-foreground" /> World Events Impact
               </h3>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                Macro · Legislation · News
-              </span>
             </div>
             <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">{report.worldEventsNarrative}</p>
 

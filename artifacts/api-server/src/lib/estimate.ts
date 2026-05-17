@@ -107,7 +107,7 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
     "impact": number,           // multiplicative, 0.85-1.20 (1.0 = neutral)
     "rationale": string
   }>,
-  "worldEvents": Array<{        // 3-6 macro / news / legislative items affecting this asset's value
+  "worldEvents": Array<{        // 3-6 news-driven items affecting this asset's value
     "title": string,            // headline of the article you are referencing (rewrite to be punchy if needed)
     "summary": string,          // 1-2 sentences explaining how THIS specific article impacts the seller's asset & price
     "sentiment": "positive" | "negative" | "neutral",
@@ -134,7 +134,7 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
     "baselineNarrative": string,        // 2-3 sentences on baseline reasoning
     "marketNarrative": string,          // 2-3 sentences on market sentiment
     "arbitrageNarrative": string,       // 2-3 sentences on best market to sell in (or local-only if not tradeable)
-    "worldEventsNarrative": string,     // 3-4 sentences synthesising how current world events / legislation / commodity prices / wars affect THIS asset's price right now
+    "worldEventsNarrative": string,     // 3-4 sentences tying the headlines above to THIS asset's price for THIS seller
     "finalNarrative": string            // 2-3 sentence closing recommendation
   },
   "proInsights": {
@@ -153,7 +153,7 @@ Rules:
 - Never wrap report copy or pro insight strings in quotation marks — use plain prose only (no leading/trailing " characters).
 - World events MUST be GROUNDED in the LIVE NEWS HEADLINES above. Pick the 3-6 most relevant articles, copy their source/url/publishedAt verbatim, and explain in 1-2 sentences how each ONE specifically moves the price of THIS asset for THIS seller. Do NOT invent URLs.
 - If none of the live articles are relevant (rare), you may add ONE training-knowledge entry with source:"General market context" and url:"". All other entries must come from the live list.
-- The worldEventsNarrative should synthesise across the events you cite — naming countries, policies, and price impacts.
+- The worldEventsNarrative should synthesise across the events you cite — keep it practical for the seller and tie each point to price impact.
 - All prices in ${currency} as integers (no decimals). Use the currency naturally for the seller's market.
 - Be realistic — if it's a mass-market item with low resale value, say so.
 - Output JSON only.`;
@@ -241,7 +241,7 @@ function fallbackCore(
       { label: "Currency", value: "Neutral", impact: 1.0, rationale: "Local currency broadly stable." },
     ],
     worldEvents: [
-      { title: "Live AI feed unavailable", summary: "We could not pull live macro context for this asset right now.", sentiment: "neutral", scope: "Global" },
+      { title: "Live AI feed unavailable", summary: "We could not pull live news context for this asset right now.", sentiment: "neutral", scope: "Global" },
     ],
     arbitrage,
     report: {
@@ -252,7 +252,7 @@ function fallbackCore(
       arbitrageNarrative: assetType.internationallyTradeable
         ? "Selling locally usually nets the most after fees and shipping."
         : "This asset is best sold locally.",
-      worldEventsNarrative: "Live world events feed unavailable. Try again shortly for a fully AI-sourced report.",
+      worldEventsNarrative: "Live news feed unavailable. Try again shortly for a full AI-sourced report.",
       finalNarrative: "Try again shortly for a fully AI-sourced valuation.",
     },
     proInsights: {

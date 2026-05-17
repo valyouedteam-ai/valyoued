@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Briefcase,
   Plus,
-  RefreshCw,
   Activity,
   Zap,
   Megaphone,
@@ -38,6 +37,19 @@ import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { PortfolioFolders } from "@/components/PortfolioFolders";
 import { iconForAssetType } from "@/lib/asset-icons";
 
+/** Roll-up totals use USD internally; present with the viewer's locale. */
+function formatConvertedRollupUsd(value: number) {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value);
+  } catch {
+    return formatMoney(value, "USD");
+  }
+}
+
 const TICK_INTERVAL_MS = 2500;
 const POLL_INTERVAL_MS = 60_000;
 
@@ -57,7 +69,7 @@ function makeTick(prev: number, seed: number): Tick {
 }
 
 export default function PortfolioPage() {
-  const { data: estimates, isLoading, refetch, isFetching, dataUpdatedAt } = useListEstimates({
+  const { data: estimates, isLoading, dataUpdatedAt } = useListEstimates({
     query: {
       refetchInterval: POLL_INTERVAL_MS,
     } as unknown as UseQueryOptions<Awaited<ReturnType<typeof listEstimates>>, Error>,
@@ -111,8 +123,7 @@ export default function PortfolioPage() {
       const tick = ticks[e.id];
       const liveValue = e.adjustedMid * (tick?.mult ?? 1);
       const changeFromBaseline = e.baselineMid > 0 ? (liveValue - e.baselineMid) / e.baselineMid : 0;
-      const sessionChange = (tick?.mult ?? 1) - 1;
-      return { ...e, liveValue, changeFromBaseline, sessionChange, tickDir: tick?.dir ?? "flat" };
+      return { ...e, liveValue, changeFromBaseline, tickDir: tick?.dir ?? "flat" };
     });
   }, [estimateRows, ticks]);
 
@@ -199,30 +210,19 @@ export default function PortfolioPage() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-accent mb-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-            </span>
-            Live Portfolio · Streaming
-          </div>
           <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
           <p className="text-muted-foreground mt-1">
             {portfolio.length} asset{portfolio.length === 1 ? "" : "s"} · {albums.length} class
             {albums.length === 1 ? "" : "es"} · synced {lastSync < 60 ? `${lastSync}s ago` : `${Math.floor(lastSync / 60)}m ago`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div>
           <Link href="/estimate/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               New valuation
             </Button>
           </Link>
-          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={cn("h-4 w-4 mr-2", isFetching && "animate-spin")} />
-            {isFetching ? "Syncing" : "Refresh"}
-          </Button>
         </div>
       </div>
 
@@ -233,10 +233,10 @@ export default function PortfolioPage() {
           <CardHeader className="pb-2 relative">
             <CardDescription className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider">
               <Activity className="h-3 w-3 text-accent" />
-              Total Portfolio Value (USD-eq)
+              Approximate portfolio total
             </CardDescription>
             <CardTitle className="text-3xl font-mono tabular-nums tracking-tight">
-              {formatMoney(totalPortfolioUsd, "USD")}
+              {formatConvertedRollupUsd(totalPortfolioUsd)}
             </CardTitle>
           </CardHeader>
           <CardContent className="relative">
@@ -246,28 +246,7 @@ export default function PortfolioPage() {
             )}>
               {totalChange >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
               <span className="font-mono">{formatPercent(totalChange, true)}</span>
-              <span className="text-muted-foreground font-sans">vs cost basis</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-2 font-mono">
-              cost basis {formatMoney(totalBaselineUsd, "USD")}
-            </div>
-            <div className="text-[10px] text-muted-foreground/90 mt-1.5 font-mono leading-snug">
-              USD-eq ·{" "}
-              {!fxSnap ? (
-                "FX rates loading…"
-              ) : (
-                <>
-                  {fxSnap.source === "frankfurter"
-                    ? `ECB ${fxSnap.asOf ?? "N/A"}`
-                    : "Static fallbacks"}
-                  {(() => {
-                    const d = new Date(fxSnap.fetchedAt);
-                    return Number.isNaN(d.getTime())
-                      ? ""
-                      : ` · refetched ${formatDistanceToNow(d, { addSuffix: true })}`;
-                  })()}
-                </>
-              )}
+              <span className="text-muted-foreground font-sans">vs. baseline valuations</span>
             </div>
           </CardContent>
         </Card>
@@ -316,7 +295,7 @@ export default function PortfolioPage() {
                       borderRadius: 6,
                       fontSize: 12,
                     }}
-                    formatter={(v: any, n: any) => [formatMoney(Number(v), "USD"), n]}
+                    formatter={(v: any, n: any) => [formatConvertedRollupUsd(Number(v)), n]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -387,7 +366,7 @@ export default function PortfolioPage() {
                   </div>
                   <div className="text-right">
                     <div className="font-mono font-semibold tabular-nums">
-                      {formatMoney(album.totalUsd, "USD")}
+                      {formatConvertedRollupUsd(album.totalUsd)}
                     </div>
                     <div className={cn(
                       "text-xs font-mono",
@@ -432,9 +411,9 @@ export default function PortfolioPage() {
                     <tr>
                       <th className="text-left px-3 py-3">Asset</th>
                       <th className="text-left px-2 py-3 hidden md:table-cell">Class</th>
-                      <th className="text-right px-2 py-3">Cost</th>
+                      <th className="text-right px-2 py-3">Baseline</th>
                       <th className="text-right px-2 py-3">Live</th>
-                      <th className="text-right px-2 py-3">P&L</th>
+                      <th className="text-right px-2 py-3">Change</th>
                       <th className="text-right px-3 py-3"></th>
                     </tr>
                   </thead>
@@ -500,30 +479,6 @@ export default function PortfolioPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Live ticker strip */}
-      <div className="rounded-lg border border-accent/20 bg-card/40 backdrop-blur p-3 overflow-hidden">
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <span className="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-accent/10 text-accent uppercase tracking-wider">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            LIVE
-          </span>
-          <div className="flex gap-6 overflow-x-auto whitespace-nowrap">
-            {portfolio.map((p) => (
-              <span key={p.id} className="inline-flex items-center gap-2">
-                <span className="text-muted-foreground">{p.assetTypeName.split(" ")[0].toUpperCase()}·{p.id.slice(0, 4).toUpperCase()}</span>
-                <span className="font-semibold tabular-nums">{formatMoney(p.liveValue, p.currency)}</span>
-                <span className={cn(
-                  "tabular-nums",
-                  p.sessionChange > 0 ? "text-green-500" : p.sessionChange < 0 ? "text-red-500" : "text-muted-foreground"
-                )}>
-                  {formatPercent(p.sessionChange, true)}
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {listingFor && (
         <GenerateListingDialog

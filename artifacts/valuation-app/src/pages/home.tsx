@@ -33,7 +33,7 @@ const quickLinks = [
   {
     href: "/portfolio",
     title: "Portfolio",
-    desc: "Diversification and USD-equivalent totals.",
+    desc: "Diversification with converted roll-up totals.",
     icon: Layers,
     emphasis: false as const,
   },

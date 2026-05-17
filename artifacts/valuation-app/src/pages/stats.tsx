@@ -76,7 +76,7 @@ export default function StatsPage() {
     <div className="space-y-8 max-w-6xl mx-auto pb-16">
       <div>
         <h1 className="text-3xl font-sans font-bold text-foreground">Market Aggregates</h1>
-        <p className="text-muted-foreground mt-1">Macro trends across the ValYoued appraisal network.</p>
+        <p className="text-muted-foreground mt-1">Aggregates from valuations saved to your account.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
