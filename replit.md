@@ -45,7 +45,7 @@ Monorepo (pnpm workspaces).
 ### Deploying the web UI to Vercel
 
 1. Import this repo in Vercel — leave **Root Directory** at `.` so `pnpm-workspace.yaml` resolves.
-2. Vercel reads [`vercel.json`](vercel.json): installs with **pnpm**, builds `@workspace/valuation-app`, serves `artifacts/valuation-app/dist/public`.
+2. Vercel reads [`vercel.mjs`](vercel.mjs): installs with **pnpm**, builds `@workspace/valuation-app`, serves `artifacts/valuation-app/dist/public`, and rewrites **`/api/*`** to **`VITE_API_ORIGIN`** when that env var is set (so JSON routes are not served as the SPA).
 3. Set **`VITE_CLERK_PUBLISHABLE_KEY`** (and optional **`VITE_CLERK_PROXY_URL`**) in the Vercel project env vars.
 4. Host the Express API on a Node-friendly platform (Railway, Fly.io, Render, ECS, etc.). Set **`VITE_API_ORIGIN`** on Vercel to that API’s public origin (no trailing slash). The UI sends Clerk **`Authorization: Bearer`** tokens automatically for cross-origin calls.
 5. In Clerk, add your Vercel domain under **Allowed origins / redirect URLs**. Point Stripe **`PUBLIC_APP_URL`** at the Vercel site URL.
