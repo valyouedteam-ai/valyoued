@@ -16,11 +16,14 @@ import type { AssetType, EstimateInput, EstimateReport, EstimateResult } from "@
 import { ASSET_TYPES, getAssetType } from "../lib/assetTypes";
 import { REGIONS, getRegion } from "../lib/regions";
 import { generateEstimate } from "../lib/estimate";
+import { sanitizeComparables } from "../lib/comparables";
 import { requireAuth, getUserId, type AuthedRequest } from "../middlewares/requireAuth";
 import { recordPlatformEvent } from "../lib/platformEvents";
 import { getFxRateSnapshot } from "../lib/fxRates";
 import { convertToUsdApprox } from "@workspace/fx-usd";
 import { portfolioShelfFromEstimate, readAttributesFromStoredResult } from "@workspace/asset-shelf-tier";
+import { logger } from "../lib/logger";
+import { notifyEstimateReadyEmail } from "../lib/estimateReadyEmail";
 
 const router: IRouter = Router();
 
@@ -152,7 +155,7 @@ function mergeEstimateResultFromRow(row: Estimate, storedUnknown: unknown): Esti
     marketSignals: safeArray(raw.marketSignals),
     worldEvents: safeArray(raw.worldEvents),
     arbitrage: safeArray(raw.arbitrage),
-    comparables: safeArray(raw.comparables),
+    comparables: sanitizeComparables(safeArray(raw.comparables)),
     netMarketFactor: finiteNum(raw.netMarketFactor, 1),
     currency: typeof raw.currency === "string" && raw.currency ? raw.currency : row.currency,
     tier,
@@ -324,6 +327,13 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
       currency: computed.currency,
       region: input.currentRegion,
     },
+  });
+  void notifyEstimateReadyEmail(userId, {
+    id: row.id,
+    title: input.title,
+    assetTypeName: assetType.name,
+  }).catch((err) => {
+    logger.error({ err }, "notifyEstimateReadyEmail failed");
   });
   res.json(CreateEstimateResponse.parse(result));
 });

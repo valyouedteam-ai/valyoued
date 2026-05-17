@@ -808,26 +808,6 @@ export const ASSET_TYPES: AssetType[] = [
       sharedExtras("Original mat & shoes, membership through Q2", "Noise, calibration, recalls, scratches"),
     ],
   },
-
-  // ============ Small business ============
-  {
-    id: "small-business",
-    name: "Small Business",
-    category: "Business",
-    tagline: "Online stores, local services, SaaS side projects",
-    exampleAttributes: "Annual revenue, profit, customers",
-    internationallyTradeable: false,
-    fields: [
-      { key: "brand", label: "Business name", type: "text", required: true },
-      { key: "model", label: "Business type / niche", type: "text", required: true, placeholder: "Shopify men's grooming brand" },
-      { key: "year", label: "Year founded", type: "number", required: false },
-      { key: "condition", label: "Operational health (1=struggling, 10=thriving)", type: "number", required: true },
-      { key: "purchasePrice", label: "Annual revenue", type: "number", required: false, help: "In your local currency" },
-      { key: "profitMargin", label: "Net profit margin %", type: "number", required: false, placeholder: "22" },
-      { key: "customers", label: "Active customers", type: "number", required: false },
-      sharedExtras("9k customers, 30% repeat, owner-run 10 hrs/week", "Revenue, margins, growth, team, dependencies"),
-    ],
-  },
   {
     id: "saas-micro",
     name: "SaaS / Micro-SaaS",

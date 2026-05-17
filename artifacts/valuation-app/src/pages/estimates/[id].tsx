@@ -36,6 +36,7 @@ import {
   platformSearchUrl,
   platformsForAssetType,
 } from "@/lib/platforms";
+import { safeHttpUrl } from "@/lib/safe-url";
 import { ExternalLink } from "lucide-react";
 
 export default function EstimateReportPage() {
@@ -128,6 +129,8 @@ export default function EstimateReportPage() {
 
   const arbitrageRows = estimate.arbitrage ?? [];
   const comparables = estimate.comparables ?? [];
+  const currentYear = new Date().getFullYear();
+  const staleSaleBeforeYear = currentYear - 3;
   const fmt = (v: number, compact = false) => formatMoney(v, ccy, compact);
 
   return (
@@ -491,34 +494,56 @@ export default function EstimateReportPage() {
         <section className="space-y-4 print-break-inside-avoid">
           <h3 className="text-xl font-sans">Recent Sales &amp; Live Listings</h3>
           <p className="text-sm text-muted-foreground max-w-3xl -mt-2">
-            Sold prices that anchor your valuation, plus deep-links to live listings of comparable
-            items on the marketplaces where this asset class actually trades.
+            Comparable sales aim at the last year or two. When the model supplies a real web address, we show an
+            &quot;Open verified source&quot; link (unsafe or made-up URLs are removed). Use the marketplace buttons
+            to run a fresh search, including Facebook Marketplace, for what is listed today.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {comparables.map((comp, i) => {
-              const livePlatforms = platformsForAssetType(assetTypeName);
+              const livePlatforms = [...new Set(platformsForAssetType(assetTypeName))];
               const searchQuery = `${estimateTitle} ${comp.description}`.slice(0, 90);
+              const verifiedUrl = safeHttpUrl(comp.url);
+              const saleYear = typeof comp.year === "number" && Number.isFinite(comp.year) ? comp.year : null;
+              const isStaleSale = saleYear != null && saleYear < staleSaleBeforeYear;
               return (
                 <Card key={i} className="bg-card/50 border-border/50 shadow-sm flex flex-col">
                   <CardHeader className="p-4 pb-2">
-                    <div className="flex justify-between items-start">
-                      <Badge variant="outline" className="text-[10px] uppercase font-sans">{comp.source}</Badge>
-                      <span className="font-sans font-bold">{fmt(comp.price)}</span>
+                    <div className="flex justify-between items-start gap-2">
+                      <Badge variant="outline" className="text-[10px] uppercase font-sans shrink-0">
+                        {comp.source}
+                      </Badge>
+                      <span className="font-sans font-bold tabular-nums">{fmt(comp.price)}</span>
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-2 flex-1 flex flex-col">
-                    <p className="text-sm font-medium line-clamp-2 mb-2">{comp.description}</p>
-                    <div className="text-xs text-muted-foreground flex justify-between items-center mb-3">
-                      <span>Sold {comp.year}</span>
-                      {comp.url && (
-                        <a href={comp.url} target="_blank" rel="noreferrer" className="text-accent hover:underline inline-flex items-center">
-                          Source <ChevronRight className="h-3 w-3 ml-0.5" />
+                    <p className="text-sm font-medium line-clamp-3 mb-2">{comp.description}</p>
+                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
+                      <span className="inline-flex items-center gap-1.5">
+                        Sale year {saleYear ?? "—"}
+                        {isStaleSale ? (
+                          <Badge variant="secondary" className="text-[9px] font-normal uppercase tracking-wide">
+                            Older sale
+                          </Badge>
+                        ) : null}
+                      </span>
+                      {verifiedUrl ? (
+                        <a
+                          href={verifiedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-accent hover:underline font-medium"
+                          data-testid={`comp-${i}-source-link`}
+                        >
+                          Open verified source
+                          <ExternalLink className="h-3 w-3" />
                         </a>
+                      ) : (
+                        <span className="text-[11px] italic">No direct link for this row</span>
                       )}
                     </div>
                     <div className="mt-auto pt-3 border-t border-border/40">
                       <div className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground mb-2">
-                        See live listings on
+                        Search live listings
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {livePlatforms.map((slug) => {
@@ -529,7 +554,7 @@ export default function EstimateReportPage() {
                               key={slug}
                               href={url}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-accent/10 text-accent hover:bg-accent/20 border border-accent/30 transition-colors"
                               data-testid={`comp-${i}-platform-${slug}`}
                             >

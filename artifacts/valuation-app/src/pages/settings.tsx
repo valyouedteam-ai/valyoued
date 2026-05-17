@@ -8,6 +8,7 @@ import {
   Download,
   ExternalLink,
   Globe2,
+  Mail,
   Shield,
   Sparkles,
   UserRound,
@@ -23,6 +24,8 @@ import {
 import { useDisplayCurrency } from "@/hooks/use-display-currency";
 import { DISPLAY_CURRENCY_OPTIONS, getStoredReferenceCurrency, getSessionGeoCountry, countryCodeToDisplayCurrency } from "@/lib/reference-currency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
 
@@ -31,6 +34,12 @@ type BillingInfo = {
   status: string;
   stripeCustomerId: string | null;
   stripeStub?: boolean;
+};
+
+type EmailAlertsInfo = {
+  estimateReadyEmail: boolean;
+  productUpdatesEmail: boolean;
+  deliveryEnabled: boolean;
 };
 
 type BillingActionJson = { url?: string; error?: string; stub?: boolean };
@@ -117,7 +126,101 @@ function SettingsPageInner({
   const geoLedToCurrency =
     Boolean(geoCountry) && countryCodeToDisplayCurrency(geoCountry) === displayCurrencyCode;
   const [billing, setBilling] = useState<BillingInfo | null>(null);
+  const [emailAlerts, setEmailAlerts] = useState<EmailAlertsInfo | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+
+  const refreshEmailAlerts = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const res = await fetch(apiUrl("/api/me/email-alerts"), {
+        credentials: apiFetchCredentials(),
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const raw = await res.text();
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+      try {
+        const j = JSON.parse(trimmed) as EmailAlertsInfo;
+        setEmailAlerts(j);
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    void refreshEmailAlerts();
+  }, [refreshEmailAlerts]);
+
+  const patchEmailAlert = async (patch: Partial<Pick<EmailAlertsInfo, "estimateReadyEmail" | "productUpdatesEmail">>) => {
+    try {
+      const token = await getToken();
+      const res = await fetch(apiUrl("/api/me/email-alerts"), {
+        method: "PATCH",
+        credentials: apiFetchCredentials(),
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(patch),
+      });
+      const raw = await res.text();
+      if (!res.ok) {
+        toast({
+          title: "Could not save email preferences",
+          description: raw.trim() || `${res.status}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      try {
+        const j = JSON.parse(raw) as EmailAlertsInfo;
+        setEmailAlerts(j);
+      } catch {
+        void refreshEmailAlerts();
+      }
+    } catch {
+      toast({
+        title: "Could not save email preferences",
+        description: "Network error.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendTestEmail = async () => {
+    setBusy("email-test");
+    try {
+      const token = await getToken();
+      const res = await fetch(apiUrl("/api/me/email-alerts/test"), {
+        method: "POST",
+        credentials: apiFetchCredentials(),
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: "{}",
+      });
+      const text = (await res.text()).trim();
+      if (!res.ok) {
+        let msg = text;
+        try {
+          const j = JSON.parse(text) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          /* use raw */
+        }
+        toast({ title: "Test email failed", description: msg, variant: "destructive" });
+        return;
+      }
+      toast({ title: "Test email sent", description: "Check your inbox (and spam) in a few seconds." });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const refreshBilling = useCallback(async () => {
     try {
@@ -218,7 +321,7 @@ function SettingsPageInner({
             Settings & privacy
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Account data controls, exports, and subscription billing.
+            Account data controls, exports, subscription billing, and email alerts.
           </p>
         </div>
       </div>
@@ -294,6 +397,71 @@ function SettingsPageInner({
             >
               Manage subscription / invoices
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-card/40 backdrop-blur-sm md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Mail className="h-5 w-5 text-accent" />
+              Email alerts
+            </CardTitle>
+            <CardDescription>
+              Choose what we send to your account email from Clerk. Product updates are rare; estimate alerts fire when
+              a new valuation report is created. Messaging requires{" "}
+              <span className="text-foreground font-medium">Resend</span> on the API (
+              {emailAlerts?.deliveryEnabled ? (
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">delivery enabled</span>
+              ) : (
+                <span className="text-amber-600 dark:text-amber-400 font-medium">delivery not configured</span>
+              )}
+              ).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 max-w-lg">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="alert-estimate-ready">New estimate ready</Label>
+                <p className="text-xs text-muted-foreground">
+                  One email per completed valuation with a link to the report.
+                </p>
+              </div>
+              <Switch
+                id="alert-estimate-ready"
+                checked={emailAlerts?.estimateReadyEmail ?? false}
+                disabled={emailAlerts == null || busy !== null}
+                onCheckedChange={(v) => void patchEmailAlert({ estimateReadyEmail: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="alert-product">Product updates</Label>
+                <p className="text-xs text-muted-foreground">
+                  Occasional news about features and improvements (preference stored; broadcasts not wired yet).
+                </p>
+              </div>
+              <Switch
+                id="alert-product"
+                checked={emailAlerts?.productUpdatesEmail ?? false}
+                disabled={emailAlerts == null || busy !== null}
+                onCheckedChange={(v) => void patchEmailAlert({ productUpdatesEmail: v })}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto gap-2"
+              disabled={busy !== null || !emailAlerts?.deliveryEnabled}
+              onClick={() => void sendTestEmail()}
+            >
+              <Mail className="h-4 w-4" />
+              {busy === "email-test" ? "Sending…" : "Send test email"}
+            </Button>
+            {!emailAlerts?.deliveryEnabled ? (
+              <p className="text-xs text-muted-foreground">
+                To enable sending, set RESEND_API_KEY and EMAIL_FROM on the API server, then restart it.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 

@@ -100,15 +100,16 @@ export function platformSearchUrl(slug: string, query: string): string | null {
 // to add live-listing links to each comparable card on the report page.
 export function platformsForAssetType(assetTypeName: string): string[] {
   const t = assetTypeName.toLowerCase();
-  if (t.includes("watch")) return ["chrono24", "watchcharts", "ebay"];
+  if (t.includes("watch"))
+    return ["chrono24", "watchcharts", "ebay", "facebook-marketplace"];
   if (t.includes("car") || t.includes("vehicle") || t.includes("motorcycle"))
-    return ["bring-a-trailer", "autotrader", "ebay"];
+    return ["facebook-marketplace", "bring-a-trailer", "autotrader", "ebay"];
   if (t.includes("handbag") || t.includes("bag") || t.includes("luxury") || t.includes("fashion"))
-    return ["vestiaire-collective", "ebay", "depop"];
+    return ["vestiaire-collective", "ebay", "facebook-marketplace", "depop"];
   if (t.includes("clothing") || t.includes("sneaker") || t.includes("apparel"))
-    return ["depop", "vinted", "ebay"];
+    return ["depop", "vinted", "ebay", "facebook-marketplace"];
   if (t.includes("real estate") || t.includes("property") || t.includes("home") || t.includes("house"))
-    return ["zillow", "rightmove"];
+    return ["zillow", "rightmove", "facebook-marketplace"];
   // Sensible default for "everything else" (electronics, art, collectibles, etc.)
   return ["ebay", "facebook-marketplace", "craigslist"];
 }

@@ -2,9 +2,11 @@ import { Link } from "wouter";
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   Sparkles,
   Camera,
   BrainCircuit,
+  Crown,
   Globe2,
   Megaphone,
   Scale,
@@ -37,6 +39,39 @@ const STEPS = [
     body: "We draft listing copy and link you toward creating the ad where that asset type tends to sell.",
   },
 ];
+
+const PRICING_TIERS = [
+  {
+    name: "Free",
+    badge: "Default",
+    priceLine: "$0",
+    cadence: "No subscription required",
+    blurb:
+      "Run valuations on the essentials track: a market-backed range, regional context, portfolio history, and listing drafts.",
+    features: [
+      "Baseline and adjusted mid estimate",
+      "Regional demand and currency context",
+      "Saved reports and portfolio snapshot",
+      "AI listing copy drafts for major marketplaces",
+    ],
+    cta: { href: "/start", label: "Start free", variant: "outline" as const },
+  },
+  {
+    name: "ValYoued Pro",
+    badge: "Subscription",
+    priceLine: "Paid plan",
+    cadence: "Recurring billing via Stripe (checkout shows exact price)",
+    blurb:
+      "Unlock the full Pro report when you turn Pro on for a new valuation: deeper comparables, live headline context, and a sell-side execution playbook.",
+    features: [
+      "Verified comparables with sources you can open",
+      "World events tied to how they move your price",
+      "Pro execution strategy: anchors, walk-aways, listing tactics",
+      "Richer markets and stats views while Pro mode is on",
+    ],
+    cta: { href: "/sign-in", label: "Sign in to subscribe", variant: "default" as const },
+  },
+] as const;
 
 export default function AboutPage() {
   return (
@@ -119,6 +154,77 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="relative z-10 px-6 pb-20 max-w-5xl mx-auto">
+        <div className="text-center mb-10">
+          <div className="text-ui-caps text-accent/80 mb-2 tracking-normal">Pricing model</div>
+          <h2 className="text-3xl md:text-4xl font-sans font-semibold text-white mb-3">
+            Free to start, Pro when you need depth
+          </h2>
+          <p className="text-white/70 max-w-2xl mx-auto leading-relaxed">
+            Everyone gets core valuations and listing help. ValYoued Pro is a subscription that pairs with Pro-mode
+            reports you generate in the app; manage billing, invoices, and cancellation from Settings after you sign in.
+          </p>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {PRICING_TIERS.map((tier) => (
+            <div
+              key={tier.name}
+              className={`rounded-2xl border p-6 md:p-8 flex flex-col ${
+                tier.name === "ValYoued Pro"
+                  ? "border-accent/50 bg-gradient-to-b from-accent/20 to-white/[0.04] ring-1 ring-accent/25"
+                  : "border-white/10 bg-white/[0.04]"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {tier.name === "ValYoued Pro" ? (
+                      <Crown className="h-5 w-5 text-accent shrink-0" aria-hidden />
+                    ) : null}
+                    <h3 className="text-xl font-semibold text-white">{tier.name}</h3>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="border-white/20 bg-white/5 text-white/80 text-[0.65rem] uppercase tracking-wide"
+                  >
+                    {tier.badge}
+                  </Badge>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-semibold tabular-nums text-white">{tier.priceLine}</div>
+                  <div className="text-xs text-white/55 mt-0.5 max-w-[11rem] ml-auto leading-snug">{tier.cadence}</div>
+                </div>
+              </div>
+              <p className="text-sm text-white/70 leading-relaxed mb-6">{tier.blurb}</p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {tier.features.map((f) => (
+                  <li key={f} className="flex gap-3 text-sm text-white/80">
+                    <Check className="h-4 w-4 text-accent shrink-0 mt-0.5" aria-hidden />
+                    <span className="leading-relaxed">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link href={tier.cta.href}>
+                <Button
+                  className={
+                    tier.cta.variant === "default"
+                      ? "w-full bg-accent hover:bg-accent/90 shadow-[0_0_24px_-6px_hsl(217_91%_60%/0.5)]"
+                      : "w-full border-white/25 text-white hover:bg-white/10"
+                  }
+                  variant={tier.cta.variant === "default" ? "default" : "outline"}
+                >
+                  {tier.cta.label}
+                </Button>
+              </Link>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-xs text-white/45 max-w-xl mx-auto mt-6 leading-relaxed">
+          Taxes, currency, and final renewal terms depend on Stripe Checkout and your payment method. Free tier features
+          stay available even if you do not subscribe.
+        </p>
       </section>
 
       <section className="relative z-10 px-6 pb-24 max-w-3xl mx-auto text-center">

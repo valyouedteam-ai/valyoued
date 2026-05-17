@@ -12,6 +12,7 @@ import type {
 } from "@workspace/api-zod";
 import { logger } from "./logger";
 import { searchNews, buildNewsQueries, type NewsArticle } from "./news";
+import { sanitizeComparables } from "./comparables";
 
 interface AICore {
   baselineLow: number;
@@ -94,12 +95,12 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
   "baselineLow": number,        // conservative resale value
   "baselineMid": number,        // most likely resale value
   "baselineHigh": number,       // optimistic resale value
-  "comparables": Array<{        // 3-5 realistic comparable sales
-    "source": string,
-    "description": string,
+  "comparables": Array<{        // 3-5 realistic comparable SALES (prefer sold / completed transactions)
+    "source": string,           // e.g. eBay, Chrono24, Bring a Trailer, Facebook Marketplace, auction house name
+    "description": string,      // what sold, condition nuance, lot notes (keep short)
     "price": number,            // in ${currency}
-    "year": number,
-    "url"?: string
+    "year": number,             // CALENDAR YEAR of that sale (NOT "model year" of the item unless the sale was in that year)
+    "url"?: string              // ONLY if you know a real public page (sold listing, auction lot result, official auction PDF). Omit if unsure — NEVER invent URLs.
   }>,
   "marketSignals": Array<{      // 3-5 current market factors
     "label": string,
@@ -150,6 +151,11 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
 
 Rules:
 - ${arbitrageInstruction}
+- COMPARABLES — recency & verifiability (critical):
+  - Prefer sales from the **last 12–24 months**. At least **two** comparables should be from the last ~18 months when plausible for this asset class.
+  - Do **not** lean on ancient sales (e.g. 2010s or earlier) as primary anchors unless the asset is extremely rare and you explicitly say so in the description. If you must cite an older sale, still prioritize newer comps first in the array.
+  - Include **Facebook Marketplace** as a plausible source when the asset commonly trades locally (general merchandise, vehicles, furniture, electronics, many collectibles). Name the source accurately (e.g. "Facebook Marketplace", "eBay sold", "Bring a Trailer").
+  - **url** field: only real http(s) links a user can open. If you cannot name a specific listing, omit **url** entirely. Never use placeholder or fabricated links.
 - Never wrap report copy or pro insight strings in quotation marks — use plain prose only (no leading/trailing " characters).
 - World events MUST be GROUNDED in the LIVE NEWS HEADLINES above. Pick the 3-6 most relevant articles, copy their source/url/publishedAt verbatim, and explain in 1-2 sentences how each ONE specifically moves the price of THIS asset for THIS seller. Do NOT invent URLs.
 - If none of the live articles are relevant (rare), you may add ONE training-knowledge entry with source:"General market context" and url:"". All other entries must come from the live list.
@@ -331,7 +337,7 @@ export async function generateEstimate(
     baselineLow: Math.round(core.baselineLow),
     baselineMid: Math.round(core.baselineMid),
     baselineHigh: Math.round(core.baselineHigh),
-    comparables: core.comparables ?? [],
+    comparables: sanitizeComparables(core.comparables),
     marketSignals: core.marketSignals ?? [],
     worldEvents: core.worldEvents ?? [],
     netMarketFactor: Math.round(netMarketFactor * 1000) / 1000,

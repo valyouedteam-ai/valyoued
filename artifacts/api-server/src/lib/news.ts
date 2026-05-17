@@ -143,11 +143,6 @@ export function buildNewsQueries(
         `${region} second hand electronics market`,
         `tech tariffs import duty 2026`,
       ];
-    case "small-business":
-      return [
-        `${region} small business valuation multiples`,
-        `${region} interest rates SME`,
-      ];
     default:
       return [base, `${region} resale market 2026`];
   }
