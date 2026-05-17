@@ -247,7 +247,7 @@ export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Prop
                 {extract.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Reading photo with AI...
+                    Analyzing photo
                   </>
                 ) : (
                   <>

@@ -212,7 +212,7 @@ function SettingsPageInner({
             </CardTitle>
             <CardDescription>
               Download everything ValYoued stores about your valuations and listing drafts. Account
-              deletion is handled via your Clerk profile / authentication provider.
+              deletion is handled through your account provider's profile or security settings.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -292,9 +292,9 @@ function SettingsPageInner({
               Account &amp; profile
             </CardTitle>
             <CardDescription>
-              Name, avatar, email, password, two-factor authentication, and social sign-in (for
-              example Google) are managed by Clerk under GDPR-compatible processing. ValYoued stores
-              valuation and listing drafts; it does not hold your password.
+              Name, avatar, email, passwords, two-factor authentication, and social sign-in (for
+              example Google) are managed by your account provider. ValYoued stores valuation and
+              listing drafts only—it never stores your password.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -306,11 +306,11 @@ function SettingsPageInner({
               onClick={() => onOpenProfile?.()}
             >
               <UserRound className="h-4 w-4" />
-              Manage profile in Clerk
+              Manage account &amp; security
             </Button>
             {!onOpenProfile ? (
               <p className="text-xs text-muted-foreground mt-3">
-                Profile management is available when signing in with Clerk (disabled in dev auth
+                Profile management is available with a live sign-in session (disabled in dev auth
                 stub).
               </p>
             ) : null}

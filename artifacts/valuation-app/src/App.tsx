@@ -23,7 +23,7 @@ const PUBLISHABLE_KEY = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
   import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) as string | undefined;
 if (!AUTH_STUB_MODE && !PUBLISHABLE_KEY) {
   throw new Error(
-    "Missing VITE_CLERK_PUBLISHABLE_KEY (or set VITE_AUTH_STUB_MODE=1 for local dev without Clerk).",
+    "Missing VITE_CLERK_PUBLISHABLE_KEY (or set VITE_AUTH_STUB_MODE=1 for local dev without real sign-in).",
   );
 }
 const PROXY_URL = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;

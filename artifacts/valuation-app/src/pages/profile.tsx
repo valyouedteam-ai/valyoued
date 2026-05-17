@@ -41,7 +41,7 @@ function ProfilePageClerk() {
             Back to home
           </Link>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">Profile</h1>
-          <p className="text-sm text-muted-foreground">Your account details from Clerk.</p>
+          <p className="text-sm text-muted-foreground">Your account details.</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <Link href="/settings">
@@ -55,7 +55,7 @@ function ProfilePageClerk() {
             onClick={() => void openUserProfile()}
           >
             <UserRound className="h-4 w-4" />
-            Edit in Clerk
+            Edit account
           </Button>
         </div>
       </div>
@@ -117,7 +117,8 @@ function ProfilePageClerk() {
       </Card>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Password, two-factor authentication, and connected accounts are updated through Clerk.{" "}
+        Password, two-factor authentication, and connected accounts are updated in your account
+        settings.{" "}
         <button
           type="button"
           className="inline-flex items-center gap-1 font-medium text-accent underline-offset-4 hover:underline"
@@ -144,7 +145,7 @@ function ProfilePageStub() {
         </Link>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Profile</h1>
         <p className="text-sm text-muted-foreground">
-          Dev auth stub: no Clerk session. Use real sign-in to manage a profile.
+          Dev auth stub: no live session. Use sign-in to manage a profile.
         </p>
       </div>
 

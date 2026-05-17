@@ -33,9 +33,9 @@ export default function PrivacyPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-white">Who controls your account</h2>
           <p>
-            Authentication is handled by Clerk (and optional social providers such as Google). ValYoued
-            receives a stable user identifier (not your password) so we can scope valuations,
-            listings, and billing to you.
+            Sign-in is handled by our authentication partner (including optional social providers such
+            as Google). ValYoued receives a stable user identifier (not your password) so we can
+            scope valuations, listings, and billing to you.
           </p>
         </section>
 
@@ -76,8 +76,9 @@ export default function PrivacyPage() {
             <Link href="/sign-in?redirect_url=/settings" className="text-cyan-300 hover:underline">
               Settings → Download data export
             </Link>
-            . Correct inaccurate profile data in Clerk. Object to certain processing or request erasure
-            where applicable. Note that some records may be retained where law requires.
+            . Correct inaccurate profile data in your account settings. Object to certain processing
+            or request erasure where applicable. Note that some records may be retained where law
+            requires.
           </p>
         </section>
 
