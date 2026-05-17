@@ -54,7 +54,7 @@ function ClerkApiAuthBridge() {
   return null;
 }
 
-/** Avoid mounting any route until Clerk has finished loading — prevents blank shells in production. */
+/** Avoid mounting any route until Clerk has finished loading, to prevent blank shells in production. */
 function ClerkBootstrapGate({ children }: { children: ReactNode }) {
   const { isLoaded } = useAuth();
   if (!isLoaded) {

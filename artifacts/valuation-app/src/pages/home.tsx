@@ -196,8 +196,8 @@ export default function HomePage() {
                   Welcome to your valuation workspace
                 </h1>
                 <p className="text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                  A short guided tour covers your stats, shortcuts, and what we can value. You can jump to any
-                  step from the chips above whenever you like.
+                  A few quick screens: your stats, handy links, and the kinds of items we can price. Use the step
+                  chips whenever you want to skip ahead.
                 </p>
               </div>
               <ul className="space-y-3 text-sm text-muted-foreground">
@@ -206,8 +206,8 @@ export default function HomePage() {
                     1
                   </span>
                   <span>
-                    <span className="font-medium text-foreground">Snapshot</span> — see how many dossiers you have
-                    and how they behave in the aggregate.
+                    <span className="font-medium text-foreground">Snapshot.</span> How many valuations you have and
+                    what they look like added up (ballpark USD).
                   </span>
                 </li>
                 <li className="flex gap-3">
@@ -215,8 +215,8 @@ export default function HomePage() {
                     2
                   </span>
                   <span>
-                    <span className="font-medium text-foreground">Shortcuts</span> — jump straight to valuations,
-                    portfolio, or cross-market views.
+                    <span className="font-medium text-foreground">Shortcuts.</span> Start a new valuation, open your
+                    portfolio, or go to markets.
                   </span>
                 </li>
                 <li className="flex gap-3">
@@ -224,8 +224,8 @@ export default function HomePage() {
                     3
                   </span>
                   <span>
-                    <span className="font-medium text-foreground">Catalog</span> — browse asset classes we model
-                    before you commit to a form.
+                    <span className="font-medium text-foreground">Catalog.</span> Skim the item types we cover before
+                    you dive in.
                   </span>
                 </li>
               </ul>
@@ -260,7 +260,7 @@ export default function HomePage() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-2xl font-semibold tabular-nums tracking-tight">
-                          {stats && stats.count > 0 ? stats.count : "—"}
+                          {stats && stats.count > 0 ? stats.count : "N/A"}
                         </p>
                         <CardDescription className="mt-1 text-xs">
                           {stats && stats.count > 0
@@ -276,7 +276,7 @@ export default function HomePage() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-2xl font-semibold tabular-nums tracking-tight">
-                          {stats && stats.count > 0 ? formatCurrency(stats.averageAdjustedUsd) : "—"}
+                          {stats && stats.count > 0 ? formatCurrency(stats.averageAdjustedUsd) : "N/A"}
                         </p>
                         <CardDescription className="mt-1 text-xs">Mean midpoint</CardDescription>
                       </CardContent>
@@ -288,7 +288,7 @@ export default function HomePage() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-2xl font-semibold tabular-nums tracking-tight">
-                          {stats && stats.count > 0 ? formatPercent(stats.averageUplift, true) : "—"}
+                          {stats && stats.count > 0 ? formatPercent(stats.averageUplift, true) : "N/A"}
                         </p>
                         <CardDescription className="mt-1 text-xs">Adjusted vs. baseline (mean)</CardDescription>
                       </CardContent>
@@ -300,7 +300,7 @@ export default function HomePage() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-lg font-semibold leading-snug tracking-tight">
-                          {stats && stats.count > 0 && topRegion ? topRegion.region : "—"}
+                          {stats && stats.count > 0 && topRegion ? topRegion.region : "N/A"}
                         </p>
                         <CardDescription className="mt-1 text-xs">
                           {stats && stats.count > 0 && topRegion
@@ -320,7 +320,7 @@ export default function HomePage() {
               <div>
                 <h2 className="text-2xl font-semibold tracking-tight text-foreground">Where to next</h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Pick a destination now, or continue the tour — you can always reach these from the nav.
+                  Pick a destination now, or continue the tour. You can always reach these from the nav.
                 </p>
               </div>
               <div className="flex flex-col gap-3">

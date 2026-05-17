@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Props {
   assetTypeId: string | undefined;
   assetTypeName: string | undefined;
-  /** Top-level category from asset type (e.g. "Real Estate") — adjusts instructional copy. */
+  /** Top-level category from asset type (e.g. "Real Estate"). Adjusts instructional copy. */
   assetCategory?: string;
   onAutoFill: (extracted: Record<string, string>, suggestedTitle?: string) => void;
 }
@@ -147,7 +147,7 @@ export function PhotoUploadCard({
               description:
                 data.notes ||
                 (realEstate
-                  ? "Try a clear exterior shot, main living space, or kitchen—or fill in the form manually."
+                  ? "Try a clear exterior shot, main living space, or kitchen. You can also fill in the form manually."
                   : "Try a sharper, well-lit image showing the front of the item, or fill in the form manually."),
             });
           } else {

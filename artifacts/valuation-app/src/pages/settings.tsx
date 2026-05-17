@@ -294,7 +294,7 @@ function SettingsPageInner({
             <CardDescription>
               Name, avatar, email, passwords, two-factor authentication, and social sign-in (for
               example Google) are managed by your account provider. ValYoued stores valuation and
-              listing drafts only—it never stores your password.
+              listing drafts only. It never stores your password.
             </CardDescription>
           </CardHeader>
           <CardContent>

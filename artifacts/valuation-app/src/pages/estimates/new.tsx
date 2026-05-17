@@ -504,7 +504,7 @@ function NewEstimatePageInner({
           {selectedTier && <Card className="border-border/50 bg-card/50 shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg font-sans">
-                Classification — {selectedTier === "luxury" ? "Luxury / collectible" : "Everyday"}
+                Classification: {selectedTier === "luxury" ? "Luxury / collectible" : "Everyday"}
               </CardTitle>
               <CardDescription>
                 Categories below are filtered for this track. Switch the choice above to see phones & TVs versus watches

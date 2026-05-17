@@ -257,7 +257,7 @@ export default function EstimateReportPage() {
                     <CardTitle className="text-2xl font-sans font-semibold">
                       {savedTierPro ? (
                         <>
-                          Pro detail hidden — turn on <span className="brand-gradient">Pro preview</span>
+                          Pro detail hidden. Turn on <span className="brand-gradient">Pro preview</span>
                         </>
                       ) : (
                         <>

@@ -9,7 +9,7 @@ export function AssetCategoriesLoadHint({ error }: { error: unknown }) {
     if (looksLikeSpa) {
       return (
         <span className="block mt-1 opacity-90 font-normal text-balance">
-          The URL returned the web app (HTML) instead of API JSON — usual when the UI is deployed without{" "}
+          The URL returned the web app (HTML) instead of API JSON. That usually happens when the UI is deployed without{" "}
           <code className="text-xs px-1 rounded bg-background/50">VITE_API_ORIGIN</code> set to your valuation
           API origin. Add it in Vercel (or your host) env, redeploy the frontend, and ensure{" "}
           <code className="text-xs px-1 rounded bg-background/50">/api/asset-types</code> is served by the

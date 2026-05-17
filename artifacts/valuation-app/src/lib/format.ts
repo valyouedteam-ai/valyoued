@@ -1,5 +1,5 @@
 /**
- * Removes one pair of outer double quotes (ASCII or curly) when the whole string is wrapped that way — common LLM artifact.
+ * Removes one pair of outer double quotes (ASCII or curly) when the whole string is wrapped that way (common LLM artifact).
  */
 export function stripRedundantOuterQuotes(value: string): string {
   const s = value.trim();
