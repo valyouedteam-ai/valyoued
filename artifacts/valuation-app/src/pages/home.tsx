@@ -48,7 +48,7 @@ const quickLinks = [
   {
     href: "/portfolio",
     title: "Portfolio",
-    desc: "See diversification, shelves, and rolling USD totals.",
+    desc: "Diversification, shelves, and combined totals (your chosen display currency).",
     icon: Layers,
     emphasis: false as const,
   },
@@ -207,7 +207,7 @@ export default function HomePage() {
                   </span>
                   <span>
                     <span className="font-medium text-foreground">Snapshot.</span> How many valuations you have and
-                    what they look like added up (ballpark USD).
+                    what they look like added up after FX conversion (see Settings for currency).
                   </span>
                 </li>
                 <li className="flex gap-3">
@@ -237,8 +237,8 @@ export default function HomePage() {
               <div>
                 <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your snapshot</h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Rolled up from valuations on your account (USD approximations via the FX table). For charts and
-                  breakdowns, open analytics anytime.
+                  Rolled up from valuations on your account using mid-market style FX (for comparison only). For
+                  charts and breakdowns, open analytics anytime.
                 </p>
               </div>
               <Link
@@ -405,7 +405,7 @@ export default function HomePage() {
                     </div>
                   ) : assetTypesByCategory.length === 0 ? (
                     <p className="p-5 text-sm text-muted-foreground">
-                      No asset classes returned. Check <span className="font-mono text-xs">/api/asset-types</span>.
+                      No asset classes returned. Check <span className="font-sans text-xs">/api/asset-types</span>.
                     </p>
                   ) : (
                     <Accordion type="multiple" className="divide-y divide-border/60">

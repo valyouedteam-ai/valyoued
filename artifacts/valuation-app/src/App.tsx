@@ -9,6 +9,7 @@ import { AuthStubContext } from "@/context/AuthStubContext";
 import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { AppRoutes } from "@/app-routes";
 import { ProTierProvider } from "@/hooks/use-pro-tier";
+import { GeoCurrencyBootstrap } from "@/components/GeoCurrencyBootstrap";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -121,6 +122,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={basePath}>
           <ProTierProvider>
+            <GeoCurrencyBootstrap />
             {AUTH_STUB_MODE ? (
               <AuthStubContext.Provider value={true}>
                 <StubApiBridge />

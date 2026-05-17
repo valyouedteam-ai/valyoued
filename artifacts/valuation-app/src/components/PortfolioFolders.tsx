@@ -170,12 +170,12 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
                   <div className="flex items-center gap-2">
                     <def.Icon className="h-4 w-4" />
                     <span className="font-semibold text-sm">{def.title}</span>
-                    <Badge variant="secondary" className="font-mono text-[10px]">
+                    <Badge variant="secondary" className="font-sans text-[10px]">
                       {list.length}
                     </Badge>
                   </div>
                   {list.length > 0 && (
-                    <span className="text-[10px] font-mono text-muted-foreground">
+                    <span className="text-[10px] font-sans text-muted-foreground">
                       ≈ {formatMoney(totalIn(def.id), list[0].currency)}
                     </span>
                   )}
@@ -274,7 +274,7 @@ function FolderChip({
       <GripVertical className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
       <Icon className="h-3.5 w-3.5 text-accent shrink-0" />
       <span className="truncate max-w-[140px] font-medium">{item.title}</span>
-      <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+      <span className="font-sans text-[10px] text-muted-foreground shrink-0">
         {formatMoney(item.liveValue, item.currency)}
       </span>
     </div>

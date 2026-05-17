@@ -1,4 +1,3 @@
-import { useRoute } from "wouter";
 import { Link } from "wouter";
 import { 
   BarChart, 
@@ -12,8 +11,10 @@ import {
   Pie,
   Cell
 } from "recharts";
-import { useGetEstimateStats } from "@workspace/api-client-react";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { useGetEstimateStats, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
+import { formatUsdRollupForDisplay } from "@/lib/aggregated-money";
+import { useDisplayCurrency } from "@/hooks/use-display-currency";
+import { formatPercent } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, TrendingUp, Globe2, Shapes } from "lucide-react";
@@ -28,7 +29,19 @@ const COLORS = [
 ];
 
 export default function StatsPage() {
+  const { code: displayCcy } = useDisplayCurrency();
   const { data: stats, isLoading } = useGetEstimateStats();
+  const { data: fxSnap } = useGetFxRates({
+    query: {
+      queryKey: getGetFxRatesQueryKey(),
+      staleTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  });
+
+  const fxMult = fxSnap?.rates;
+  const fmt = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
 
   if (isLoading) {
     return (
@@ -76,35 +89,42 @@ export default function StatsPage() {
     <div className="space-y-8 max-w-6xl mx-auto pb-16">
       <div>
         <h1 className="text-3xl font-sans font-bold text-foreground">Market Aggregates</h1>
-        <p className="text-muted-foreground mt-1">Aggregates from valuations saved to your account.</p>
+        <p className="text-muted-foreground mt-1">
+          Aggregates from valuations saved to your account. Averages below are shown in {displayCcy} using
+          mid-market-style FX for comparison; change this under{" "}
+          <Link href="/settings" className="text-accent hover:underline">
+            Settings
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardDescription>Total Appraisals</CardDescription>
-            <CardTitle className="text-3xl font-mono">{stats.count}</CardTitle>
+            <CardTitle className="text-3xl font-sans tabular-nums">{stats.count}</CardTitle>
           </CardHeader>
         </Card>
         
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardDescription>Avg Baseline Value</CardDescription>
-            <CardTitle className="text-3xl font-mono">{formatCurrency(stats.averageBaselineUsd, true)}</CardTitle>
+            <CardTitle className="text-3xl font-sans tabular-nums">{fmt(stats.averageBaselineUsd)}</CardTitle>
           </CardHeader>
         </Card>
         
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardDescription>Avg Adjusted Value</CardDescription>
-            <CardTitle className="text-3xl font-mono text-accent">{formatCurrency(stats.averageAdjustedUsd, true)}</CardTitle>
+            <CardTitle className="text-3xl font-sans tabular-nums text-accent">{fmt(stats.averageAdjustedUsd)}</CardTitle>
           </CardHeader>
         </Card>
         
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardDescription>Mean Market Uplift</CardDescription>
-            <CardTitle className={`text-3xl font-mono ${stats.averageUplift > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <CardTitle className={`text-3xl font-sans tabular-nums ${stats.averageUplift > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {stats.averageUplift > 0 ? '+' : ''}{formatPercent(stats.averageUplift)}
             </CardTitle>
           </CardHeader>
@@ -199,8 +219,8 @@ export default function StatsPage() {
                 {stats.byAssetType.map((item, i) => (
                   <tr key={item.assetTypeName} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
                     <td className="px-6 py-4 font-medium">{item.assetTypeName}</td>
-                    <td className="px-6 py-4 font-mono">{item.count}</td>
-                    <td className="px-6 py-4 font-mono text-right">{formatCurrency(item.averageAdjustedUsd)}</td>
+                    <td className="px-6 py-4 font-sans tabular-nums">{item.count}</td>
+                    <td className="px-6 py-4 font-sans tabular-nums text-right">{fmt(item.averageAdjustedUsd)}</td>
                   </tr>
                 ))}
               </tbody>

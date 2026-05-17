@@ -86,7 +86,7 @@
 
   --font-sans: 'Inter', sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  --font-mono: var(--font-sans);
   --radius: .5rem;
   --spacing: 0.25rem;
 }

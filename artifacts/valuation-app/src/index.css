@@ -125,7 +125,7 @@
 
   --app-font-sans: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   --app-font-serif: "Instrument Serif", "Georgia", serif;
-  --app-font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+  --app-font-mono: var(--app-font-sans);
   --app-font-display: var(--app-font-sans);
 
   --radius: 0.75rem;

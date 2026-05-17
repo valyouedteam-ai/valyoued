@@ -56,7 +56,7 @@ export default function EstimatesPage() {
                   <div>
                     <h3 className="font-sans text-lg text-foreground group-hover:text-accent transition-colors">{est.title}</h3>
                     <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
-                      <Badge variant="secondary" className="font-mono text-xs rounded-sm bg-secondary text-secondary-foreground">{est.assetTypeName}</Badge>
+                      <Badge variant="secondary" className="font-sans text-xs rounded-sm bg-secondary text-secondary-foreground">{est.assetTypeName}</Badge>
                       <span className="text-muted-foreground flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-border"></span>
                         {formatDistanceToNow(new Date(est.createdAt), { addSuffix: true })}
@@ -66,7 +66,7 @@ export default function EstimatesPage() {
                 </div>
                 
                 <div className="text-right hidden sm:flex flex-col items-end">
-                  <div className="text-xl font-mono font-bold text-foreground">
+                  <div className="text-xl font-sans font-bold text-foreground">
                     {formatMoney(est.adjustedMid, est.currency)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">

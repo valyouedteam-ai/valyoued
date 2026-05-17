@@ -7,11 +7,21 @@ import {
   CreditCard,
   Download,
   ExternalLink,
+  Globe2,
   Shield,
   Sparkles,
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useDisplayCurrency } from "@/hooks/use-display-currency";
+import { DISPLAY_CURRENCY_OPTIONS, getStoredReferenceCurrency, getSessionGeoCountry, countryCodeToDisplayCurrency } from "@/lib/reference-currency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
@@ -96,6 +106,16 @@ function SettingsPageInner({
   onOpenProfile?: () => void;
 }) {
   const { toast } = useToast();
+  const { code: displayCurrencyCode, setCode: setDisplayCurrency } = useDisplayCurrency();
+  const geoCountry = (() => {
+    try {
+      return getSessionGeoCountry();
+    } catch {
+      return null;
+    }
+  })();
+  const geoLedToCurrency =
+    Boolean(geoCountry) && countryCodeToDisplayCurrency(geoCountry) === displayCurrencyCode;
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -279,8 +299,54 @@ function SettingsPageInner({
               <strong className="text-foreground">Paddle</strong> or{" "}
               <strong className="text-foreground">Lemon Squeezy</strong> can use comparable economics with fewer
               tax filings. Wire their webhooks into{" "}
-              <code className="font-mono text-[11px]">billing_subscriptions</code> using the same contract as the default
+              <code className="font-sans text-[11px]">billing_subscriptions</code> using the same contract as the default
               integration.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-card/40 backdrop-blur-sm md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Globe2 className="h-5 w-5 text-accent" />
+              Portfolio &amp; analytics currency
+            </CardTitle>
+            <CardDescription>
+              Combined totals on the home snapshot, portfolio, stats, and markets use one display currency so
+              mixed-currency valuations can be compared. Individual reports stay in each item&apos;s own
+              currency.{" "}
+              <span className="text-foreground font-medium tabular-nums">
+                Now showing {displayCurrencyCode}
+                {getStoredReferenceCurrency()
+                  ? " (pinned)"
+                  : geoLedToCurrency
+                    ? " (from network location hint)"
+                    : " (from browser locale)"}
+                .
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="max-w-md space-y-2">
+            <Select
+              value={getStoredReferenceCurrency() ?? "auto"}
+              onValueChange={(v) => setDisplayCurrency(v === "auto" ? null : v)}
+            >
+              <SelectTrigger aria-label="Display currency for combined totals">
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Automatic (from browser locale)</SelectItem>
+                {DISPLAY_CURRENCY_OPTIONS.map((o) => (
+                  <SelectItem key={o.code} value={o.code}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Automatic order: pinned currency (if any), then a coarse country from your connection when the API
+              sees a supported edge header (Cloudflare, Vercel, or CloudFront), then your browser locale.
+              Unknown cases default to EUR. Not for tax or bank rates.
             </p>
           </CardContent>
         </Card>

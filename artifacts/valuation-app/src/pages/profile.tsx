@@ -104,7 +104,7 @@ function ProfilePageClerk() {
             ) : null}
             <div className="sm:col-span-2">
               <dt className="text-ui-meta text-muted-foreground">User ID</dt>
-              <dd className="mt-0.5 break-all font-mono text-sm text-foreground">{user.id}</dd>
+              <dd className="mt-0.5 break-all font-sans text-sm text-foreground">{user.id}</dd>
             </div>
             <div>
               <dt className="text-ui-meta text-muted-foreground">Member since</dt>

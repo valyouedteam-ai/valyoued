@@ -26,6 +26,8 @@ import { useListEstimates, listEstimates, useGetFxRates, getGetFxRatesQueryKey }
 import type { EstimateSummary } from "@workspace/api-client-react";
 import { convertToUsdApprox } from "@workspace/fx-usd";
 import { formatMoney, formatPercent } from "@/lib/format";
+import { formatUsdRollupForDisplay } from "@/lib/aggregated-money";
+import { useDisplayCurrency } from "@/hooks/use-display-currency";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -97,19 +99,6 @@ function shelfBadgeLabel(shelf: PortfolioShelf): string {
   return "Other";
 }
 
-/** Roll-up totals use USD internally; present with the viewer's locale. */
-function formatConvertedRollupUsd(value: number) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return formatMoney(value, "USD");
-  }
-}
-
 const TICK_INTERVAL_MS = 2500;
 const POLL_INTERVAL_MS = 60_000;
 
@@ -129,6 +118,7 @@ function makeTick(prev: number, seed: number): Tick {
 }
 
 export default function PortfolioPage() {
+  const { code: displayCcy } = useDisplayCurrency();
   const { data: estimates, isLoading, dataUpdatedAt } = useListEstimates({
     query: {
       refetchInterval: POLL_INTERVAL_MS,
@@ -233,6 +223,10 @@ export default function PortfolioPage() {
 
   const lastSync = dataUpdatedAt ? Math.max(0, Math.floor((now - dataUpdatedAt) / 1000)) : 0;
 
+  const fxMult = fxSnap?.rates;
+
+  const formatRollup = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
+
   if (isLoading) {
     return (
       <div className="space-y-8 max-w-6xl mx-auto">
@@ -299,13 +293,20 @@ export default function PortfolioPage() {
         <Card className="lg:col-span-1 bg-card/60 backdrop-blur border-accent/20 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent pointer-events-none" />
           <CardHeader className="pb-2 relative">
-            <CardDescription className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider">
+            <CardDescription className="flex items-center gap-2 text-xs font-sans uppercase tracking-wider">
               <Activity className="h-3 w-3 text-accent" />
               Approximate portfolio total
             </CardDescription>
-            <CardTitle className="text-3xl font-mono tabular-nums tracking-tight">
-              {formatConvertedRollupUsd(totalPortfolioUsd)}
+            <CardTitle className="text-3xl font-sans tabular-nums tracking-tight">
+              {formatRollup(totalPortfolioUsd)}
             </CardTitle>
+            <p className="mt-1.5 text-xs text-muted-foreground font-sans font-normal leading-snug">
+              Combined total in {displayCcy} using the same FX table as analytics (approximate). Each valuation
+              still uses its own currency on the report.{" "}
+              <Link href="/settings" className="font-medium text-accent hover:underline">
+                Change display currency
+              </Link>
+            </p>
           </CardHeader>
           <CardContent className="relative">
             <div className={cn(
@@ -313,7 +314,7 @@ export default function PortfolioPage() {
               totalChange >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
             )}>
               {totalChange >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              <span className="font-mono">{formatPercent(totalChange, true)}</span>
+              <span className="font-sans">{formatPercent(totalChange, true)}</span>
               <span className="text-muted-foreground font-sans">vs. baseline valuations</span>
             </div>
           </CardContent>
@@ -326,7 +327,7 @@ export default function PortfolioPage() {
                 <PieIcon className="h-4 w-4 text-accent" />
                 Diversification
               </CardTitle>
-              <Badge variant="outline" className="font-mono">
+              <Badge variant="outline" className="font-sans">
                 Score {diversificationScore}/100
               </Badge>
             </div>
@@ -363,7 +364,7 @@ export default function PortfolioPage() {
                       borderRadius: 6,
                       fontSize: 12,
                     }}
-                    formatter={(v: any, n: any) => [formatConvertedRollupUsd(Number(v)), n]}
+                    formatter={(v: any, n: any) => [formatRollup(Number(v)), n]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -372,7 +373,7 @@ export default function PortfolioPage() {
                   <div key={d.name} className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color }} />
                     <span className="truncate flex-1">{d.name}</span>
-                    <span className="font-mono tabular-nums text-muted-foreground">
+                    <span className="font-sans tabular-nums text-muted-foreground">
                       {(d.pct * 100).toFixed(0)}%
                     </span>
                   </div>
@@ -424,10 +425,10 @@ export default function PortfolioPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-lg font-sans font-semibold tracking-tight">{section.title}</h3>
                   <div className="text-right">
-                    <span className="font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-                      {formatConvertedRollupUsd(section.sectionTotalUsd)}
+                    <span className="font-sans text-sm font-semibold tabular-nums text-muted-foreground">
+                      {formatRollup(section.sectionTotalUsd)}
                     </span>
-                    <Badge variant="outline" className="ml-2 font-mono text-xs">
+                    <Badge variant="outline" className="ml-2 font-sans text-xs">
                       {section.albums.reduce((n, a) => n + a.items.length, 0)} items
                     </Badge>
                   </div>
@@ -447,16 +448,16 @@ export default function PortfolioPage() {
                       style={{ background: PALETTE[colorIdx] }}
                     />
                     <CardTitle className="font-sans text-lg">{album.name}</CardTitle>
-                    <Badge variant="secondary" className="font-mono">
+                    <Badge variant="secondary" className="font-sans">
                       {album.items.length} item{album.items.length === 1 ? "" : "s"}
                     </Badge>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono font-semibold tabular-nums">
-                      {formatConvertedRollupUsd(album.totalUsd)}
+                    <div className="font-sans font-semibold tabular-nums">
+                      {formatRollup(album.totalUsd)}
                     </div>
                     <div className={cn(
-                      "text-xs font-mono",
+                      "text-xs font-sans",
                       album.change >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                     )}>
                       {formatPercent(album.change, true)}
@@ -498,7 +499,7 @@ export default function PortfolioPage() {
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <thead className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground border-b border-border">
                     <tr>
                       <th className="text-left px-3 py-3">Asset</th>
                       <th className="text-left px-2 py-3 hidden md:table-cell">Class</th>
@@ -518,7 +519,7 @@ export default function PortfolioPage() {
                             <Link href={`/estimates/${p.id}`} className="font-medium hover:text-accent transition-colors line-clamp-1">
                               {p.title}
                             </Link>
-                            <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                            <div className="text-[10px] font-sans text-muted-foreground mt-0.5">
                               {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
                             </div>
                           </td>
@@ -530,12 +531,12 @@ export default function PortfolioPage() {
                               {shelfBadgeLabel(p.portfolioShelf)}
                             </Badge>
                           </td>
-                          <td className="px-2 py-3 text-right font-mono tabular-nums text-muted-foreground">
+                          <td className="px-2 py-3 text-right font-sans tabular-nums text-muted-foreground">
                             {formatMoney(p.baselineMid, p.currency)}
                           </td>
                           <td className="px-2 py-3 text-right">
                             <div className={cn(
-                              "font-mono tabular-nums font-semibold",
+                              "font-sans tabular-nums font-semibold",
                               p.tickDir === "up" && "text-green-600 dark:text-green-400",
                               p.tickDir === "down" && "text-red-600 dark:text-red-400",
                             )}>
@@ -543,7 +544,7 @@ export default function PortfolioPage() {
                             </div>
                           </td>
                           <td className={cn(
-                            "px-2 py-3 text-right font-mono tabular-nums font-medium",
+                            "px-2 py-3 text-right font-sans tabular-nums font-medium",
                             isUp ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                           )}>
                             {formatPercent(p.changeFromBaseline, true)}
@@ -624,7 +625,7 @@ function AssetBox({ item, onListing }: { item: BoxItem; onListing: () => void })
               <h4 className="font-sans text-sm font-semibold leading-tight line-clamp-2 group-hover:text-accent transition-colors">
                 {item.title}
               </h4>
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">
+              <p className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground mt-1">
                 {item.assetTypeName}
               </p>
             </div>
@@ -642,7 +643,7 @@ function AssetBox({ item, onListing }: { item: BoxItem; onListing: () => void })
         <div className="space-y-1">
           <div
             className={cn(
-              "font-mono text-xl font-semibold tabular-nums leading-none",
+              "font-sans text-xl font-semibold tabular-nums leading-none",
               item.tickDir === "up" && "text-green-600 dark:text-green-400",
               item.tickDir === "down" && "text-red-600 dark:text-red-400",
               item.tickDir === "flat" && "text-foreground",
@@ -657,7 +658,7 @@ function AssetBox({ item, onListing }: { item: BoxItem; onListing: () => void })
               <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />
             )}
             <span className={cn(
-              "font-mono tabular-nums",
+              "font-sans tabular-nums",
               isUp ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400",
             )}>
               {formatPercent(item.changeFromBaseline, true)}

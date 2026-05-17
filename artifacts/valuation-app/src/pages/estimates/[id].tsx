@@ -160,21 +160,21 @@ export default function EstimateReportPage() {
 
       <header className="space-y-6 mb-12">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge variant="outline" className="font-mono bg-background px-3 py-1 text-xs tracking-widest uppercase border-border/50 shadow-sm">
+          <Badge variant="outline" className="font-sans bg-background px-3 py-1 text-xs tracking-widest uppercase border-border/50 shadow-sm">
             {assetTypeName}
           </Badge>
           <Badge
             variant={savedTierPro ? "default" : "secondary"}
-            className={`font-mono px-3 py-1 text-xs tracking-widest uppercase shadow-sm ${
+            className={`font-sans px-3 py-1 text-xs tracking-widest uppercase shadow-sm ${
               savedTierPro ? "bg-accent hover:bg-accent text-accent-foreground" : ""
             }`}
           >
             {savedTierPro ? "PRO REPORT" : "FREE REPORT"}
           </Badge>
-          <Badge variant="outline" className="font-mono px-3 py-1 text-xs tracking-widest border-border/50">
+          <Badge variant="outline" className="font-sans px-3 py-1 text-xs tracking-widest border-border/50">
             {sellerRegion ? `${sellerRegion} · ${ccy}` : ccy}
           </Badge>
-          <span className="text-xs text-muted-foreground font-mono">{formatDate(estimate.createdAt)}</span>
+          <span className="text-xs text-muted-foreground font-sans">{formatDate(estimate.createdAt)}</span>
         </div>
 
         <div>
@@ -197,8 +197,8 @@ export default function EstimateReportPage() {
               <CardDescription>Based on comparable sales</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-mono font-bold tracking-tight text-foreground">{fmt(estimate.baselineMid)}</div>
-              <div className="text-sm text-muted-foreground mt-2 font-mono">
+              <div className="text-4xl font-sans font-bold tracking-tight text-foreground">{fmt(estimate.baselineMid)}</div>
+              <div className="text-sm text-muted-foreground mt-2 font-sans">
                 Range: {fmt(estimate.baselineLow, true)} – {fmt(estimate.baselineHigh, true)}
               </div>
               <p className="text-sm mt-4 text-foreground/80 leading-relaxed border-t border-border/50 pt-4">
@@ -217,7 +217,7 @@ export default function EstimateReportPage() {
                 </div>
                 <Badge
                   variant="outline"
-                  className={`font-mono text-xs ${
+                  className={`font-sans text-xs ${
                     uplift > 0
                       ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900"
                       : uplift < 0
@@ -232,8 +232,8 @@ export default function EstimateReportPage() {
               <CardDescription>Current real-time pricing power</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-mono font-bold tracking-tight text-foreground">{fmt(estimate.adjustedMid)}</div>
-              <div className="text-sm text-muted-foreground mt-2 font-mono">
+              <div className="text-4xl font-sans font-bold tracking-tight text-foreground">{fmt(estimate.adjustedMid)}</div>
+              <div className="text-sm text-muted-foreground mt-2 font-sans">
                 Range: {fmt(estimate.adjustedLow, true)} – {fmt(estimate.adjustedHigh, true)}
               </div>
               <p className="text-sm mt-4 text-foreground/80 leading-relaxed border-t border-border/50 pt-4">
@@ -300,7 +300,7 @@ export default function EstimateReportPage() {
                   <Sparkles className="h-4 w-4 mr-2" />
                   Activate Pro preview
                 </Button>
-                <p className="text-[11px] text-muted-foreground font-mono mt-3 uppercase tracking-wider">
+                <p className="text-[11px] text-muted-foreground font-sans mt-3 uppercase tracking-wider">
                   Toggle anytime · Uses the Pro switch in the header
                 </p>
               </CardContent>
@@ -341,7 +341,7 @@ export default function EstimateReportPage() {
                           <CircleDot className={`h-4 w-4 mt-1 shrink-0 ${dot}`} />
                           {stripQ(ev.title)}
                         </CardTitle>
-                        <Badge variant="outline" className="font-mono text-[10px] uppercase shrink-0">
+                        <Badge variant="outline" className="font-sans text-[10px] uppercase shrink-0">
                           {ev.scope}
                         </Badge>
                       </div>
@@ -350,11 +350,11 @@ export default function EstimateReportPage() {
                       <p className="text-sm text-foreground/80 leading-relaxed">{stripQ(ev.summary)}</p>
                       {(ev.source || ev.url || ev.publishedAt) && (
                         <div className="text-xs text-muted-foreground mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-                          {ev.source && <span className="font-mono uppercase tracking-wider">{ev.source}</span>}
+                          {ev.source && <span className="font-sans uppercase tracking-wider">{ev.source}</span>}
                           {ev.publishedAt && (
                             <>
                               {ev.source && <span className="opacity-50">·</span>}
-                              <span className="font-mono">
+                              <span className="font-sans">
                                 {(() => {
                                   const d = new Date(ev.publishedAt);
                                   return isNaN(d.getTime())
@@ -388,7 +388,7 @@ export default function EstimateReportPage() {
               {isMobile ? "International Arbitrage" : "Local Market"}
             </h3>
             {!isMobile && (
-              <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-widest">
+              <Badge variant="outline" className="font-sans text-[10px] uppercase tracking-widest">
                 Local-only asset
               </Badge>
             )}
@@ -436,15 +436,15 @@ export default function EstimateReportPage() {
                         <div className="text-sm">{option.marketplace}</div>
                         <div className="text-xs text-muted-foreground line-clamp-1">{option.demandNote}</div>
                       </TableCell>
-                      <TableCell className="text-right font-mono">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
-                      <TableCell className="text-right font-mono text-muted-foreground text-xs">
+                      <TableCell className="text-right font-sans">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
+                      <TableCell className="text-right font-sans text-muted-foreground text-xs">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="cursor-help underline decoration-dotted underline-offset-2">
                               -{formatMoney(friction, option.currency)}
                             </span>
                           </TooltipTrigger>
-                          <TooltipContent side="left" className="text-xs space-y-1 font-mono">
+                          <TooltipContent side="left" className="text-xs space-y-1 font-sans">
                             <div className="flex justify-between gap-4">
                               <span className="text-muted-foreground">Marketplace fees</span>
                               <span>-{formatMoney(option.estimatedFees, option.currency)}</span>
@@ -460,7 +460,7 @@ export default function EstimateReportPage() {
                           </TooltipContent>
                         </Tooltip>
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-base">{formatMoney(option.netToSeller, option.currency)}</TableCell>
+                      <TableCell className="text-right font-sans font-bold text-base">{formatMoney(option.netToSeller, option.currency)}</TableCell>
                       <TableCell className="text-right">
                         {postUrl ? (
                           <a
@@ -502,8 +502,8 @@ export default function EstimateReportPage() {
                 <Card key={i} className="bg-card/50 border-border/50 shadow-sm flex flex-col">
                   <CardHeader className="p-4 pb-2">
                     <div className="flex justify-between items-start">
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono">{comp.source}</Badge>
-                      <span className="font-mono font-bold">{fmt(comp.price)}</span>
+                      <Badge variant="outline" className="text-[10px] uppercase font-sans">{comp.source}</Badge>
+                      <span className="font-sans font-bold">{fmt(comp.price)}</span>
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-2 flex-1 flex flex-col">
@@ -517,7 +517,7 @@ export default function EstimateReportPage() {
                       )}
                     </div>
                     <div className="mt-auto pt-3 border-t border-border/40">
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-2">
+                      <div className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground mb-2">
                         See live listings on
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -558,7 +558,7 @@ export default function EstimateReportPage() {
                 </div>
                 <div>
                   <h3 className="text-2xl font-sans font-bold text-foreground">Pro Execution Strategy</h3>
-                  <p className="text-sm text-muted-foreground font-mono mt-1">TACTICAL DIRECTIVES FOR MAXIMUM YIELD</p>
+                  <p className="text-sm text-muted-foreground font-sans mt-1">TACTICAL DIRECTIVES FOR MAXIMUM YIELD</p>
                 </div>
               </div>
 
@@ -613,7 +613,7 @@ export default function EstimateReportPage() {
                       <CardDescription>Initial listing or ask</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-mono font-bold text-accent">{fmt(proInsightsSanitized.anchorPrice)}</div>
+                      <div className="text-3xl font-sans font-bold text-accent">{fmt(proInsightsSanitized.anchorPrice)}</div>
                     </CardContent>
                   </Card>
 
@@ -623,7 +623,7 @@ export default function EstimateReportPage() {
                       <CardDescription>Absolute minimum acceptable</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-mono font-bold text-destructive">{fmt(proInsightsSanitized.walkAwayPrice)}</div>
+                      <div className="text-3xl font-sans font-bold text-destructive">{fmt(proInsightsSanitized.walkAwayPrice)}</div>
                     </CardContent>
                   </Card>
 

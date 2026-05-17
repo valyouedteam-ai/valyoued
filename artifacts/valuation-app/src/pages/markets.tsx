@@ -1,7 +1,9 @@
 import { Link } from "wouter";
 import { useMemo } from "react";
-import { useGetEstimateStats, useListEstimates } from "@workspace/api-client-react";
+import { useGetEstimateStats, useListEstimates, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
 import { formatMoney, formatPercent } from "@/lib/format";
+import { formatUsdRollupForDisplay } from "@/lib/aggregated-money";
+import { useDisplayCurrency } from "@/hooks/use-display-currency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,9 +20,21 @@ import {
 import { useProTier } from "@/hooks/use-pro-tier";
 
 export default function MarketsPage() {
+  const { code: displayCcy } = useDisplayCurrency();
   const { data: stats, isLoading: statsLoading } = useGetEstimateStats();
   const { data: estimates, isLoading: listLoading } = useListEstimates();
+  const { data: fxSnap } = useGetFxRates({
+    query: {
+      queryKey: getGetFxRatesQueryKey(),
+      staleTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  });
   const { isPro } = useProTier();
+
+  const fxMult = fxSnap?.rates;
+  const fmtUsd = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
 
   const rows = useMemo(() => (Array.isArray(estimates) ? estimates : []), [estimates]);
 
@@ -30,10 +44,10 @@ export default function MarketsPage() {
     <div className="space-y-10 pb-16">
       <header className="space-y-4 pt-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-widest">
+          <Badge variant="outline" className="font-sans text-[10px] uppercase tracking-widest">
             Cross-market
           </Badge>
-          <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-widest">
+          <Badge variant="secondary" className="font-sans text-[10px] uppercase tracking-widest">
             Comparative pricing
           </Badge>
         </div>
@@ -42,13 +56,16 @@ export default function MarketsPage() {
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
           See which regions show up most often as the strongest match across your saved valuations.
-          Dollar amounts here use the same rough exchange math as your{" "}
+          Combined averages here use the same rough FX conversion as your{" "}
           <Link href="/portfolio" className="text-accent hover:underline">
             portfolio
           </Link>{" "}
-          so you can compare totals at a glance. They are guides, not live bank rates. Open any
-          report for fees, shipping, and marketplace links, especially with{" "}
-          <span className="font-medium text-foreground">Pro</span> turned on.
+          (shown in {displayCcy}; change under{" "}
+          <Link href="/settings" className="text-accent hover:underline">
+            Settings
+          </Link>
+          ). They are guides, not live bank rates. Open any report for fees, shipping, and marketplace links,
+          especially with <span className="font-medium text-foreground">Pro</span> turned on.
         </p>
         {!isPro ? (
           <p className="text-sm text-muted-foreground max-w-2xl">
@@ -71,7 +88,7 @@ export default function MarketsPage() {
               <CardDescription className="flex items-center gap-1.5 text-xs">
                 <LayoutList className="h-3.5 w-3.5" /> Valuations
               </CardDescription>
-              <CardTitle className="text-3xl font-mono tabular-nums">{stats.count}</CardTitle>
+              <CardTitle className="text-3xl font-sans tabular-nums">{stats.count}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
@@ -79,24 +96,24 @@ export default function MarketsPage() {
               <CardDescription className="flex items-center gap-1.5 text-xs">
                 <TrendingUp className="h-3.5 w-3.5" /> Avg. market uplift
               </CardDescription>
-              <CardTitle className="text-3xl font-mono tabular-nums">
+              <CardTitle className="text-3xl font-sans tabular-nums">
                 {formatPercent(stats.averageUplift)}
               </CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Avg. baseline (approx. USD)</CardDescription>
-              <CardTitle className="text-2xl font-mono tabular-nums">
-                {formatMoney(stats.averageBaselineUsd, "USD", true)}
+              <CardDescription className="text-xs">Avg. baseline (converted to {displayCcy})</CardDescription>
+              <CardTitle className="text-2xl font-sans tabular-nums">
+                {fmtUsd(stats.averageBaselineUsd)}
               </CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Avg. adjusted value (approx. USD)</CardDescription>
-              <CardTitle className="text-2xl font-mono tabular-nums">
-                {formatMoney(stats.averageAdjustedUsd, "USD", true)}
+              <CardDescription className="text-xs">Avg. adjusted (converted to {displayCcy})</CardDescription>
+              <CardTitle className="text-2xl font-sans tabular-nums">
+                {fmtUsd(stats.averageAdjustedUsd)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -130,7 +147,7 @@ export default function MarketsPage() {
                   {stats.topArbitrageRegions.map((r) => (
                     <TableRow key={r.region}>
                       <TableCell className="font-medium">{r.region}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{r.count}</TableCell>
+                      <TableCell className="text-right font-sans tabular-nums">{r.count}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -150,11 +167,11 @@ export default function MarketsPage() {
               By asset class
             </CardTitle>
             <CardDescription>
-              Average adjusted value by type, using the same approximate US dollar conversion as{" "}
+              Average adjusted value by type, using the same approximate conversion as{" "}
               <Link href="/portfolio" className="text-accent hover:underline">
                 your portfolio
-              </Link>
-              . Reports still show each item in its own currency.
+              </Link>{" "}
+              (totals in {displayCcy} for comparison). Reports still show each item in its own currency.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -166,16 +183,16 @@ export default function MarketsPage() {
                   <TableRow>
                     <TableHead>Asset type</TableHead>
                     <TableHead className="text-right">Items</TableHead>
-                    <TableHead className="text-right">Avg. (approx. USD)</TableHead>
+                    <TableHead className="text-right">Avg. ({displayCcy}, approx.)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {stats.byAssetType.map((t) => (
                     <TableRow key={t.assetTypeName}>
                       <TableCell className="font-medium">{t.assetTypeName}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{t.count}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
-                        {formatMoney(t.averageAdjustedUsd, "USD", true)}
+                      <TableCell className="text-right font-sans tabular-nums">{t.count}</TableCell>
+                      <TableCell className="text-right font-sans text-sm tabular-nums">
+                        {fmtUsd(t.averageAdjustedUsd)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -224,7 +241,7 @@ export default function MarketsPage() {
                   <TableRow key={e.id}>
                     <TableCell className="font-medium max-w-[200px] truncate">{e.title}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">{e.assetTypeName}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="text-right font-sans text-sm">
                       {formatMoney(e.adjustedMid, e.currency)}
                     </TableCell>
                     <TableCell className="text-sm">{e.bestArbitrageRegion || "N/A"}</TableCell>

@@ -76,7 +76,7 @@ function AdminDashboardInner({
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Aggregated usage only, subject to GDPR minimisation and your{" "}
-            <code className="font-mono text-[11px]">ADMIN_USER_IDS</code> allow-list.
+            <code className="font-sans text-[11px]">ADMIN_USER_IDS</code> allow-list.
           </p>
         </div>
       </div>
@@ -172,7 +172,7 @@ function AdminDashboardInner({
                       </TableCell>
                       <TableCell className="text-xs">{e.eventType}</TableCell>
                       <TableCell className="text-[11px] max-w-[120px] truncate">{e.userId ?? "None"}</TableCell>
-                      <TableCell className="font-mono text-[10px] max-w-md truncate">
+                      <TableCell className="font-sans text-[10px] max-w-md truncate">
                         {JSON.stringify(e.payload)}
                       </TableCell>
                     </TableRow>

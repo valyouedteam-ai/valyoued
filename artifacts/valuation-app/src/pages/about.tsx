@@ -7,11 +7,7 @@ import {
   BrainCircuit,
   Globe2,
   Megaphone,
-  TrendingUp,
-  ShieldCheck,
-  Clock,
   Scale,
-  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,54 +18,23 @@ const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 const STEPS = [
   {
     icon: Camera,
-    title: "Snap or describe your asset",
-    body:
-      "Drop in a photo or fill out a short form: watches, cars, handbags, art, real estate, sneakers, wine, even small businesses. Our vision model auto-fills the brand, model, year and condition for you.",
+    title: "Add your asset",
+    body: "Upload a photo or describe the item. We infer brand, model, and condition when we can.",
   },
   {
     icon: BrainCircuit,
-    title: "AI prices it against the global market",
-    body:
-      "We pull live comparables, reference real auction data, scan world events that move the price, and synthesize a baseline range plus an adjusted, condition-aware estimate.",
+    title: "Get a market-backed range",
+    body: "We compare to live listings and sales, then show a baseline band and a condition-adjusted mid.",
   },
   {
     icon: Globe2,
-    title: "See where it sells for the most",
-    body:
-      "Every valuation is benchmarked across regions and currencies, so you know whether to list in your home market, ship abroad, or hold for a better window.",
+    title: "Compare regions",
+    body: "See how price and demand differ by market and currency before you commit to a venue.",
   },
   {
     icon: Megaphone,
-    title: "Generate the listing in one click",
-    body:
-      "We write the headline, description, hashtags, photo angles and pricing strategy for the marketplace where your asset is most likely to sell, then drop you straight onto that platform's create-listing page.",
-  },
-];
-
-const FEATURES = [
-  {
-    icon: TrendingUp,
-    title: "Valuer-grade reports, not guesses",
-    body:
-      "Baseline range, adjusted mid, market sentiment overlay, comparable sales, and a final narrative: the same structure a private appraiser would charge hundreds for.",
-  },
-  {
-    icon: Globe2,
-    title: "International arbitrage built in",
-    body:
-      "We surface where the same asset trades for more abroad, including currency, fees, and shipping reality, so you capture the real upside, not just a number on a screen.",
-  },
-  {
-    icon: Clock,
-    title: "Pro-tier timing & negotiation tactics",
-    body:
-      "Optimal sell window, anchor price, walk-away price, and negotiation playbook for buyers who push back. Built for sellers who want to win the conversation, not just price the asset.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Your data, your account",
-    body:
-      "Every valuation is private to your account. We don't share your photos, prices, or portfolio with anyone. Sign in once and your full history is one click away.",
+    title: "Move toward a listing",
+    body: "We draft listing copy and link you toward creating the ad where that asset type tends to sell.",
   },
 ];
 
@@ -108,56 +73,29 @@ export default function AboutPage() {
         </div>
       </nav>
 
-      <section className="relative z-10 px-6 pt-12 pb-16 max-w-4xl mx-auto text-center space-y-6">
+      <section className="relative z-10 px-6 pt-12 pb-12 max-w-4xl mx-auto text-center space-y-5">
         <Badge variant="outline" className="inline-flex items-center gap-1.5 border-accent/40 bg-accent/10 text-accent-foreground px-3 py-1 text-ui-caps tracking-normal">
           <Sparkles className="h-3 w-3 mr-1.5 text-accent" />
           About ValYoued
         </Badge>
         <h1 className="text-4xl md:text-6xl font-sans font-semibold tracking-tight leading-[1.05] text-white">
-          Financial valuations,
-          <br />
+          How{" "}
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 via-accent to-blue-400">
-            for everyone.
-          </span>
+            ValYoued
+          </span>{" "}
+          works
         </h1>
         <p className="text-lg text-white/70 max-w-2xl mx-auto leading-relaxed">
-          For too long, knowing what something is really worth, and where to sell it for the most,
-          has been a privilege of auction houses, private bankers, and a handful of dealers. ValYoued
-          puts that same intelligence in everyone's pocket.
+          You describe or photograph an asset; we benchmark it against live markets and hand you a
+          structured valuation plus help getting it listed.
         </p>
       </section>
 
       <section className="relative z-10 px-6 pb-20 max-w-5xl mx-auto">
-        <div className="rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/15 via-white/5 to-transparent p-8 md:p-12 backdrop-blur-sm">
-          <div className="flex items-start gap-4 mb-4">
-            <div className="h-12 w-12 rounded-xl bg-accent/20 ring-1 ring-accent/40 flex items-center justify-center shrink-0">
-              <Heart className="h-6 w-6 text-accent" />
-            </div>
-            <div>
-              <div className="text-ui-caps text-accent/80 mb-1 tracking-normal">
-                Our mission
-              </div>
-              <h2 className="text-2xl md:text-3xl font-sans font-semibold text-white">
-                Make financial evaluations more accessible.
-              </h2>
-            </div>
-          </div>
-          <p className="text-base md:text-lg text-white/75 leading-relaxed">
-            We believe everyone, not just professional appraisers and high-net-worth clients,
-            deserves a clear, honest answer to "what is this worth, and where should I sell it?"
-            ValYoued blends real market data with modern AI to deliver the kind of valuation that used
-            to cost hundreds of dollars and take weeks. In seconds. For free.
-          </p>
-        </div>
-      </section>
-
-      <section className="relative z-10 px-6 pb-20 max-w-5xl mx-auto">
         <div className="text-center mb-10">
-          <div className="text-ui-caps text-accent/80 mb-2 tracking-normal">
-            How it works
-          </div>
+          <div className="text-ui-caps text-accent/80 mb-2 tracking-normal">Flow</div>
           <h2 className="text-3xl md:text-4xl font-sans font-semibold text-white">
-            From asset to ad in four steps
+            Four steps from input to listing
           </h2>
         </div>
         <div className="grid gap-5 md:grid-cols-2">
@@ -183,54 +121,25 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="relative z-10 px-6 pb-20 max-w-5xl mx-auto">
-        <div className="text-center mb-10">
-          <div className="text-ui-caps text-accent/80 mb-2 tracking-normal">
-            Key features
-          </div>
-          <h2 className="text-3xl md:text-4xl font-sans font-semibold text-white">
-            What you get with every valuation
-          </h2>
-        </div>
-        <div className="grid gap-5 md:grid-cols-2">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className="rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-accent/40 transition-colors"
-            >
-              <div className="flex items-start gap-4">
-                <div className="h-10 w-10 rounded-lg bg-accent/15 ring-1 ring-accent/30 flex items-center justify-center shrink-0">
-                  <f.icon className="h-5 w-5 text-accent" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">{f.title}</h3>
-                  <p className="text-sm text-white/70 leading-relaxed">{f.body}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className="relative z-10 px-6 pb-24 max-w-3xl mx-auto text-center">
         <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/15 to-transparent p-8 md:p-10">
           <Scale className="h-8 w-8 text-accent mx-auto mb-4" />
           <h2 className="text-2xl md:text-3xl font-sans font-semibold text-white mb-3">
-            Try it for free.
+            Try it free
           </h2>
           <p className="text-white/70 mb-6 max-w-xl mx-auto">
-            Run your first valuation in under a minute. No credit card. Create a free account at the
-            end to unlock your full report.
+            First valuation takes about a minute. Sign in after if you want to keep reports in your
+            account.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/start">
               <Button size="lg" className="bg-accent hover:bg-accent/90 shadow-[0_0_24px_-6px_hsl(217_91%_60%/0.7)]">
-                Start your first valuation <ArrowRight className="ml-2 h-4 w-4" />
+                Start <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
             <Link href="/sign-in">
               <Button size="lg" variant="ghost" className="text-white border border-white/20 hover:bg-white/10">
-                I have an account
+                Sign in
               </Button>
             </Link>
           </div>

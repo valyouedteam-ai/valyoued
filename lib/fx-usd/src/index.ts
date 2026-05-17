@@ -68,3 +68,21 @@ export function convertToUsdApprox(
   const rate = table[c] ?? FX_TO_USD[c] ?? 1;
   return amount * rate;
 }
+
+/**
+ * Inverse of {@link convertToUsdApprox} using the same multiplier table
+ * (multiply amount in foreign CCY by rate to get USD).
+ */
+export function convertFromUsdApprox(
+  amountUsd: number,
+  currencyCode: string | null | undefined,
+  multipliers?: Readonly<Record<string, number>> | null,
+): number {
+  if (!Number.isFinite(amountUsd)) return 0;
+  const c = (currencyCode ?? "USD").trim().toUpperCase();
+  if (c === "USD") return amountUsd;
+  const table = multipliers ?? FX_TO_USD;
+  const rate = table[c] ?? FX_TO_USD[c] ?? 1;
+  if (!Number.isFinite(rate) || rate <= 0) return amountUsd;
+  return amountUsd / rate;
+}
