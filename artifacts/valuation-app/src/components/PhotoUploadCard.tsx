@@ -10,13 +10,20 @@ import { useToast } from "@/hooks/use-toast";
 interface Props {
   assetTypeId: string | undefined;
   assetTypeName: string | undefined;
+  /** Top-level category from asset type (e.g. "Real Estate") — adjusts instructional copy. */
+  assetCategory?: string;
   onAutoFill: (extracted: Record<string, string>, suggestedTitle?: string) => void;
 }
 
 const ALLOWED_TYPES: VisionExtractInputMimeType[] = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB raw file (becomes ~6.7MB base64)
 
-export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Props) {
+export function PhotoUploadCard({
+  assetTypeId,
+  assetTypeName,
+  assetCategory,
+  onAutoFill,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [filename, setFilename] = useState<string | null>(null);
@@ -26,6 +33,7 @@ export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Prop
   const [dragOver, setDragOver] = useState(false);
   const { toast } = useToast();
   const extract = useExtractFromPhoto();
+  const realEstate = assetCategory === "Real Estate";
 
   // Bumped on each new file or asset-type change so we can drop stale responses.
   const requestTokenRef = useRef(0);
@@ -111,7 +119,9 @@ export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Prop
     if (!assetTypeId) {
       toast({
         title: "Pick an asset class first",
-        description: "We need to know what kind of item this is before analysing the photo.",
+        description: realEstate
+          ? "Choose a property type first so we know which details to look for in the photo."
+          : "We need to know what kind of item this is before analysing the photo.",
         variant: "destructive",
       });
       return;
@@ -136,7 +146,9 @@ export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Prop
               title: "Couldn't read much from this photo",
               description:
                 data.notes ||
-                "Try a sharper, well-lit image showing the front of the item, or fill in the form manually.",
+                (realEstate
+                  ? "Try a clear exterior shot, main living space, or kitchen—or fill in the form manually."
+                  : "Try a sharper, well-lit image showing the front of the item, or fill in the form manually."),
             });
           } else {
             onAutoFill(data.extracted, data.suggestedTitle);
@@ -144,7 +156,9 @@ export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Prop
               title: `Auto-filled ${filledCount} field${filledCount === 1 ? "" : "s"}`,
               description:
                 data.notes ||
-                "Review what was detected and fill in the rest (year of purchase, mileage, original price etc).",
+                (realEstate
+                  ? "Review what was detected and add the rest (bedrooms, tenure, year built, price, and so on)."
+                  : "Review what was detected and fill in the rest (year of purchase, mileage, original price, etc.)."),
             });
           }
         },
@@ -176,14 +190,26 @@ export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Prop
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-sans text-lg leading-tight">Snap or upload a photo</h3>
+              <h3 className="font-sans text-lg leading-tight">
+                {realEstate ? "Add a property photo" : "Snap or upload a photo"}
+              </h3>
               <Badge variant="outline" className="inline-flex items-center gap-1 text-ui-caps tracking-normal border-accent/40 text-accent">
                 <Wand2 className="h-2.5 w-2.5" /> AI auto-fill
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              We'll detect brand, model, color, materials and condition signals from the image.
-              You'll still need to enter year of purchase, mileage and price yourself.
+              {realEstate ? (
+                <>
+                  We read cues like layout, property style, finishes, and visible condition from
+                  exterior or interior shots. You will still enter beds or size, tenure, year built,
+                  and price in the form.
+                </>
+              ) : (
+                <>
+                  We detect brand, model, color, materials, and condition hints from the image. You
+                  will still enter year of purchase, mileage, and price yourself.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -219,7 +245,11 @@ export function PhotoUploadCard({ assetTypeId, assetTypeName, onAutoFill }: Prop
         ) : (
           <div className="space-y-3">
             <div className="relative rounded-lg overflow-hidden border border-border bg-muted/20">
-              <img src={preview} alt="Item preview" className="w-full max-h-64 object-contain" />
+              <img
+                src={preview}
+                alt={realEstate ? "Property photo preview" : "Item preview"}
+                className="w-full max-h-64 object-contain"
+              />
               <button
                 type="button"
                 onClick={reset}

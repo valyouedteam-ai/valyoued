@@ -65,6 +65,11 @@ export async function extractAttributesFromPhoto(
     })
     .join("\n");
 
+  const titleExample =
+    input.assetType.category === "Real Estate"
+      ? "such as 'Bright 3-bed semi, south-facing garden, Guildford GU1'"
+      : "such as 'Rolex Submariner Date 116610LN, black dial'";
+
   const prompt = `You are ValYoued's photo-analysis expert. Look at this photograph of a ${input.assetType.name.toLowerCase()} and extract any attributes you can identify with HIGH confidence.
 
 You MUST return STRICT JSON only, with this exact shape:
@@ -72,7 +77,7 @@ You MUST return STRICT JSON only, with this exact shape:
   "extracted": { "<fieldKey>": "<value>", ... },
   "confidence": 0.0 to 1.0,
   "notes": "1-2 sentences describing what you see (condition, color, distinguishing features)",
-  "suggestedTitle": "A short, marketplace-ready title for this item (such as 'Rolex Submariner Date 116610LN, black dial')"
+  "suggestedTitle": "A short, marketplace-ready title for this item (${titleExample})"
 }
 
 Available fields you may fill (skip any field where you are not confident — DO NOT GUESS):

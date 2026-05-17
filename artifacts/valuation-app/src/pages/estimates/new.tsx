@@ -116,6 +116,19 @@ type FormValues = z.input<typeof baseSchema> & Record<string, string | number | 
 
 const STANDARD_KEYS = new Set(["assetTypeId", "title", "currentRegion", "condition", "attributes", "brand", "model", "year", "purchasePrice"]);
 
+function descriptorTitlePlaceholder(category: string | undefined): string {
+  switch (category) {
+    case "Real Estate":
+      return "Example: 3-bed Victorian terrace, leafy street, York YO1";
+    case "Vehicles":
+      return "Example: 2019 BMW 330i M Sport, 42k miles, metallic grey";
+    case "Watches & Jewelry":
+      return "Example: Rolex Submariner Date 116610LN";
+    default:
+      return "Example: Brand, model, and details buyers would notice first";
+  }
+}
+
 // Each top-level category gets a friendly icon for the picker grid.
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   "Watches & Jewelry": Watch,
@@ -662,6 +675,7 @@ function NewEstimatePageInner({
               <PhotoUploadCard
                 assetTypeId={selectedType.id}
                 assetTypeName={selectedType.name}
+                assetCategory={selectedType.category}
                 onAutoFill={(extracted, suggestedTitle) => {
                   if (suggestedTitle && !form.getValues("title")) {
                     form.setValue("title", suggestedTitle, { shouldValidate: true });
@@ -694,7 +708,11 @@ function NewEstimatePageInner({
                         <FormItem className="md:col-span-2">
                           <FormLabel>Descriptor / Title</FormLabel>
                           <FormControl>
-                            <Input placeholder='Example: Rolex Submariner 116610LN' className="h-10 bg-background" {...field} />
+                            <Input
+                              placeholder={descriptorTitlePlaceholder(selectedType.category)}
+                              className="h-10 bg-background"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
