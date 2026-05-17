@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { TrendingUp, Eye, Tag, Inbox, GripVertical } from "lucide-react";
+import { TrendingUp, Eye, Tag, Inbox } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { iconForAssetType } from "@/lib/asset-icons";
 import { formatMoney } from "@/lib/format";
@@ -126,11 +127,12 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <CardTitle className="font-sans text-lg flex items-center gap-2">
-              <GripVertical className="h-4 w-4 text-accent" />
+              <Inbox className="h-4 w-4 text-accent" />
               Smart folders
             </CardTitle>
             <CardDescription className="text-xs mt-1">
-              Drag assets between folders to plan your next move. We remember your sorting on this device.
+              Drag icons between folders; hover an icon for the name, type, and value. We remember your sorting on this
+              device.
             </CardDescription>
           </div>
         </div>
@@ -182,18 +184,18 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
                 </div>
                 <p className="text-[11px] text-muted-foreground mb-3">{def.blurb}</p>
 
-                <div className="flex flex-col gap-1.5 flex-1">
+                <div className="flex flex-wrap gap-2 flex-1 content-start items-start">
                   {list.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center rounded-md border border-dashed border-border/50 text-[11px] text-muted-foreground italic">
+                    <div className="w-full min-h-[120px] flex items-center justify-center rounded-md border border-dashed border-border/50 text-[11px] text-muted-foreground italic">
                       Drop assets here
                     </div>
                   ) : (
                     list.map((item) => (
-                      <FolderChip
+                      <FolderIconChip
                         key={item.id}
                         item={item}
                         onDragStart={onDragStart}
-                        onClick={() => navigate(`/estimates/${item.id}`)}
+                        onOpenEstimate={() => navigate(`/estimates/${item.id}`)}
                       />
                     ))
                   )}
@@ -226,17 +228,16 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
               dragOver === "uncategorized" && "ring-2 ring-accent/40",
             )}
           >
-            <div className="flex items-center gap-2 mb-2 text-xs font-medium text-muted-foreground">
-              <Inbox className="h-3.5 w-3.5" />
-              Unsorted ({grouped.uncategorized.length}): drag into a folder above
+            <div className="text-[11px] text-muted-foreground mb-2">
+              Unsorted ({grouped.uncategorized.length}): drag icons into a folder above
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {grouped.uncategorized.map((item) => (
-                <FolderChip
+                <FolderIconChip
                   key={item.id}
                   item={item}
                   onDragStart={onDragStart}
-                  onClick={() => navigate(`/estimates/${item.id}`)}
+                  onOpenEstimate={() => navigate(`/estimates/${item.id}`)}
                 />
               ))}
             </div>
@@ -247,36 +248,55 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
   );
 }
 
-function FolderChip({
+function FolderIconChip({
   item,
   onDragStart,
-  onClick,
+  onOpenEstimate,
 }: {
   item: FolderItem;
   onDragStart: (e: React.DragEvent, id: string) => void;
-  onClick: () => void;
+  onOpenEstimate: () => void;
 }) {
-  const Icon = iconForAssetType(item.assetTypeName);
+  const AssetIcon = iconForAssetType(item.assetTypeName);
+
   return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart(e, item.id)}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onClick();
-      }}
-      data-testid={`folder-chip-${item.id}`}
-      className="group cursor-grab active:cursor-grabbing flex items-center gap-2 rounded-md border border-border/60 bg-background/80 hover:bg-background hover:border-accent/40 px-2 py-1.5 text-xs transition-all"
-      title={`${item.title}. Drag to a folder or click to open`}
-    >
-      <GripVertical className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
-      <Icon className="h-3.5 w-3.5 text-accent shrink-0" />
-      <span className="truncate max-w-[140px] font-medium">{item.title}</span>
-      <span className="font-sans text-[10px] text-muted-foreground shrink-0">
-        {formatMoney(item.liveValue, item.currency)}
-      </span>
-    </div>
+    <HoverCard openDelay={160} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <div
+          draggable
+          onDragStart={(e) => onDragStart(e, item.id)}
+          onClick={onOpenEstimate}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpenEstimate();
+            }
+          }}
+          data-testid={`folder-chip-${item.id}`}
+          aria-label={`${item.title}. Hover for details. Click to open or drag to a folder.`}
+          className={cn(
+            "h-10 w-10 shrink-0 cursor-grab active:cursor-grabbing select-none rounded-lg border border-border/70 bg-background/90",
+            "flex items-center justify-center shadow-sm transition-colors",
+            "hover:border-accent/50 hover:bg-background hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+          )}
+        >
+          <AssetIcon className="h-[1.15rem] w-[1.15rem] text-accent pointer-events-none" aria-hidden />
+        </div>
+      </HoverCardTrigger>
+      <HoverCardContent side="top" align="center" className="w-72 p-3 space-y-2 z-50">
+        <div>
+          <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">{item.title}</p>
+          <Badge variant="secondary" className="mt-2 font-normal text-[10px]">
+            {item.assetTypeName}
+          </Badge>
+        </div>
+        <div className="text-sm tabular-nums font-medium">{formatMoney(item.liveValue, item.currency)}</div>
+        <p className="text-[11px] text-muted-foreground leading-snug border-t border-border/60 pt-2">
+          Drag to move between folders. Click the icon to open the full valuation.
+        </p>
+      </HoverCardContent>
+    </HoverCard>
   );
 }

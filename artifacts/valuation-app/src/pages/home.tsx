@@ -196,8 +196,7 @@ export default function HomePage() {
                   Welcome to your valuation workspace
                 </h1>
                 <p className="text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                  A few quick screens: your stats, handy links, and the kinds of items we can price. Use the step
-                  chips whenever you want to skip ahead.
+                  A few quick screens: your stats, handy links, and the kinds of items we can price.
                 </p>
               </div>
               <ul className="space-y-3 text-sm text-muted-foreground">

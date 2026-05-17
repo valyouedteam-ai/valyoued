@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { formatDistanceToNow } from "date-fns";
 import {
   TrendingUp,
   TrendingDown,
@@ -11,8 +10,6 @@ import {
   Zap,
   Megaphone,
   PieChart as PieIcon,
-  LayoutGrid,
-  List as ListIcon,
 } from "lucide-react";
 import {
   PieChart,
@@ -32,7 +29,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { PortfolioFolders } from "@/components/PortfolioFolders";
@@ -81,23 +77,17 @@ const SHELF_SECTION_META: Record<
 > = {
   luxury: {
     title: "Luxury & collectibles",
-    description: "High-touch, collectible, or appreciation-biased holdings (from your valuation track and asset class).",
+    description: "High-end and collectible items from the luxury valuation track.",
   },
   everyday: {
-    title: "Everyday assets",
-    description: "Mass-market goods and daily-use items you valued on the everyday track.",
+    title: "Everyday & tech",
+    description: "Day-to-day and mass-market items from the standard track.",
   },
   other: {
-    title: "Mixed & other",
-    description: "Cross-cutting assets (real estate, boats, drones, custom items) or legacy estimates without a clear shelf.",
+    title: "Other holdings",
+    description: "Anything that spans tracks or doesn't fit neatly above (vehicles, property, mixed runs, and similar).",
   },
 };
-
-function shelfBadgeLabel(shelf: PortfolioShelf): string {
-  if (shelf === "luxury") return "Luxury";
-  if (shelf === "everyday") return "Everyday";
-  return "Other";
-}
 
 const TICK_INTERVAL_MS = 2500;
 const POLL_INTERVAL_MS = 60_000;
@@ -140,13 +130,7 @@ export default function PortfolioPage() {
   );
 
   const [ticks, setTicks] = useState<Record<string, Tick>>({});
-  const [now, setNow] = useState(() => Date.now());
   const [listingFor, setListingFor] = useState<EstimateSummary | null>(null);
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     if (estimateRows.length === 0) return;
@@ -221,8 +205,6 @@ export default function PortfolioPage() {
     return Math.round(normalized * 100);
   }, [pieData]);
 
-  const lastSync = dataUpdatedAt ? Math.max(0, Math.floor((now - dataUpdatedAt) / 1000)) : 0;
-
   const fxMult = fxSnap?.rates;
 
   const formatRollup = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
@@ -269,14 +251,6 @@ export default function PortfolioPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
-          <p className="text-muted-foreground mt-1">
-            {portfolio.length} asset{portfolio.length === 1 ? "" : "s"} · {classAlbums.length} class
-            {classAlbums.length === 1 ? "" : "es"}
-            {shelfSections.length > 0
-              ? ` · ${shelfSections.length} shelf${shelfSections.length === 1 ? "" : "s"}`
-              : ""}{" "}
-            · synced {lastSync < 60 ? `${lastSync}s ago` : `${Math.floor(lastSync / 60)}m ago`}
-          </p>
         </div>
         <div>
           <Link href="/estimate/new">
@@ -293,16 +267,14 @@ export default function PortfolioPage() {
         <Card className="lg:col-span-1 bg-card/60 backdrop-blur border-accent/20 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent pointer-events-none" />
           <CardHeader className="pb-2 relative">
-            <CardDescription className="flex items-center gap-2 text-xs font-sans uppercase tracking-wider">
-              <Activity className="h-3 w-3 text-accent" />
+            <CardDescription className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Activity className="h-3.5 w-3.5 shrink-0 text-accent" />
               Approximate portfolio total
             </CardDescription>
             <CardTitle className="text-3xl font-sans tabular-nums tracking-tight">
               {formatRollup(totalPortfolioUsd)}
             </CardTitle>
             <p className="mt-1.5 text-xs text-muted-foreground font-sans font-normal leading-snug">
-              Combined total in {displayCcy} using the same FX table as analytics (approximate). Each valuation
-              still uses its own currency on the report.{" "}
               <Link href="/settings" className="font-medium text-accent hover:underline">
                 Change display currency
               </Link>
@@ -400,183 +372,58 @@ export default function PortfolioPage() {
         }))}
       />
 
-      {/* Albums + Boxes / Holdings */}
-      <Tabs defaultValue="albums">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-xl font-sans">Your collection</h2>
-          <TabsList>
-            <TabsTrigger value="albums" data-testid="tab-albums">
-              <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Albums
-            </TabsTrigger>
-            <TabsTrigger value="boxes" data-testid="tab-boxes">
-              <Briefcase className="h-3.5 w-3.5 mr-1.5" /> Asset boxes
-            </TabsTrigger>
-            <TabsTrigger value="table" data-testid="tab-table">
-              <ListIcon className="h-3.5 w-3.5 mr-1.5" /> Table
-            </TabsTrigger>
-          </TabsList>
+      {/* Collection: single grouped view (by valuation track), highest approximate value first */}
+      <section className="space-y-8" data-testid="collection-section">
+        <div className="space-y-1.5 max-w-2xl">
+          <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Valuations are grouped by the track you chose when you ran them. Within each group, larger holdings
+            (by approximate value in your display currency) appear first. Open a card for the full report, or use{" "}
+            <span className="text-foreground font-medium">List for sale</span> for listing help.
+          </p>
         </div>
 
-        {/* Albums: top-level shelves (luxury / everyday / other), then asset class within each */}
-        <TabsContent value="albums" className="space-y-10 mt-4">
-          {shelfSections.map((section, sectionIdx) => (
-            <section key={section.shelf} className="space-y-4" data-testid={`shelf-${section.shelf}`}>
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-sans font-semibold tracking-tight">{section.title}</h3>
-                  <div className="text-right">
-                    <span className="font-sans text-sm font-semibold tabular-nums text-muted-foreground">
-                      {formatRollup(section.sectionTotalUsd)}
-                    </span>
-                    <Badge variant="outline" className="ml-2 font-sans text-xs">
-                      {section.albums.reduce((n, a) => n + a.items.length, 0)} items
-                    </Badge>
+        <div className="space-y-12">
+          {shelfSections.map((section) => {
+            const items = portfolio
+              .filter((p) => p.portfolioShelf === section.shelf)
+              .sort(
+                (a, b) =>
+                  convertToUsdApprox(b.liveValue, b.currency, fxMult) -
+                  convertToUsdApprox(a.liveValue, a.currency, fxMult),
+              );
+            const count = items.length;
+            return (
+              <div key={section.shelf} className="space-y-4" data-testid={`shelf-${section.shelf}`}>
+                <div className="flex flex-col gap-3 border-b border-border/50 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold tracking-tight">{section.title}</h3>
+                      <Badge variant="secondary" className="font-normal">
+                        {count} {count === 1 ? "item" : "items"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed max-w-prose">
+                      {section.description}
+                    </p>
+                  </div>
+                  <div className="shrink-0 sm:text-right">
+                    <p className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground">
+                      Approx. group total
+                    </p>
+                    <p className="text-lg font-semibold tabular-nums">{formatRollup(section.sectionTotalUsd)}</p>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground max-w-3xl">{section.description}</p>
-              </div>
-              <div className="space-y-6 pl-0 md:border-l md:border-border/40 md:pl-6">
-                {section.albums.map((album, idx) => {
-                  const colorIdx = (sectionIdx * 5 + idx) % PALETTE.length;
-                  return (
-            <Card key={`${section.shelf}-${album.name}`} className="overflow-hidden bg-card/40">
-              <CardHeader className="pb-3 border-b border-border/40">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ background: PALETTE[colorIdx] }}
-                    />
-                    <CardTitle className="font-sans text-lg">{album.name}</CardTitle>
-                    <Badge variant="secondary" className="font-sans">
-                      {album.items.length} item{album.items.length === 1 ? "" : "s"}
-                    </Badge>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-sans font-semibold tabular-nums">
-                      {formatRollup(album.totalUsd)}
-                    </div>
-                    <div className={cn(
-                      "text-xs font-sans",
-                      album.change >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                    )}>
-                      {formatPercent(album.change, true)}
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {album.items.map((item) => (
-                    <AssetBox
-                      key={item.id}
-                      item={item}
-                      onListing={() => setListingFor(item)}
-                    />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {items.map((item) => (
+                    <AssetBox key={item.id} item={item} onListing={() => setListingFor(item)} />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-                  );
-                })}
               </div>
-            </section>
-          ))}
-        </TabsContent>
-
-        {/* Boxes: flat grid of all assets */}
-        <TabsContent value="boxes" className="mt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {portfolio.map((item) => (
-              <AssetBox key={item.id} item={item} onListing={() => setListingFor(item)} />
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* TABLE */}
-        <TabsContent value="table" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground border-b border-border">
-                    <tr>
-                      <th className="text-left px-3 py-3">Asset</th>
-                      <th className="text-left px-2 py-3 hidden md:table-cell">Class</th>
-                      <th className="text-left px-2 py-3 hidden lg:table-cell">Shelf</th>
-                      <th className="text-right px-2 py-3">Baseline</th>
-                      <th className="text-right px-2 py-3">Live</th>
-                      <th className="text-right px-2 py-3">Change</th>
-                      <th className="text-right px-3 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {portfolio.map((p) => {
-                      const isUp = p.changeFromBaseline >= 0;
-                      return (
-                        <tr key={p.id} className="border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-3">
-                            <Link href={`/estimates/${p.id}`} className="font-medium hover:text-accent transition-colors line-clamp-1">
-                              {p.title}
-                            </Link>
-                            <div className="text-[10px] font-sans text-muted-foreground mt-0.5">
-                              {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
-                            </div>
-                          </td>
-                          <td className="px-2 py-3 hidden md:table-cell">
-                            <Badge variant="outline" className="font-normal text-xs">{p.assetTypeName}</Badge>
-                          </td>
-                          <td className="px-2 py-3 hidden lg:table-cell">
-                            <Badge variant="secondary" className="font-normal text-[10px] uppercase tracking-wide">
-                              {shelfBadgeLabel(p.portfolioShelf)}
-                            </Badge>
-                          </td>
-                          <td className="px-2 py-3 text-right font-sans tabular-nums text-muted-foreground">
-                            {formatMoney(p.baselineMid, p.currency)}
-                          </td>
-                          <td className="px-2 py-3 text-right">
-                            <div className={cn(
-                              "font-sans tabular-nums font-semibold",
-                              p.tickDir === "up" && "text-green-600 dark:text-green-400",
-                              p.tickDir === "down" && "text-red-600 dark:text-red-400",
-                            )}>
-                              {formatMoney(p.liveValue, p.currency)}
-                            </div>
-                          </td>
-                          <td className={cn(
-                            "px-2 py-3 text-right font-sans tabular-nums font-medium",
-                            isUp ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                          )}>
-                            {formatPercent(p.changeFromBaseline, true)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2"
-                                onClick={() => setListingFor(p)}
-                                title="Generate listing ad"
-                              >
-                                <Megaphone className="h-3.5 w-3.5" />
-                              </Button>
-                              <Link href={`/estimates/${p.id}`}>
-                                <Button variant="ghost" size="sm" className="h-7 px-2">
-                                  <ArrowRight className="h-3.5 w-3.5" />
-                                </Button>
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            );
+          })}
+        </div>
+      </section>
 
       {listingFor && (
         <GenerateListingDialog
