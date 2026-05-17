@@ -34,13 +34,14 @@ import {
   getGetEstimateStatsQueryKey,
 } from "@workspace/api-client-react";
 import type { EstimateInput, AssetType } from "@workspace/api-client-react";
+import { assetTypeAllowedForSellerTier } from "@workspace/asset-shelf-tier";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { useProTier } from "@/hooks/use-pro-tier";
@@ -272,16 +273,21 @@ function NewEstimatePageInner({
     [regions, selectedRegionName],
   );
 
+  const tierFilteredAssetTypes = useMemo((): AssetType[] => {
+    if (!assetTypes?.length || !selectedTier) return [];
+    return assetTypes.filter((t) => assetTypeAllowedForSellerTier(t.id, selectedTier));
+  }, [assetTypes, selectedTier]);
+
   const grouped = useMemo(() => {
-    if (!assetTypes) return [];
-    const map = new Map<string, typeof assetTypes>();
-    for (const t of assetTypes) {
+    if (!tierFilteredAssetTypes.length) return [];
+    const map = new Map<string, AssetType[]>();
+    for (const t of tierFilteredAssetTypes) {
       const key = t.category || "Other";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(t);
     }
     return Array.from(map.entries());
-  }, [assetTypes]);
+  }, [tierFilteredAssetTypes]);
 
   const assetTypesLoading = assetTypes === undefined && assetTypesFetching;
   const assetTypesErrMessage =
@@ -290,6 +296,24 @@ function NewEstimatePageInner({
   // Two-step asset picker: pick a top-level category first, then pick the
   // specific asset class. Avoids the long, clipped dropdown.
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedCategory(null);
+  }, [selectedTier]);
+
+  useEffect(() => {
+    if (!selectedTier || !selectedTypeId || !assetTypes?.length) return;
+    if (assetTypeAllowedForSellerTier(selectedTypeId, selectedTier)) return;
+    const prev = assetTypes.find((t) => t.id === selectedTypeId);
+    if (prev) {
+      prev.fields.forEach((f) => {
+        if (!STANDARD_KEYS.has(f.key)) form.setValue(f.key as any, undefined);
+      });
+    }
+    form.setValue("assetTypeId", "");
+    setSelectedCategory(null);
+  }, [selectedTier, selectedTypeId, assetTypes, form]);
+
   // Auto-sync the category panel when an asset type is selected (such as via
   // pending payload resume) so the picker shows the right step.
   useEffect(() => {
@@ -479,7 +503,13 @@ function NewEstimatePageInner({
 
           {selectedTier && <Card className="border-border/50 bg-card/50 shadow-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-sans">Classification</CardTitle>
+              <CardTitle className="text-lg font-sans">
+                Classification — {selectedTier === "luxury" ? "Luxury / collectible" : "Everyday"}
+              </CardTitle>
+              <CardDescription>
+                Categories below are filtered for this track. Switch the choice above to see phones & TVs versus watches
+                &amp; bags, etc.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField

@@ -544,11 +544,14 @@ components:
           $ref: "#/components/schemas/ProInsights"
     EstimateSummary:
       type: object
-      required: [id, title, assetTypeName, baselineMid, adjustedMid, currency, bestArbitrageRegion, createdAt]
+      required:
+        [id, title, assetTypeId, assetTypeName, baselineMid, adjustedMid, currency, bestArbitrageRegion, portfolioShelf, createdAt]
       properties:
         id:
           type: string
         title:
+          type: string
+        assetTypeId:
           type: string
         assetTypeName:
           type: string
@@ -560,6 +563,11 @@ components:
           type: string
         bestArbitrageRegion:
           type: string
+        portfolioShelf:
+          type: string
+          enum: [luxury, everyday, other]
+          description: >-
+            Shelf for portfolio grouping — from the seller tier captured on the estimate plus asset-class hints.
         createdAt:
           type: string
           format: date-time

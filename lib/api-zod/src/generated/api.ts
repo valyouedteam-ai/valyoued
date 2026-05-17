@@ -87,11 +87,13 @@ export const ListRegionsResponse = zod.array(ListRegionsResponseItem);
 export const ListEstimatesResponseItem = zod.object({
   id: zod.string(),
   title: zod.string(),
+  assetTypeId: zod.string(),
   assetTypeName: zod.string(),
   baselineMid: zod.number(),
   adjustedMid: zod.number(),
   currency: zod.string(),
   bestArbitrageRegion: zod.string(),
+  portfolioShelf: zod.enum(["luxury", "everyday", "other"]),
   createdAt: zod.coerce.date(),
 });
 export const ListEstimatesResponse = zod.array(ListEstimatesResponseItem);

@@ -17,6 +17,9 @@
     },
     {
       "path": "./lib/fx-usd"
+    },
+    {
+      "path": "./lib/asset-shelf-tier"
     }
   ]
 }

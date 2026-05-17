@@ -20,7 +20,6 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
-  Legend,
 } from "recharts";
 import type { UseQueryOptions } from "@tanstack/react-query";
 import { useListEstimates, listEstimates, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
@@ -36,6 +35,67 @@ import { cn } from "@/lib/utils";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { PortfolioFolders } from "@/components/PortfolioFolders";
 import { iconForAssetType } from "@/lib/asset-icons";
+
+type PortfolioItem = EstimateSummary & {
+  liveValue: number;
+  changeFromBaseline: number;
+  tickDir: "up" | "down" | "flat";
+};
+
+type ClassAlbum = {
+  name: string;
+  items: PortfolioItem[];
+  totalUsd: number;
+  baselineUsd: number;
+  change: number;
+};
+
+type PortfolioShelf = EstimateSummary["portfolioShelf"];
+
+function buildClassAlbums(
+  items: PortfolioItem[],
+  mult: Readonly<Record<string, number>> | null | undefined,
+): ClassAlbum[] {
+  if (items.length === 0) return [];
+  const map = new Map<string, PortfolioItem[]>();
+  for (const p of items) {
+    const arr = map.get(p.assetTypeName) ?? [];
+    arr.push(p);
+    map.set(p.assetTypeName, arr);
+  }
+  return Array.from(map.entries())
+    .map(([name, rows]) => {
+      const totalUsd = rows.reduce((s, i) => s + convertToUsdApprox(i.liveValue, i.currency, mult), 0);
+      const baselineUsd = rows.reduce((s, i) => s + convertToUsdApprox(i.baselineMid, i.currency, mult), 0);
+      const change = baselineUsd > 0 ? (totalUsd - baselineUsd) / baselineUsd : 0;
+      return { name, items: rows, totalUsd, baselineUsd, change };
+    })
+    .sort((a, b) => b.totalUsd - a.totalUsd);
+}
+
+const SHELF_SECTION_META: Record<
+  PortfolioShelf,
+  { title: string; description: string }
+> = {
+  luxury: {
+    title: "Luxury & collectibles",
+    description: "High-touch, collectible, or appreciation-biased holdings (from your valuation track and asset class).",
+  },
+  everyday: {
+    title: "Everyday assets",
+    description: "Mass-market goods and daily-use items you valued on the everyday track.",
+  },
+  other: {
+    title: "Mixed & other",
+    description: "Cross-cutting assets (real estate, boats, drones, custom items) or legacy estimates without a clear shelf.",
+  },
+};
+
+function shelfBadgeLabel(shelf: PortfolioShelf): string {
+  if (shelf === "luxury") return "Luxury";
+  if (shelf === "everyday") return "Everyday";
+  return "Other";
+}
 
 /** Roll-up totals use USD internally; present with the viewer's locale. */
 function formatConvertedRollupUsd(value: number) {
@@ -127,31 +187,35 @@ export default function PortfolioPage() {
     });
   }, [estimateRows, ticks]);
 
-  // Group by asset class
-  const albums = useMemo(() => {
-    if (!portfolio.length) return [];
+  const classAlbums = useMemo(
+    () => buildClassAlbums(portfolio, fxSnap?.rates),
+    [portfolio, fxSnap?.rates],
+  );
+
+  const shelfSections = useMemo(() => {
+    const order: PortfolioShelf[] = ["luxury", "everyday", "other"];
     const mult = fxSnap?.rates;
-    const map = new Map<string, typeof portfolio>();
-    for (const p of portfolio) {
-      const arr = map.get(p.assetTypeName) ?? [];
-      arr.push(p);
-      map.set(p.assetTypeName, arr);
-    }
-    return Array.from(map.entries())
-      .map(([name, items]) => {
-        const totalUsd = items.reduce((s, i) => s + convertToUsdApprox(i.liveValue, i.currency, mult), 0);
-        const baselineUsd = items.reduce((s, i) => s + convertToUsdApprox(i.baselineMid, i.currency, mult), 0);
-        const change = baselineUsd > 0 ? (totalUsd - baselineUsd) / baselineUsd : 0;
-        return { name, items, totalUsd, baselineUsd, change };
+    return order
+      .map((shelf) => {
+        const slice = portfolio.filter((p) => p.portfolioShelf === shelf);
+        if (slice.length === 0) return null;
+        const meta = SHELF_SECTION_META[shelf];
+        return {
+          shelf,
+          title: meta.title,
+          description: meta.description,
+          albums: buildClassAlbums(slice, mult),
+          sectionTotalUsd: slice.reduce((s, i) => s + convertToUsdApprox(i.liveValue, i.currency, mult), 0),
+        };
       })
-      .sort((a, b) => b.totalUsd - a.totalUsd);
+      .filter((s): s is NonNullable<typeof s> => s != null);
   }, [portfolio, fxSnap?.rates]);
 
-  const totalPortfolioUsd = albums.reduce((s, a) => s + a.totalUsd, 0);
-  const totalBaselineUsd = albums.reduce((s, a) => s + a.baselineUsd, 0);
+  const totalPortfolioUsd = classAlbums.reduce((s, a) => s + a.totalUsd, 0);
+  const totalBaselineUsd = classAlbums.reduce((s, a) => s + a.baselineUsd, 0);
   const totalChange = totalBaselineUsd > 0 ? (totalPortfolioUsd - totalBaselineUsd) / totalBaselineUsd : 0;
 
-  const pieData = albums.map((a, i) => ({
+  const pieData = classAlbums.map((a, i) => ({
     name: a.name,
     value: Math.round(a.totalUsd),
     pct: totalPortfolioUsd > 0 ? a.totalUsd / totalPortfolioUsd : 0,
@@ -212,8 +276,12 @@ export default function PortfolioPage() {
         <div>
           <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
           <p className="text-muted-foreground mt-1">
-            {portfolio.length} asset{portfolio.length === 1 ? "" : "s"} · {albums.length} class
-            {albums.length === 1 ? "" : "es"} · synced {lastSync < 60 ? `${lastSync}s ago` : `${Math.floor(lastSync / 60)}m ago`}
+            {portfolio.length} asset{portfolio.length === 1 ? "" : "s"} · {classAlbums.length} class
+            {classAlbums.length === 1 ? "" : "es"}
+            {shelfSections.length > 0
+              ? ` · ${shelfSections.length} shelf${shelfSections.length === 1 ? "" : "s"}`
+              : ""}{" "}
+            · synced {lastSync < 60 ? `${lastSync}s ago` : `${Math.floor(lastSync / 60)}m ago`}
           </p>
         </div>
         <div>
@@ -348,16 +416,35 @@ export default function PortfolioPage() {
           </TabsList>
         </div>
 
-        {/* Albums grouped by asset class */}
-        <TabsContent value="albums" className="space-y-6 mt-4">
-          {albums.map((album, idx) => (
-            <Card key={album.name} className="overflow-hidden bg-card/40">
+        {/* Albums: top-level shelves (luxury / everyday / other), then asset class within each */}
+        <TabsContent value="albums" className="space-y-10 mt-4">
+          {shelfSections.map((section, sectionIdx) => (
+            <section key={section.shelf} className="space-y-4" data-testid={`shelf-${section.shelf}`}>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-lg font-sans font-semibold tracking-tight">{section.title}</h3>
+                  <div className="text-right">
+                    <span className="font-mono text-sm font-semibold tabular-nums text-muted-foreground">
+                      {formatConvertedRollupUsd(section.sectionTotalUsd)}
+                    </span>
+                    <Badge variant="outline" className="ml-2 font-mono text-xs">
+                      {section.albums.reduce((n, a) => n + a.items.length, 0)} items
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground max-w-3xl">{section.description}</p>
+              </div>
+              <div className="space-y-6 pl-0 md:border-l md:border-border/40 md:pl-6">
+                {section.albums.map((album, idx) => {
+                  const colorIdx = (sectionIdx * 5 + idx) % PALETTE.length;
+                  return (
+            <Card key={`${section.shelf}-${album.name}`} className="overflow-hidden bg-card/40">
               <CardHeader className="pb-3 border-b border-border/40">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <span
                       className="h-3 w-3 rounded-full"
-                      style={{ background: PALETTE[idx % PALETTE.length] }}
+                      style={{ background: PALETTE[colorIdx] }}
                     />
                     <CardTitle className="font-sans text-lg">{album.name}</CardTitle>
                     <Badge variant="secondary" className="font-mono">
@@ -389,6 +476,10 @@ export default function PortfolioPage() {
                 </div>
               </CardContent>
             </Card>
+                  );
+                })}
+              </div>
+            </section>
           ))}
         </TabsContent>
 
@@ -411,6 +502,7 @@ export default function PortfolioPage() {
                     <tr>
                       <th className="text-left px-3 py-3">Asset</th>
                       <th className="text-left px-2 py-3 hidden md:table-cell">Class</th>
+                      <th className="text-left px-2 py-3 hidden lg:table-cell">Shelf</th>
                       <th className="text-right px-2 py-3">Baseline</th>
                       <th className="text-right px-2 py-3">Live</th>
                       <th className="text-right px-2 py-3">Change</th>
@@ -432,6 +524,11 @@ export default function PortfolioPage() {
                           </td>
                           <td className="px-2 py-3 hidden md:table-cell">
                             <Badge variant="outline" className="font-normal text-xs">{p.assetTypeName}</Badge>
+                          </td>
+                          <td className="px-2 py-3 hidden lg:table-cell">
+                            <Badge variant="secondary" className="font-normal text-[10px] uppercase tracking-wide">
+                              {shelfBadgeLabel(p.portfolioShelf)}
+                            </Badge>
                           </td>
                           <td className="px-2 py-3 text-right font-mono tabular-nums text-muted-foreground">
                             {formatMoney(p.baselineMid, p.currency)}
@@ -493,17 +590,7 @@ export default function PortfolioPage() {
   );
 }
 
-interface BoxItem {
-  id: string;
-  title: string;
-  assetTypeName: string;
-  baselineMid: number;
-  liveValue: number;
-  changeFromBaseline: number;
-  tickDir: "up" | "down" | "flat";
-  currency: string;
-  createdAt: string;
-}
+type BoxItem = PortfolioItem;
 
 function AssetBox({ item, onListing }: { item: BoxItem; onListing: () => void }) {
   const isUp = item.changeFromBaseline >= 0;

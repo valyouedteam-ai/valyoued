@@ -206,11 +206,14 @@ export interface EstimateResult {
 export interface EstimateSummary {
   id: string;
   title: string;
+  assetTypeId: string;
   assetTypeName: string;
   baselineMid: number;
   adjustedMid: number;
   currency: string;
   bestArbitrageRegion: string;
+  /** Shelf used to group items in the portfolio (luxury vs everyday vs mixed). */
+  portfolioShelf: "luxury" | "everyday" | "other";
   createdAt: string;
 }
 

@@ -20,6 +20,7 @@ import { requireAuth, getUserId, type AuthedRequest } from "../middlewares/requi
 import { recordPlatformEvent } from "../lib/platformEvents";
 import { getFxRateSnapshot } from "../lib/fxRates";
 import { convertToUsdApprox } from "@workspace/fx-usd";
+import { portfolioShelfFromEstimate, readAttributesFromStoredResult } from "@workspace/asset-shelf-tier";
 
 const router: IRouter = Router();
 
@@ -190,16 +191,22 @@ router.get("/estimates", async (req, res): Promise<void> => {
     .where(eq(estimatesTable.userId, userId))
     .orderBy(desc(estimatesTable.createdAt))
     .limit(50);
-  const summaries = rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    assetTypeName: r.assetTypeName,
-    baselineMid: r.baselineMid,
-    adjustedMid: r.adjustedMid,
-    currency: r.currency,
-    bestArbitrageRegion: r.bestArbitrageRegion,
-    createdAt: r.createdAt.toISOString(),
-  }));
+  const summaries = rows.map((r) => {
+    const attrs = readAttributesFromStoredResult(r.result);
+    const portfolioShelf = portfolioShelfFromEstimate(attrs, r.assetTypeId);
+    return {
+      id: r.id,
+      title: r.title,
+      assetTypeId: r.assetTypeId,
+      assetTypeName: r.assetTypeName,
+      baselineMid: r.baselineMid,
+      adjustedMid: r.adjustedMid,
+      currency: r.currency,
+      bestArbitrageRegion: r.bestArbitrageRegion,
+      portfolioShelf,
+      createdAt: r.createdAt.toISOString(),
+    };
+  });
   res.json(ListEstimatesResponse.parse(summaries));
 });
 

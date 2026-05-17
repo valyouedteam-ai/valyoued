@@ -9,10 +9,12 @@
 export interface EstimateSummary {
   id: string;
   title: string;
+  assetTypeId: string;
   assetTypeName: string;
   baselineMid: number;
   adjustedMid: number;
   currency: string;
   bestArbitrageRegion: string;
+  portfolioShelf: "luxury" | "everyday" | "other";
   createdAt: Date;
 }
