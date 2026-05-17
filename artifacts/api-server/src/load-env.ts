@@ -22,6 +22,35 @@ function ensureClerkPublishableKeyFromFrontendEnv(): void {
 }
 ensureClerkPublishableKeyFromFrontendEnv();
 
+function authStubEnabled(): boolean {
+  const v = process.env.AUTH_STUB_MODE;
+  return v === "1" || v?.toLowerCase() === "true";
+}
+
+/**
+ * Clerk middleware needs both keys on **this process** (API server). Frontends on Vercel only
+ * receive their own env — they are not passed to Railway/Docker automatically.
+ */
+function assertClerkEnvUnlessStub(): void {
+  if (authStubEnabled()) return;
+  const pk = process.env.CLERK_PUBLISHABLE_KEY?.trim();
+  const sk = process.env.CLERK_SECRET_KEY?.trim();
+  if (pk && sk) return;
+  const missing: string[] = [];
+  if (!pk) {
+    missing.push(
+      "CLERK_PUBLISHABLE_KEY (or VITE_CLERK_PUBLISHABLE_KEY / NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY on the API host)",
+    );
+  }
+  if (!sk) missing.push("CLERK_SECRET_KEY");
+  throw new Error(
+    `Clerk credentials missing for the valuation API: ${missing.join("; ")}. ` +
+      "Add them to this service’s environment (Railway Variables, Fly secrets, Docker -e, etc.). " +
+      "Values from the Vercel project are not available here — use the same keys from https://dashboard.clerk.com → API Keys.",
+  );
+}
+assertClerkEnvUnlessStub();
+
 if (!process.env.PORT?.trim()) {
   process.env.PORT = "3001";
 }
