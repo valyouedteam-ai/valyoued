@@ -8,7 +8,6 @@ import {
   Calculator,
   LayoutDashboard,
   Briefcase,
-  Globe2,
   LibrarySquare,
   Megaphone,
   Settings,
@@ -41,7 +40,6 @@ const navWorkspace: NavItem[] = [
 
 const navInsights: NavItem[] = [
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-  { href: "/markets", label: "Markets", icon: Globe2 },
   { href: "/listings", label: "Listings", icon: Megaphone },
 ];
 

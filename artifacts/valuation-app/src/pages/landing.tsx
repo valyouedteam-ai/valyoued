@@ -77,6 +77,11 @@ export default function LandingPage() {
               Sign in
             </Button>
           </Link>
+          <Link href="/sign-up">
+            <Button variant="outline" className="hidden sm:inline-flex border-border/80 shadow-sm" data-testid="nav-sign-up">
+              Sign up
+            </Button>
+          </Link>
           <Link href="/start">
             <Button className="rounded-full shadow-sm" data-testid="nav-get-started">
               Free valuation <ArrowRight className="ml-2 h-4 w-4" />
