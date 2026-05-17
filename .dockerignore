@@ -1,0 +1,25 @@
+# Keep image builds fast and reproducible — send source + lockfile, not local tooling output.
+.git
+**/.git
+.cursor
+.idea
+**/.DS_Store
+
+node_modules
+**/node_modules
+
+# Built artifacts (rebuilt inside the image)
+**/dist
+**/build
+.turbo
+
+# Secrets and local env (set real vars on the host / Railway / Render)
+.env
+.env.*
+!.env.example
+
+# Large or irrelevant for the API image
+attached_assets
+mobile
+**/coverage
+**/*.log

@@ -20,17 +20,8 @@ import AdminDashboardPage from "@/pages/admin";
 import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 
-function AuthLoading() {
-  return (
-    <div className="min-h-[50vh] flex items-center justify-center bg-background">
-      <div className="h-10 w-10 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
-    </div>
-  );
-}
-
 function HomeOrLanding() {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <AuthLoading />;
+  const { isSignedIn } = useAuth();
   if (isSignedIn) return <Redirect to="/recent" />;
   return <LandingPage />;
 }
@@ -51,8 +42,7 @@ function LatestEstimateRedirect() {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <AuthLoading />;
+  const { isSignedIn } = useAuth();
   if (!isSignedIn) return <Redirect to="/sign-in" />;
   return <>{children}</>;
 }

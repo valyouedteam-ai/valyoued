@@ -16,16 +16,26 @@ export function stripRedundantOuterQuotes(value: string): string {
   return value;
 }
 
-export function formatMoney(value: number, currency = "USD", compact = false) {
-  if (value === null || value === undefined || isNaN(value)) {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(0);
-  }
+function formatMoneyIntl(value: number, currency: string, compact: boolean) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     notation: compact ? "compact" : "standard",
     maximumFractionDigits: compact ? 1 : 0,
   }).format(value);
+}
+
+export function formatMoney(value: number, currency = "USD", compact = false) {
+  const safe = value === null || value === undefined || isNaN(value) ? 0 : value;
+  const code =
+    typeof currency === "string" && /^[A-Za-z]{3}$/.test(currency.trim())
+      ? currency.trim().toUpperCase()
+      : "USD";
+  try {
+    return formatMoneyIntl(safe, code, compact);
+  } catch {
+    return formatMoneyIntl(safe, "USD", compact);
+  }
 }
 
 // Backwards-compat wrapper used by older pages – assumes USD when not specified.

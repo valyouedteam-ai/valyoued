@@ -1,0 +1,11 @@
+# Railway: connect this repo, add Postgres, set variables from .env.example, then deploy.
+# https://docs.railway.com/deploy/dockerfiles
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/healthz"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

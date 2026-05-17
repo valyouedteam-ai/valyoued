@@ -282,8 +282,25 @@ async function parseErrorBody(response: Response, method: string): Promise<unkno
   return raw;
 }
 
-function inferResponseType(response: Response): "json" | "text" | "blob" {
+/** Normalized path for inferring response handling (works for relative and absolute URLs). */
+function requestPathname(url: string): string {
+  try {
+    return new URL(url, "http://placeholder.invalid").pathname;
+  } catch {
+    return url;
+  }
+}
+
+function inferResponseType(response: Response, requestUrl: string): "json" | "text" | "blob" {
   const mediaType = getMediaType(response.headers);
+  const path = requestPathname(requestUrl);
+
+  // Static hosts (e.g. Vercel SPA) often rewrite /api/* to index.html with text/html. Auto "text" mode
+  // would return HTML as a string; callers like listAssetTypes then see non-array data and show an empty
+  // catalog. Force JSON parsing so we fail with ResponseParseError instead.
+  if (path.includes("/api/") && mediaType === "text/html") {
+    return "json";
+  }
 
   if (isJsonMediaType(mediaType)) return "json";
   if (isTextMediaType(mediaType) || mediaType == null) return "text";
@@ -300,7 +317,7 @@ async function parseSuccessBody(
   }
 
   const effectiveType =
-    responseType === "auto" ? inferResponseType(response) : responseType;
+    responseType === "auto" ? inferResponseType(response, requestInfo.url) : responseType;
 
   switch (effectiveType) {
     case "json":

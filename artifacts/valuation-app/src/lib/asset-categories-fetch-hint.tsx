@@ -1,7 +1,24 @@
-import { ApiError } from "@workspace/api-client-react";
+import { ApiError, ResponseParseError } from "@workspace/api-client-react";
 
 /** Explains classification fetch failures (HTTP 5xx is not always "can't reach backend"). */
 export function AssetCategoriesLoadHint({ error }: { error: unknown }) {
+  if (error instanceof ResponseParseError) {
+    const raw = error.rawBody.trimStart();
+    const looksLikeSpa =
+      raw.startsWith("<!") || raw.toLowerCase().startsWith("<html");
+    if (looksLikeSpa) {
+      return (
+        <span className="block mt-1 opacity-90 font-normal text-balance">
+          The URL returned the web app (HTML) instead of API JSON — usual when the UI is deployed without{" "}
+          <code className="text-xs px-1 rounded bg-background/50">VITE_API_ORIGIN</code> set to your valuation
+          API origin. Add it in Vercel (or your host) env, redeploy the frontend, and ensure{" "}
+          <code className="text-xs px-1 rounded bg-background/50">/api/asset-types</code> is served by the
+          backend, not the SPA.
+        </span>
+      );
+    }
+  }
+
   if (error instanceof ApiError) {
     const st = error.status;
     if (st >= 500 && st <= 599) {

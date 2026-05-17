@@ -56,8 +56,24 @@ export default function HomePage() {
   } = useListAssetTypes();
   const { data: estimates, isLoading: loadingEstimates } = useListEstimates();
 
+  /** Succeeds HTTP 200 but body is not an array (e.g. HTML string when SPA serves /api/*). */
+  const assetTypesMalformed =
+    !loadingTypes &&
+    !assetTypesQueryError &&
+    assetTypes != null &&
+    !Array.isArray(assetTypes);
+
+  const showAssetTypesError = assetTypesQueryError || assetTypesMalformed;
+  const assetTypesDisplayErr: unknown = assetTypesMalformed
+    ? new Error(
+        "The catalog response was not a JSON array. If the UI is on Vercel or another static host, set VITE_API_ORIGIN to your valuation API origin (no trailing slash) so /api/asset-types hits the backend.",
+      )
+    : assetTypesErr;
+
   const assetTypesErrMessage =
-    assetTypesErr instanceof Error ? assetTypesErr.message : String(assetTypesErr ?? "Unknown error");
+    assetTypesDisplayErr instanceof Error
+      ? assetTypesDisplayErr.message
+      : String(assetTypesDisplayErr ?? "Unknown error");
 
   const estimateRows = useMemo(
     () => (Array.isArray(estimates) ? estimates : []),
@@ -176,7 +192,7 @@ export default function HomePage() {
                   <Skeleton key={i} className="h-12 w-full rounded-lg" />
                 ))}
               </div>
-            ) : assetTypesQueryError ? (
+            ) : showAssetTypesError ? (
               <div className="p-5">
                 <Alert variant="destructive" className="border-destructive/30">
                   <AlertCircle className="h-4 w-4" />
@@ -193,7 +209,7 @@ export default function HomePage() {
                       Retry
                     </Button>
                   </AlertDescription>
-                  <AssetCategoriesLoadHint error={assetTypesErr} />
+                  <AssetCategoriesLoadHint error={assetTypesDisplayErr} />
                 </Alert>
               </div>
             ) : assetTypesByCategory.length === 0 ? (

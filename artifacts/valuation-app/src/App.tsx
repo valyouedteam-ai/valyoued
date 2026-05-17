@@ -1,5 +1,5 @@
 import { Router as WouterRouter, useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, useAuth } from "@clerk/react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
@@ -54,6 +54,19 @@ function ClerkApiAuthBridge() {
   return null;
 }
 
+/** Avoid mounting any route until Clerk has finished loading — prevents blank shells in production. */
+function ClerkBootstrapGate({ children }: { children: ReactNode }) {
+  const { isLoaded } = useAuth();
+  if (!isLoaded) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+        <div className="h-10 w-10 rounded-full border-2 border-[hsl(175,55%,38%)]/30 border-t-[hsl(175,55%,38%)] animate-spin" />
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 function ClerkProviderWithRouter() {
   const [, setLocation] = useLocation();
   return (
@@ -95,7 +108,9 @@ function ClerkProviderWithRouter() {
       }}
     >
       <ClerkApiAuthBridge />
-      <AppRoutes authStub={false} />
+      <ClerkBootstrapGate>
+        <AppRoutes authStub={false} />
+      </ClerkBootstrapGate>
     </ClerkProvider>
   );
 }
