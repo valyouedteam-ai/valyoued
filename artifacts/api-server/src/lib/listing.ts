@@ -111,6 +111,9 @@ export interface GenerateListingArgs {
   estimate: EstimateResult;
   platform: Platform;
   priceStrategy: PriceStrategy;
+  /** Free Everyday = tighter copy & fewer tactical tips vs paid */
+  listingQuality?: "basic" | "premium";
+  stripePlanSlug?: "none" | "everyday_plus" | "professional";
 }
 
 export interface GeneratedListing {
@@ -142,6 +145,12 @@ export async function generateListingDraft(
         .join("\n")
     : "(none)";
 
+  const quality = args.listingQuality ?? "premium";
+  const plan = args.stripePlanSlug ?? "none";
+  const qualityBlock =
+    quality === "basic"
+      ? `\nSTYLE: BASIC (free-tier). Conversational seller voice — plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype; one short negotiation note in proTips only (no hourly posting analytics). Keep proTips array to exactly 3 short bullets.`
+      : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller — persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, completeness callouts${plan === "professional" ? ", and resale/stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips and 5 proTips unless the platform clearly doesn't suit them.`;
   const prompt = `You are a senior copywriter for ${profile.name}. Write a high-converting listing for the item below.
 
 ITEM
@@ -162,6 +171,7 @@ VALUATION CONTEXT (do NOT include in the listing — for your context only)
 - Market-adjusted value (today): ${ccy} ${Math.round(e.adjustedMid).toLocaleString()}
 - TARGET LIST PRICE for this draft: ${ccy} ${Math.round(targetPrice).toLocaleString()}
 - Pricing strategy: ${STRATEGY_LABEL[args.priceStrategy]}
+${qualityBlock}
 
 PLATFORM PROFILE
 - Audience: ${profile.audience}

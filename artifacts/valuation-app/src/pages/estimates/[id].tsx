@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "wouter";
-import { useGetEstimate, getGetEstimateQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGetEstimate, getGetEstimateQueryKey, usePatchEstimate } from "@workspace/api-client-react";
 import {
   formatMoney,
   formatPercent,
@@ -42,20 +43,20 @@ import { ExternalLink } from "lucide-react";
 export default function EstimateReportPage() {
   const params = useParams();
   const id = params.id as string;
-  const { isPro: globalPro, setIsPro } = useProTier();
+  const { isPro: globalPro } = useProTier();
+  const queryClient = useQueryClient();
   const [listingOpen, setListingOpen] = useState(false);
+
+  const patchIntent = usePatchEstimate({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: getGetEstimateQueryKey(id) }),
+    },
+  });
 
   const { data: estimate, isLoading } = useGetEstimate(id, {
     query: { enabled: !!id, queryKey: getGetEstimateQueryKey(id) },
   });
-
-  const syncedReportId = useRef<string | null>(null);
-  useEffect(() => {
-    if (isLoading || !estimate?.id) return;
-    if (syncedReportId.current === estimate.id) return;
-    syncedReportId.current = estimate.id;
-    setIsPro(estimate.tier === "pro");
-  }, [isLoading, estimate?.id, estimate?.tier, setIsPro]);
 
   const proInsightsSanitized = useMemo(() => {
     if (!estimate?.proInsights) return null;
@@ -100,9 +101,9 @@ export default function EstimateReportPage() {
     );
   }
 
-  // What was saved with this estimate (API / billing). Header toggle only expands/collapses the UI.
+  // What was saved with this estimate (API / billing). Expanded Pro follows saved tier or current subscription.
   const savedTierPro = estimate.tier === "pro";
-  const showExpandedPro = globalPro;
+  const showExpandedPro = savedTierPro || globalPro;
 
   const uplift = (estimate.netMarketFactor ?? 1) - 1;
   const ccy = estimate.currency ?? "USD";
@@ -160,6 +161,41 @@ export default function EstimateReportPage() {
         open={listingOpen}
         onOpenChange={setListingOpen}
       />
+
+      <section className="no-print mb-8">
+        <Card className="border-border/60 bg-card/60 shadow-sm backdrop-blur-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-sans">Plans for this asset</CardTitle>
+            <CardDescription>
+              Tell us whether you&apos;re holding, watching value changes, or ready to draft a listing — we steer reminders and
+              tools from this intent.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {(["hold", "monitor", "sell"] as const).map((intent) => (
+              <Button
+                key={intent}
+                type="button"
+                size="sm"
+                variant={estimate.intent === intent ? "default" : "outline"}
+                disabled={patchIntent.isPending}
+                onClick={() => {
+                  patchIntent.mutate(
+                    { id, data: { intent } },
+                    {
+                      onSuccess: () => {
+                        if (intent === "sell") setListingOpen(true);
+                      },
+                    },
+                  );
+                }}
+              >
+                {intent === "hold" ? "Hold" : intent === "monitor" ? "Monitor value" : "Prep to sell"}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
 
       <header className="space-y-6 mb-12">
         <div className="flex flex-wrap items-center gap-3">
@@ -295,16 +331,17 @@ export default function EstimateReportPage() {
                     </div>
                   ))}
                 </div>
-                <Button
-                  size="lg"
-                  onClick={() => setIsPro(true)}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg glow-accent w-full sm:w-auto"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Activate Pro preview
-                </Button>
+                <Link href="/settings">
+                  <Button
+                    size="lg"
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg glow-accent w-full sm:w-auto"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Unlock with Everyday+ or Professional
+                  </Button>
+                </Link>
                 <p className="text-[11px] text-muted-foreground font-sans mt-3 uppercase tracking-wider">
-                  Toggle anytime · Uses the Pro switch in the header
+                  Subscription-backed · upgrade in billing settings
                 </p>
               </CardContent>
               ) : null}

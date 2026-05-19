@@ -27,9 +27,12 @@ import { useAuth } from "@clerk/react";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 
 import {
+  ApiError,
   useListAssetTypes,
   useListRegions,
   useCreateEstimate,
+  useListPortfolios,
+  getListPortfoliosQueryKey,
   getListEstimatesQueryKey,
   getGetEstimateStatsQueryKey,
 } from "@workspace/api-client-react";
@@ -43,9 +46,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
-import { useProTier } from "@/hooks/use-pro-tier";
 import { localizeField } from "@/lib/regional";
+import { tryUsePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
 import { PhotoUploadCard } from "@/components/PhotoUploadCard";
 import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
@@ -98,7 +107,7 @@ const GENERAL_ITEM_FALLBACK: AssetType = {
   ],
 };
 
-type PendingPayload = { input: EstimateInput; pro: boolean };
+type PendingPayload = { input: EstimateInput };
 
 const baseSchema = z.object({
   assetTier: z.enum(["everyday", "luxury"]),
@@ -148,6 +157,17 @@ function iconForCategory(cat: string): LucideIcon {
   return CATEGORY_ICONS[cat] ?? Sparkles;
 }
 
+function describeValuationGateError(err: unknown): string {
+  if (err instanceof ApiError && err.status === 429) {
+    const payload = err.data as { error?: string } | null | undefined;
+    return (
+      payload?.error ??
+      "You've used all five Everyday free valuations this month. Upgrade via Settings for unlimited dossiers."
+    );
+  }
+  return "";
+}
+
 function NewEstimatePageInner({
   authLoaded,
   isSignedIn,
@@ -157,8 +177,10 @@ function NewEstimatePageInner({
 }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { isPro } = useProTier();
   const { toast } = useToast();
+  const authStubMode = useAuthStubContext();
+  const portfolioCtx = tryUsePortfolioWorkspace();
+  const [portfolioChoice, setPortfolioChoice] = useState<string | undefined>(undefined);
 
   const {
     data: assetTypes,
@@ -169,6 +191,19 @@ function NewEstimatePageInner({
   } = useListAssetTypes();
   const { data: regions } = useListRegions();
   const createMutation = useCreateEstimate();
+
+  const { data: portfoliosList } = useListPortfolios({
+    query: {
+      enabled: isSignedIn || authStubMode,
+      queryKey: getListPortfoliosQueryKey(),
+    },
+  });
+
+  useEffect(() => {
+    const def = portfolioCtx?.activePortfolio?.id ?? portfolioCtx?.primaryPortfolio?.id;
+    if (!def) return;
+    setPortfolioChoice((prev) => prev ?? def);
+  }, [portfolioCtx?.activePortfolio?.id, portfolioCtx?.primaryPortfolio?.id]);
 
   // Auto-resume: if the user filled the form anonymously, signed up, and was
   // redirected back here; submit their pending payload immediately.
@@ -191,19 +226,26 @@ function NewEstimatePageInner({
     }
     resumedRef.current = true;
     sessionStorage.removeItem(PENDING_KEY);
+    const resumePayload = { ...pending.input } satisfies PendingPayload["input"];
+    const pfResolved = portfolioCtx?.primaryPortfolio?.id ?? portfoliosList?.[0]?.id;
+    if (pfResolved && resumePayload.portfolioId === undefined) {
+      resumePayload.portfolioId = pfResolved;
+    }
     createMutation.mutate(
-      { data: pending.input, params: { pro: pending.pro } },
+      { data: resumePayload },
       {
         onSuccess: (result) => {
           queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
           setLocation(`/estimates/${result.id}`);
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
+          const capped = describeValuationGateError(err);
           toast({
-            title: "Couldn't finish your valuation",
+            title: capped ? "Monthly free limit reached" : "Couldn't finish your valuation",
             description:
-              err?.message ||
+              capped ||
+              (err instanceof Error ? err.message : "") ||
               "Something went wrong while finishing the valuation you started. Please try again from the form below.",
             variant: "destructive",
           });
@@ -353,11 +395,14 @@ function NewEstimatePageInner({
 
     const extras: Record<string, string> = {};
     for (const f of selectedType.fields) {
-      if (STANDARD_KEYS.has(f.key)) continue;
+      if (STANDARD_KEYS.has(f.key) || f.key === "condition") continue;
       const v = data[f.key];
       if (v !== undefined && v !== "" && v !== null) extras[f.key] = String(v);
     }
     if (Object.keys(extras).length > 0) payload.extraFields = extras;
+
+    const pfResolved = portfolioChoice ?? portfolioCtx?.primaryPortfolio?.id ?? portfoliosList?.[0]?.id;
+    if (pfResolved) payload.portfolioId = pfResolved;
 
     // Onboarding gate: anonymous users must create an account before their
     // valuation is generated. We treat "auth not loaded yet" the same as
@@ -367,7 +412,7 @@ function NewEstimatePageInner({
       try {
         sessionStorage.setItem(
           PENDING_KEY,
-          JSON.stringify({ input: payload, pro: isPro } satisfies PendingPayload),
+          JSON.stringify({ input: payload } satisfies PendingPayload),
         );
       } catch {
         /* sessionStorage may be unavailable; fall through and let the API 401 */
@@ -377,31 +422,33 @@ function NewEstimatePageInner({
     }
 
     createMutation.mutate(
-      { data: payload, params: { pro: isPro } },
+      { data: payload },
       {
         onSuccess: (result) => {
           queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
           setLocation(`/estimates/${result.id}`);
         },
-        onError: (err: any) => {
-          // Surface the real reason instead of leaving the user staring at a frozen form
-          const raw = err?.message || err?.error || String(err);
-          let friendly = "We couldn't generate the report. Please try again.";
-          if (/timeout|timed out|ETIMEDOUT|aborted/i.test(raw)) {
-            friendly = "The valuation took too long to come back. The AI service may be busy; please retry in a moment.";
-          } else if (/currency|condition|required/i.test(raw)) {
-            friendly = "Some required details are missing. Make sure you've picked an asset class, a region, and filled in the condition slider before submitting.";
-          } else if (/network|fetch|Failed to fetch/i.test(raw)) {
+        onError: (err: unknown) => {
+          const capped = describeValuationGateError(err);
+          const raw =
+            err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err ?? "");
+          let friendly = capped || "We couldn't generate the report. Please try again.";
+          if (!capped && /timeout|timed out|ETIMEDOUT|aborted/i.test(raw)) {
+            friendly =
+              "The valuation took too long to come back. The AI service may be busy; please retry in a moment.";
+          } else if (!capped && /currency|condition|required/i.test(raw)) {
+            friendly =
+              "Some required details are missing. Make sure you've picked an asset class, a region, and filled in the condition slider before submitting.";
+          } else if (!capped && /network|fetch|Failed to fetch/i.test(raw)) {
             friendly = "Couldn't reach the valuation server. Check your connection and try again.";
           }
           toast({
-            title: "Valuation failed",
+            title: capped ? "Free tier monthly cap" : "Valuation failed",
             description: friendly,
             variant: "destructive",
           });
-          // Also log the raw server message to the console for debugging
-          console.error("[valuation] create failed:", raw);
+          if (!capped) console.error("[valuation] create failed:", raw);
         },
       },
     );
@@ -697,210 +744,255 @@ function NewEstimatePageInner({
           </Card>}
 
           {selectedType && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <PhotoUploadCard
-                assetTypeId={selectedType.id}
-                assetTypeName={selectedType.name}
-                assetCategory={selectedType.category}
-                onAutoFill={(extracted, suggestedTitle) => {
-                  if (suggestedTitle && !form.getValues("title")) {
-                    form.setValue("title", suggestedTitle, { shouldValidate: true });
-                  }
-                  for (const [key, value] of Object.entries(extracted)) {
-                    const field = selectedType.fields.find((f) => f.key === key);
-                    if (!field) continue;
-                    if (field.type === "number") {
-                      const n = Number(value);
-                      if (!Number.isNaN(n)) {
-                        form.setValue(key as any, n, { shouldValidate: true });
-                      }
-                    } else {
-                      form.setValue(key as any, value, { shouldValidate: true });
-                    }
-                  }
-                }}
-              />
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <Accordion type="multiple" defaultValue={["basics", "photos", "condition"]} className="space-y-3">
+                <AccordionItem value="basics" className="rounded-xl border border-border/50 bg-card/50 px-4 shadow-sm">
+                  <AccordionTrigger className="text-left text-base font-sans hover:no-underline">
+                    Basics &amp; structured fields
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-6 pt-2">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Descriptor / Title</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder={descriptorTitlePlaceholder(selectedType.category)}
+                                className="h-10 bg-background"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-              <Card className="border-border/50 bg-card/50 shadow-sm">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-sans">Asset Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Descriptor / Title</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder={descriptorTitlePlaceholder(selectedType.category)}
-                              className="h-10 bg-background"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name="currentRegion"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Where are you selling from?</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="h-10 bg-background">
+                                  <SelectValue placeholder="Select region" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {regions?.map((r) => (
+                                  <SelectItem key={r.name} value={r.name}>
+                                    {r.name}{" "}
+                                    <span className="text-muted-foreground tabular-nums text-sm">({r.currencyCode})</span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              We&apos;ll value the asset in your local currency
+                              {selectedRegion ? `: ${selectedRegion.currencyCode}` : ""}.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="currentRegion"
-                      render={({ field }) => (
+                      {portfoliosList && portfoliosList.length > 0 ? (
                         <FormItem className="md:col-span-2">
-                          <FormLabel>Where are you selling from?</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <FormLabel>Portfolio workspace</FormLabel>
+                          <Select value={portfolioChoice ?? ""} onValueChange={(v) => setPortfolioChoice(v)}>
                             <FormControl>
                               <SelectTrigger className="h-10 bg-background">
-                                <SelectValue placeholder="Select region" />
+                                <SelectValue placeholder="Select workspace" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {regions?.map((r) => (
-                                <SelectItem key={r.name} value={r.name}>
-                                  {r.name}{" "}
-                                  <span className="text-muted-foreground tabular-nums text-sm">({r.currencyCode})</span>
+                              {portfoliosList.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.label ?? p.id.slice(0, 8)}{" "}
+                                  <span className="text-muted-foreground text-xs capitalize">({p.purpose.replace("_", " ")})</span>
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                           <FormDescription>
-                            We'll value the asset in your local currency
-                            {selectedRegion ? `: ${selectedRegion.currencyCode}` : ""}.
+                            Matches the picker in the app header whenever you&apos;re signed in shell routes.
                           </FormDescription>
-                          <FormMessage />
                         </FormItem>
-                      )}
-                    />
+                      ) : null}
 
-                    {selectedType.fields.map((rawF) => {
-                      const f = localizeField(rawF, selectedRegionName);
-                      return (
-                      <FormField
-                        key={f.key}
-                        control={form.control}
-                        name={f.key as any}
-                        render={({ field: formField }) => {
-                          const isPrice = f.key === "purchasePrice";
-                          const labelSuffix =
-                            isPrice && selectedRegion
-                              ? ` (${selectedRegion.currencyCode})`
-                              : "";
+                      {selectedType.fields
+                        .filter((rawF) => rawF.key !== "condition")
+                        .map((rawF) => {
+                          const f = localizeField(rawF, selectedRegionName);
                           return (
-                            <FormItem className={f.type === "textarea" ? "md:col-span-2" : ""}>
-                              <FormLabel>
-                                {f.label}
-                                {labelSuffix}
-                                {f.required ? " *" : ""}
-                              </FormLabel>
-                              <FormControl>
-                                {f.type === "textarea" ? (
-                                  <Textarea
-                                    placeholder={f.placeholder}
-                                    className="resize-y min-h-[100px] bg-background"
-                                    {...formField}
-                                    value={formField.value ?? ""}
-                                  />
-                                ) : f.type === "select" ? (
-                                  <Select onValueChange={formField.onChange} value={(formField.value ?? "") as string}>
-                                    <SelectTrigger className="h-10 bg-background">
-                                      <SelectValue placeholder={f.placeholder || "Select..."} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {f.options?.map((opt) => (
-                                        <SelectItem key={opt} value={opt}>
-                                          {opt}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : isPrice && selectedRegion ? (
-                                  <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular-nums">
-                                      {selectedRegion.currencySymbol}
-                                    </span>
-                                    <Input
-                                      type="number"
-                                      placeholder={f.placeholder}
-                                      className="h-10 bg-background pl-10"
-                                      {...formField}
-                                      value={formField.value ?? ""}
-                                    />
-                                  </div>
-                                ) : (
-                                  <Input
-                                    type={f.type === "number" ? "number" : "text"}
-                                    placeholder={f.placeholder}
-                                    className="h-10 bg-background"
-                                    {...formField}
-                                    value={formField.value ?? ""}
-                                  />
-                                )}
-                              </FormControl>
-                              {f.help && <FormDescription>{f.help}</FormDescription>}
-                              <FormMessage />
-                            </FormItem>
+                            <FormField
+                              key={f.key}
+                              control={form.control}
+                              name={f.key as any}
+                              render={({ field: formField }) => {
+                                const isPrice = f.key === "purchasePrice";
+                                const labelSuffix =
+                                  isPrice && selectedRegion ? ` (${selectedRegion.currencyCode})` : "";
+                                return (
+                                  <FormItem className={f.type === "textarea" ? "md:col-span-2" : ""}>
+                                    <FormLabel>
+                                      {f.label}
+                                      {labelSuffix}
+                                      {f.required ? " *" : ""}
+                                    </FormLabel>
+                                    <FormControl>
+                                      {f.type === "textarea" ? (
+                                        <Textarea
+                                          placeholder={f.placeholder}
+                                          className="resize-y min-h-[100px] bg-background"
+                                          {...formField}
+                                          value={formField.value ?? ""}
+                                        />
+                                      ) : f.type === "select" ? (
+                                        <Select
+                                          onValueChange={formField.onChange}
+                                          value={(formField.value ?? "") as string}
+                                        >
+                                          <SelectTrigger className="h-10 bg-background">
+                                            <SelectValue placeholder={f.placeholder || "Select..."} />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {f.options?.map((opt) => (
+                                              <SelectItem key={opt} value={opt}>
+                                                {opt}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : isPrice && selectedRegion ? (
+                                        <div className="relative">
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular-nums">
+                                            {selectedRegion.currencySymbol}
+                                          </span>
+                                          <Input
+                                            type="number"
+                                            placeholder={f.placeholder}
+                                            className="h-10 bg-background pl-10"
+                                            {...formField}
+                                            value={formField.value ?? ""}
+                                          />
+                                        </div>
+                                      ) : (
+                                        <Input
+                                          type={f.type === "number" ? "number" : "text"}
+                                          placeholder={f.placeholder}
+                                          className="h-10 bg-background"
+                                          {...formField}
+                                          value={formField.value ?? ""}
+                                        />
+                                      )}
+                                    </FormControl>
+                                    {f.help && <FormDescription>{f.help}</FormDescription>}
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
                           );
-                        }}
+                        })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="photos" className="rounded-xl border border-border/50 bg-card/50 px-4 shadow-sm">
+                  <AccordionTrigger className="text-left text-base font-sans hover:no-underline">
+                    Photos &amp; extraction
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-6 pt-2">
+                    <PhotoUploadCard
+                      assetTypeId={selectedType.id}
+                      assetTypeName={selectedType.name}
+                      assetCategory={selectedType.category}
+                      onAutoFill={(extracted, suggestedTitle) => {
+                        if (suggestedTitle && !form.getValues("title")) {
+                          form.setValue("title", suggestedTitle, { shouldValidate: true });
+                        }
+                        for (const [key, value] of Object.entries(extracted)) {
+                          const field = selectedType.fields.find((fd) => fd.key === key);
+                          if (!field) continue;
+                          if (field.type === "number") {
+                            const n = Number(value);
+                            if (!Number.isNaN(n)) {
+                              form.setValue(key as any, n, { shouldValidate: true });
+                            }
+                          } else {
+                            form.setValue(key as any, value, { shouldValidate: true });
+                          }
+                        }
+                      }}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="condition" className="rounded-xl border border-border/50 bg-card/50 px-4 shadow-sm">
+                  <AccordionTrigger className="text-left text-base font-sans hover:no-underline">
+                    Condition, notes &amp; submit
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-2 pt-2">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="condition"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2 pt-2">
+                            <div className="mb-2 flex items-center justify-between">
+                              <FormLabel>Overall Condition</FormLabel>
+                              <span className="text-sm font-semibold tabular-nums">{field.value} / 10</span>
+                            </div>
+                            <FormControl>
+                              <Slider
+                                min={1}
+                                max={10}
+                                step={1}
+                                value={[field.value]}
+                                onValueChange={(vals) => field.onChange(vals[0])}
+                                className="[&_[role=slider]]:border-accent [&_[role=slider]]:bg-accent"
+                              />
+                            </FormControl>
+                            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                              <span>Poor (1)</span>
+                              <span>Mint / As new (10)</span>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      );
-                    })}
 
-                    <FormField
-                      control={form.control}
-                      name="condition"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2 pt-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <FormLabel>Overall Condition</FormLabel>
-                            <span className="text-sm font-semibold tabular-nums">{field.value} / 10</span>
-                          </div>
-                          <FormControl>
-                            <Slider
-                              min={1}
-                              max={10}
-                              step={1}
-                              value={[field.value]}
-                              onValueChange={(vals) => field.onChange(vals[0])}
-                              className="[&_[role=slider]]:bg-accent [&_[role=slider]]:border-accent"
-                            />
-                          </FormControl>
-                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            <span>Poor (1)</span>
-                            <span>Mint / As new (10)</span>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name="attributes"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Anything else worth mentioning?</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Box & papers, provenance, defects, urgent reason for sale..."
+                                className="min-h-[80px] resize-y bg-background"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
-                    <FormField
-                      control={form.control}
-                      name="attributes"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Anything else worth mentioning?</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Box & papers, provenance, defects, urgent reason for sale..."
-                              className="resize-y min-h-[80px] bg-background"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="pt-6">
+              <div className="pt-2">
                 <Button
                   type="submit"
-                  className="w-full h-14 text-lg font-semibold shadow-lg hover:-translate-y-0.5 transition-transform"
+                  className="h-14 w-full text-lg font-semibold shadow-lg transition-transform hover:-translate-y-0.5"
                 >
                   Generate Valuer Report <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>

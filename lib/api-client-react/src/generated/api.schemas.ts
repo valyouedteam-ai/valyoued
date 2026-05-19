@@ -94,6 +94,44 @@ export interface EstimateInput {
   attributes?: string;
   /** Free-form key/value attributes captured from the dynamic form */
   extraFields?: EstimateInputExtraFields;
+  /** Workspace to attach this valuation to; defaults to primary portfolio */
+  portfolioId?: string;
+}
+
+export type PatchEstimateBodyIntent =
+  (typeof PatchEstimateBodyIntent)[keyof typeof PatchEstimateBodyIntent];
+
+export const PatchEstimateBodyIntent = {
+  hold: "hold",
+  monitor: "monitor",
+  sell: "sell",
+} as const;
+
+export interface PatchEstimateBody {
+  intent: PatchEstimateBodyIntent;
+}
+
+export interface Portfolio {
+  id: string;
+  userId: string;
+  /** primary, inheritance, or pro_board workspace */
+  purpose: string;
+  label: string;
+  themeKey: string;
+  createdAt: string;
+}
+
+export type CreatePortfolioBodyPurpose =
+  (typeof CreatePortfolioBodyPurpose)[keyof typeof CreatePortfolioBodyPurpose];
+
+export const CreatePortfolioBodyPurpose = {
+  inheritance: "inheritance",
+  pro_board: "pro_board",
+} as const;
+
+export interface CreatePortfolioBody {
+  purpose: CreatePortfolioBodyPurpose;
+  label?: string;
 }
 
 export interface Comparable {
@@ -180,6 +218,16 @@ export const EstimateResultTier = {
   pro: "pro",
 } as const;
 
+export type EstimateResultIntent =
+  | (typeof EstimateResultIntent)[keyof typeof EstimateResultIntent]
+  | null;
+
+export const EstimateResultIntent = {
+  hold: "hold",
+  monitor: "monitor",
+  sell: "sell",
+} as const;
+
 export interface EstimateResult {
   id: string;
   createdAt: string;
@@ -201,7 +249,30 @@ export interface EstimateResult {
   report: EstimateReport;
   tier: EstimateResultTier;
   proInsights?: ProInsights;
+  intent?: EstimateResultIntent;
 }
+
+/**
+ * Shelf for portfolio grouping — from the seller tier captured on the estimate plus asset-class hints.
+ */
+export type EstimateSummaryPortfolioShelf =
+  (typeof EstimateSummaryPortfolioShelf)[keyof typeof EstimateSummaryPortfolioShelf];
+
+export const EstimateSummaryPortfolioShelf = {
+  luxury: "luxury",
+  everyday: "everyday",
+  other: "other",
+} as const;
+
+export type EstimateSummaryIntent =
+  | (typeof EstimateSummaryIntent)[keyof typeof EstimateSummaryIntent]
+  | null;
+
+export const EstimateSummaryIntent = {
+  hold: "hold",
+  monitor: "monitor",
+  sell: "sell",
+} as const;
 
 export interface EstimateSummary {
   id: string;
@@ -212,9 +283,11 @@ export interface EstimateSummary {
   adjustedMid: number;
   currency: string;
   bestArbitrageRegion: string;
-  /** Shelf used to group items in the portfolio (luxury vs everyday vs mixed). */
-  portfolioShelf: "luxury" | "everyday" | "other";
+  /** Shelf for portfolio grouping — from the seller tier captured on the estimate plus asset-class hints. */
+  portfolioShelf: EstimateSummaryPortfolioShelf;
   createdAt: string;
+  portfolioId?: string | null;
+  intent?: EstimateSummaryIntent;
 }
 
 export type EstimateStatsByAssetTypeItem = {
@@ -333,8 +406,12 @@ export interface ListingDraft {
   createdAt: string;
 }
 
-export type CreateEstimateParams = {
-  pro?: boolean;
+export type CreateEstimate429 = {
+  error: string;
+};
+
+export type CreatePortfolio403 = {
+  error: string;
 };
 
 export type DeleteListingDraft200 = {

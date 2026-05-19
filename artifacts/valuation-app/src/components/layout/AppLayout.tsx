@@ -1,22 +1,24 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
-import { LogOut, Menu, Sparkles } from "lucide-react";
-import { useAuthStubContext } from "@/context/AuthStubContext";
-import { Button } from "@/components/ui/button";
 import {
-  Calculator,
-  LayoutDashboard,
   Briefcase,
+  Calculator,
+  ChevronDown,
+  LayoutDashboard,
+  Layers,
   LibrarySquare,
+  LogOut,
   Megaphone,
+  Menu,
   Settings,
   ShieldHalf,
+  Sparkles,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { useProTier } from "@/hooks/use-pro-tier";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Sheet,
@@ -26,6 +28,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  mergePortfolioHref,
+  PortfolioWorkspaceProvider,
+  usePortfolioWorkspace,
+} from "@/context/PortfolioWorkspaceContext";
 
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
@@ -49,16 +64,23 @@ function NavLink({
   onNavigate,
   className,
   block,
+  portfolioHrefSuffix,
 }: {
   item: NavItem;
   active: boolean;
   onNavigate?: () => void;
   className?: string;
   block?: boolean;
+  /** Optional `?portfolio=` tail from the active workspace. */
+  portfolioHrefSuffix?: string;
 }) {
   const Icon = item.icon;
+  const href =
+    portfolioHrefSuffix && portfolioHrefSuffix.length > 0
+      ? mergePortfolioHref(item.href, portfolioHrefSuffix)
+      : item.href;
   return (
-    <Link href={item.href} onClick={onNavigate} className={cn(block && "block w-full")}>
+    <Link href={href} onClick={onNavigate} className={cn(block && "block w-full")}>
       <span
         className={cn(
           "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-all",
@@ -154,28 +176,122 @@ function UserMenu({ compact }: { compact?: boolean }) {
   return <UserMenuClerk compact={compact} />;
 }
 
-function ProToggle({ className }: { className?: string }) {
-  const { isPro, setIsPro } = useProTier();
+function PlanBrief({ className, block }: { className?: string; block?: boolean }) {
+  const { data } = useBillingSummary();
+  const paid = data?.hasPaidValuationTier;
+  const slug = data?.planSlug ?? "none";
+  let label = "Free tier";
+  if (paid) {
+    label = slug === "professional" ? "Professional" : "Everyday+";
+  }
+  const remaining = !paid ? data?.valuationsRemainingFree : null;
+
   return (
-    <div
+    <Link
+      href="/settings"
       className={cn(
-        "flex items-center gap-2.5 rounded-full border px-3 py-1.5 shadow-sm transition-colors",
-        isPro ? "border-accent/30 bg-accent/10" : "border-border/80 bg-card",
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition-colors hover:bg-muted/35",
+        paid ? "border-accent/35 bg-accent/10" : "border-border/80 bg-card",
+        block && "w-full justify-between",
         className,
       )}
+      title="Open subscription settings"
     >
-      <Sparkles className={cn("h-4 w-4", isPro ? "text-accent" : "text-muted-foreground")} />
-      <Label htmlFor="pro-mode-header" className="cursor-pointer text-xs font-medium text-foreground">
-        Pro
-      </Label>
-      <Switch id="pro-mode-header" checked={isPro} onCheckedChange={setIsPro} className="scale-90" />
-    </div>
+      <Sparkles className={cn("h-4 w-4 shrink-0", paid ? "text-accent" : "text-muted-foreground")} />
+      <div className="flex min-w-0 flex-col text-left leading-tight">
+        <span className="text-xs font-medium text-foreground">{label}</span>
+        {!paid && remaining != null ? (
+          <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
+            {remaining} valuations left · upgrade
+          </span>
+        ) : paid && data?.hasInheritanceAddon ? (
+          <span className="text-[10px] text-muted-foreground">Inheritance workspace</span>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
+function WorkspacePicker({
+  compact,
+  onNavigate,
+  className,
+}: {
+  compact?: boolean;
+  onNavigate?: () => void;
+  className?: string;
+}) {
+  const { portfolios, activePortfolio, isLoading, portfolioQuerySuffix, selectPortfolioById } =
+    usePortfolioWorkspace();
+
+  const show = Boolean(isLoading || (portfolios && portfolios.length > 1));
+  if (!show) return null;
+
+  const subtitle =
+    activePortfolio?.purpose === "inheritance"
+      ? "Inheritance workspace"
+      : activePortfolio?.purpose === "pro_board"
+        ? "Professional desk"
+        : "Primary ledger";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size={compact ? "sm" : "sm"}
+          className={cn("h-9 gap-2 rounded-full border-border/70 bg-card/80 px-3 text-xs shadow-sm", className)}
+          aria-label="Switch portfolio workspace"
+        >
+          <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
+          {!compact ? (
+            <span className="hidden min-w-0 max-w-[120px] truncate sm:inline">
+              {activePortfolio?.label ?? subtitle}
+            </span>
+          ) : null}
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={() => onNavigate?.()}>
+        <DropdownMenuRadioGroup
+          value={activePortfolio?.id ?? ""}
+          onValueChange={(v) => {
+            selectPortfolioById(v);
+            onNavigate?.();
+          }}
+        >
+          {(portfolios ?? []).map((p) => {
+            const pretty =
+              p.purpose === "inheritance"
+                ? "Inheritance workspace"
+                : p.purpose === "pro_board"
+                  ? "Professional desk"
+                  : "Primary ledger";
+            return (
+              <DropdownMenuRadioItem key={p.id} value={p.id} className="items-start gap-3">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="leading-tight font-medium">{p.label ?? pretty}</span>
+                  <span className="text-[11px] text-muted-foreground">{pretty}</span>
+                </div>
+              </DropdownMenuRadioItem>
+            );
+          })}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <Button variant="ghost" size="sm" className="h-9 w-full justify-start gap-2 text-xs" asChild>
+          <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => onNavigate?.()}>
+            Manage inheritance / desks
+          </Link>
+        </Button>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 function MobileNavSheet() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
+  const { portfolioQuerySuffix } = usePortfolioWorkspace();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -190,13 +306,20 @@ function MobileNavSheet() {
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-5">
           <div>
-            <div className="text-ui-caps text-muted-foreground mb-2 px-2">Workspace</div>
+            <div className="text-ui-caps text-muted-foreground mb-2 px-2">Portfolio</div>
+            <div className="px-2 pb-2 [&_button]:w-full [&_button]:justify-between">
+              <WorkspacePicker compact onNavigate={() => setOpen(false)} />
+            </div>
+          </div>
+          <div>
+            <div className="text-ui-caps text-muted-foreground mb-2 px-2">Navigate</div>
             <div className="flex flex-col gap-1">
               {navWorkspace.map((item) => (
                 <NavLink
                   key={item.href}
                   item={item}
                   block
+                  portfolioHrefSuffix={portfolioQuerySuffix}
                   active={location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href))}
                   onNavigate={() => setOpen(false)}
                   className="w-full !justify-start rounded-xl"
@@ -212,6 +335,7 @@ function MobileNavSheet() {
                   key={item.href}
                   item={item}
                   block
+                  portfolioHrefSuffix={portfolioQuerySuffix}
                   active={location === item.href || location.startsWith(item.href)}
                   onNavigate={() => setOpen(false)}
                   className="w-full !justify-start rounded-xl"
@@ -221,7 +345,7 @@ function MobileNavSheet() {
           </div>
           <div className="flex flex-wrap gap-2 px-2">
             <p className="w-full text-ui-caps text-muted-foreground px-2">Shortcuts</p>
-            <Link href="/settings" onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
+            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
               <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Settings">
                 <Settings className="h-4 w-4 shrink-0" />
                 Settings
@@ -236,7 +360,7 @@ function MobileNavSheet() {
           </div>
         </div>
         <div className="mt-auto space-y-4 border-t border-border px-4 py-5">
-          <ProToggle className="w-full justify-between" />
+          <PlanBrief block className="w-full justify-between" />
           <UserMenu />
         </div>
       </SheetContent>
@@ -244,9 +368,11 @@ function MobileNavSheet() {
   );
 }
 
-export function AppLayout({ children }: { children: ReactNode }) {
+function AppLayoutShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const isMobile = useIsMobile();
+  const { portfolioQuerySuffix, activePortfolio } = usePortfolioWorkspace();
+  const inheritance = activePortfolio?.purpose === "inheritance";
 
   const isActive = (href: string) =>
     location === href || (href !== "/dashboard" && location.startsWith(href));
@@ -255,7 +381,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="no-print flex min-h-[100dvh] flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4">
-          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition-opacity hover:opacity-90">
+          <Link
+            href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}
+            className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition-opacity hover:opacity-90"
+          >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-sm ring-1 ring-border/60">
               <img src={LOGO_URL} alt="ValYoued" className="h-7 w-7 object-contain" />
             </div>
@@ -264,21 +393,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
+          {inheritance ? (
+            <span className="hidden rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent md:inline-flex">
+              Inheritance
+            </span>
+          ) : null}
+
           <nav className="hidden min-w-0 flex-1 justify-center md:flex">
             <div className="flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none rounded-full border border-border/60 bg-muted/40 p-1">
               {navWorkspace.map((item) => (
-                <NavLink key={item.href} item={item} active={isActive(item.href)} />
+                <NavLink key={item.href} item={item} active={isActive(item.href)} portfolioHrefSuffix={portfolioQuerySuffix} />
               ))}
               <Separator orientation="vertical" className="mx-1 h-7 bg-border/80" />
               {navInsights.map((item) => (
-                <NavLink key={item.href} item={item} active={isActive(item.href)} />
+                <NavLink key={item.href} item={item} active={isActive(item.href)} portfolioHrefSuffix={portfolioQuerySuffix} />
               ))}
             </div>
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {!isMobile ? <ProToggle className="hidden lg:flex" /> : null}
-            <Link href="/settings" title="Settings" aria-label="Settings" className="hidden md:block">
+            {!isMobile ? <WorkspacePicker /> : null}
+            {!isMobile ? <PlanBrief className="hidden lg:flex" /> : null}
+            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
               <Button
                 variant={isActive("/settings") ? "secondary" : "ghost"}
                 size="icon"
@@ -301,18 +437,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         {isMobile ? (
-          <div className="flex items-center justify-center border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            <ProToggle />
+          <div className="flex flex-col items-stretch gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
+            <div className="flex items-center justify-center gap-2">
+              <WorkspacePicker />
+              <PlanBrief />
+            </div>
           </div>
         ) : null}
       </header>
 
-      <main className="mesh-bg flex-1">
+      <main className={cn("mesh-bg flex-1", inheritance && "portfolio-workspace-inheritance")}>
         <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]">
           <div className="grid-bg absolute inset-0" />
         </div>
         <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">{children}</div>
       </main>
     </div>
+  );
+}
+
+export function AppLayout({ children }: { children: ReactNode }) {
+  return (
+    <PortfolioWorkspaceProvider>
+      <AppLayoutShell>{children}</AppLayoutShell>
+    </PortfolioWorkspaceProvider>
   );
 }

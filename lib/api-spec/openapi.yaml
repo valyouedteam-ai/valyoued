@@ -14,6 +14,12 @@ tags:
     description: FX hints for USD normalization
   - name: estimate
     description: Asset estimate operations
+  - name: portfolio
+    description: Portfolio workspaces
+  - name: vision
+    description: Vision extract
+  - name: listing
+    description: Listing drafts
 paths:
   /healthz:
     get:
@@ -88,13 +94,7 @@ paths:
     post:
       operationId: createEstimate
       tags: [estimate]
-      summary: Create a new asset estimate (free or pro tier)
-      parameters:
-        - in: query
-          name: pro
-          required: false
-          schema:
-            type: boolean
+      summary: Create a new asset estimate (tier derived from subscription / free limits)
       requestBody:
         required: true
         content:
@@ -108,6 +108,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EstimateResult"
+        "429":
+          description: Free tier monthly valuation limit reached
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
   /estimates/{id}:
     get:
       operationId: getEstimate
@@ -126,6 +136,70 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EstimateResult"
+    patch:
+      operationId: patchEstimate
+      tags: [estimate]
+      summary: Update estimate metadata (intent)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchEstimateBody"
+      responses:
+        "200":
+          description: Updated estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateResult"
+  /portfolios:
+    get:
+      operationId: listPortfolios
+      tags: [portfolio]
+      summary: List portfolio workspaces (primary is auto-created)
+      responses:
+        "200":
+          description: Portfolios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Portfolio"
+    post:
+      operationId: createPortfolio
+      tags: [portfolio]
+      summary: Create workspace (e.g. inheritance when add-on active)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePortfolioBody"
+      responses:
+        "200":
+          description: Portfolio created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "403":
+          description: Add-on or plan not allowed for this workspace type
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
   /estimates/stats:
     get:
       operationId: getEstimateStats
@@ -344,6 +418,47 @@ components:
           additionalProperties:
             type: string
           description: Free-form key/value attributes captured from the dynamic form
+        portfolioId:
+          type: string
+          format: uuid
+          description: Workspace to attach this valuation to; defaults to primary portfolio
+    PatchEstimateBody:
+      type: object
+      additionalProperties: false
+      properties:
+        intent:
+          type: string
+          enum: [hold, monitor, sell]
+      required: [intent]
+    Portfolio:
+      type: object
+      required: [id, userId, purpose, label, themeKey, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        purpose:
+          type: string
+          description: primary, inheritance, or pro_board workspace
+        label:
+          type: string
+        themeKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    CreatePortfolioBody:
+      type: object
+      additionalProperties: false
+      required: [purpose]
+      properties:
+        purpose:
+          type: string
+          enum: [inheritance, pro_board]
+        label:
+          type: string
     Comparable:
       type: object
       required: [source, description, price, year]
@@ -542,6 +657,10 @@ components:
           enum: [free, pro]
         proInsights:
           $ref: "#/components/schemas/ProInsights"
+        intent:
+          type: string
+          nullable: true
+          enum: [hold, monitor, sell]
     EstimateSummary:
       type: object
       required:
@@ -571,6 +690,14 @@ components:
         createdAt:
           type: string
           format: date-time
+        portfolioId:
+          type: string
+          format: uuid
+          nullable: true
+        intent:
+          type: string
+          nullable: true
+          enum: [hold, monitor, sell]
     EstimateStats:
       type: object
       required: [count, averageBaselineUsd, averageAdjustedUsd, averageUplift, byAssetType, topArbitrageRegions]

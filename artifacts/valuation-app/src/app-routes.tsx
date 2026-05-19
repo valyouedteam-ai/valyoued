@@ -4,6 +4,7 @@ import { useListEstimates } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import HomePage from "@/pages/home";
 import LandingPage from "@/pages/landing";
+import WelcomePersonaPage from "@/pages/welcome";
 import StartPage from "@/pages/start";
 import AboutPage from "@/pages/about";
 import SignInPage from "@/pages/sign-in";
@@ -22,7 +23,7 @@ import NotFound from "@/pages/not-found";
 
 function HomeOrLanding() {
   const { isSignedIn } = useAuth();
-  if (isSignedIn) return <Redirect to="/recent" />;
+  if (isSignedIn) return <Redirect to="/dashboard" />;
   return <LandingPage />;
 }
 
@@ -50,12 +51,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 function StubFullBleedSwitch() {
   return (
     <Switch>
-      <Route path="/" component={() => <Redirect to="/recent" />} />
+      <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <Route path="/sign-in" component={() => <Redirect to="/dashboard" />} />
       <Route path="/sign-in/*" component={() => <Redirect to="/dashboard" />} />
       <Route path="/sign-up" component={() => <Redirect to="/dashboard" />} />
       <Route path="/sign-up/*" component={() => <Redirect to="/dashboard" />} />
       <Route path="/start" component={StartPage} />
+      <Route path="/welcome" component={WelcomePersonaPage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />
     </Switch>
@@ -89,6 +91,7 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
     location === "/" ||
     location.startsWith("/sign-in") ||
     location.startsWith("/sign-up") ||
+    location.startsWith("/welcome") ||
     location.startsWith("/start") ||
     location.startsWith("/about") ||
     location.startsWith("/privacy");
@@ -105,6 +108,7 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/sign-up/*" component={SignUpPage} />
         <Route path="/start" component={StartPage} />
+        <Route path="/welcome" component={WelcomePersonaPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/privacy" component={PrivacyPage} />
       </Switch>

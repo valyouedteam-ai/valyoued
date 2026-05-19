@@ -22,4 +22,6 @@ export interface EstimateInput {
   attributes?: string;
   /** Free-form key/value attributes captured from the dynamic form */
   extraFields?: EstimateInputExtraFields;
+  /** Workspace to attach this valuation to; defaults to primary portfolio */
+  portfolioId?: string;
 }

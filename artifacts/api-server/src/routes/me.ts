@@ -12,6 +12,7 @@ import {
   publicAppBaseUrl,
   sendHtmlEmail,
 } from "../lib/emailDelivery";
+import { resolveUserEntitlements } from "../lib/entitlements";
 
 const router: IRouter = Router();
 
@@ -19,11 +20,18 @@ const PatchEmailAlertsBody = z
   .object({
     estimateReadyEmail: z.boolean().optional(),
     productUpdatesEmail: z.boolean().optional(),
+    monitorValueChangeEmail: z.boolean().optional(),
   })
   .strict()
-  .refine((o) => o.estimateReadyEmail !== undefined || o.productUpdatesEmail !== undefined, {
-    message: "Provide at least one of estimateReadyEmail, productUpdatesEmail",
-  });
+  .refine(
+    (o) =>
+      o.estimateReadyEmail !== undefined ||
+      o.productUpdatesEmail !== undefined ||
+      o.monitorValueChangeEmail !== undefined,
+    {
+      message: "Provide at least one of estimateReadyEmail, productUpdatesEmail, monitorValueChangeEmail",
+    },
+  );
 
 router.get("/me/email-alerts", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
@@ -41,6 +49,16 @@ router.patch("/me/email-alerts", requireAuth, async (req, res): Promise<void> =>
     res.status(400).json({ error: parsed.error.issues.map((e) => e.message).join("; ") });
     return;
   }
+  if (parsed.data.monitorValueChangeEmail === true) {
+    const ent = await resolveUserEntitlements(userId);
+    if (!ent.canUseMonitorEmailAlerts) {
+      res.status(403).json({
+        error: "Portfolio value‑change alerts are available on Everyday+ and Professional plans.",
+      });
+      return;
+    }
+  }
+
   const next = await upsertUserAlertPrefs(userId, parsed.data);
   res.json({
     ...next,
@@ -81,13 +99,21 @@ router.post("/me/email-alerts/test", requireAuth, async (req, res): Promise<void
 
 router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
+  const ent = await resolveUserEntitlements(userId);
   const stubTier = process.env.AUTH_STUB_BILLING_TIER?.trim();
   if (isAuthStubMode() && (stubTier === "pro" || stubTier === "free")) {
+    const paid = stubTier === "pro";
     res.json({
       tier: stubTier,
-      status: stubTier === "pro" ? "stub_active" : "inactive",
+      status: paid ? "stub_active" : "inactive",
       stripeCustomerId: null,
       stripeStub: isStripeStubMode(),
+      planSlug: paid ? "everyday_plus" : "none",
+      hasInheritanceAddon: false,
+      valuationsThisMonth: ent.valuationsThisMonth,
+      valuationsMonthLimit: paid ? null : ent.valuationsMonthLimit,
+      valuationsRemainingFree: paid ? null : ent.valuationsRemainingFree,
+      hasPaidValuationTier: paid,
     });
     return;
   }
@@ -101,6 +127,12 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
     status: sub?.status ?? "inactive",
     stripeCustomerId: sub?.stripeCustomerId ?? null,
     stripeStub: isStripeStubMode(),
+    planSlug: ent.planSlug,
+    hasInheritanceAddon: sub?.hasInheritanceAddon ?? false,
+    valuationsThisMonth: ent.valuationsThisMonth,
+    valuationsMonthLimit: ent.valuationsMonthLimit,
+    valuationsRemainingFree: ent.valuationsRemainingFree,
+    hasPaidValuationTier: ent.hasPaidValuationTier,
   });
 });
 
@@ -136,6 +168,8 @@ router.get("/me/data-export", requireAuth, async (req, res): Promise<void> => {
       adjustedMid: r.adjustedMid,
       bestArbitrageRegion: r.bestArbitrageRegion,
       tier: r.tier,
+      portfolioId: r.portfolioId,
+      intent: r.intent,
       result: r.result,
       createdAt: r.createdAt.toISOString(),
     })),

@@ -4,3 +4,5 @@ export * from "./listings";
 export * from "./platform-events";
 export * from "./billing";
 export * from "./user-alert-prefs";
+export * from "./portfolios";
+export * from "./estimate-usage";

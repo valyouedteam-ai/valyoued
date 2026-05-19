@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import Stripe from "stripe";
+import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, billingSubscriptionsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
@@ -7,6 +8,13 @@ import { logger } from "../lib/logger";
 import { isStripeStubMode } from "../lib/stripeStub";
 
 const router: IRouter = Router();
+
+const CheckoutSessionBody = z
+  .object({
+    plan: z.enum(["everyday_plus", "professional"]).default("everyday_plus"),
+    includeInheritanceAddon: z.boolean().optional(),
+  })
+  .strict();
 
 function billingBaseUrl(): string {
   return process.env.PUBLIC_APP_URL ?? process.env.VITE_APP_ORIGIN ?? "http://localhost:5173";
@@ -16,6 +24,14 @@ function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   return new Stripe(key);
+}
+
+function parseTrialDaysProfessional(): number | undefined {
+  const raw = process.env.STRIPE_PROFESSIONAL_TRIAL_DAYS?.trim();
+  if (!raw) return 14;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return Math.round(n);
 }
 
 router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<void> => {
@@ -29,11 +45,28 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
   }
 
   const stripe = getStripe();
-  const priceId = process.env.STRIPE_PRICE_PRO;
-  if (!stripe || !priceId) {
+
+  const body = CheckoutSessionBody.safeParse(typeof req.body === "object" && req.body !== null ? req.body : {});
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const everyday = process.env.STRIPE_PRICE_EVERYDAY_PLUS?.trim();
+  const professional = process.env.STRIPE_PRICE_PROFESSIONAL?.trim();
+  const legacyPro = process.env.STRIPE_PRICE_PRO?.trim();
+  const inheritance = process.env.STRIPE_PRICE_INHERITANCE_ADDON?.trim();
+
+  const primaryPrice =
+    body.data.plan === "professional"
+      ? professional ?? legacyPro
+      : everyday ?? legacyPro;
+
+  if (!stripe || !primaryPrice) {
     res.status(503).json({
       error:
-        "Stripe billing is not configured. Set STRIPE_SECRET_KEY and STRIPE_PRICE_PRO (Checkout Price ID for ValYoued Pro).",
+        "Stripe billing is not configured. Set STRIPE_SECRET_KEY and Everyday / Professional Stripe Price IDs " +
+        "(see STRIPE_PRICE_EVERYDAY_PLUS, STRIPE_PRICE_PROFESSIONAL, or fallback STRIPE_PRICE_PRO).",
     });
     return;
   }
@@ -57,6 +90,8 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
         stripeCustomerId: customerId,
         status: "inactive",
         tier: "free",
+        planSlug: null,
+        hasInheritanceAddon: false,
       })
       .onConflictDoUpdate({
         target: billingSubscriptionsTable.userId,
@@ -64,16 +99,30 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
       });
   }
 
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: primaryPrice, quantity: 1 }];
+  if (body.data.includeInheritanceAddon && inheritance) {
+    lineItems.push({ price: inheritance, quantity: 1 });
+  } else if (body.data.includeInheritanceAddon && !inheritance) {
+    res.status(503).json({ error: "Inheritance add-on price is not configured (STRIPE_PRICE_INHERITANCE_ADDON)." });
+    return;
+  }
+
+  const planSlugMeta = body.data.plan === "professional" ? "professional" : "everyday_plus";
+  const incl = body.data.includeInheritanceAddon ?? false ? "true" : "false";
+  const trialDays =
+    body.data.plan === "professional" ? parseTrialDaysProfessional() : undefined;
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: lineItems,
       success_url: `${baseUrl.replace(/\/$/, "")}/settings?checkout=success`,
       cancel_url: `${baseUrl.replace(/\/$/, "")}/settings?checkout=cancel`,
-      metadata: { clerkUserId: userId },
+      metadata: { clerkUserId: userId, planSlug: planSlugMeta, includeInheritance: incl },
       subscription_data: {
-        metadata: { clerkUserId: userId },
+        metadata: { clerkUserId: userId, planSlug: planSlugMeta, includeInheritance: incl },
+        ...(trialDays != null ? { trial_period_days: trialDays } : {}),
       },
     });
     if (!session.url) {

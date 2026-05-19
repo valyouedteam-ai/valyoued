@@ -4,6 +4,7 @@ import { db, userAlertPrefsTable } from "@workspace/db";
 export type AlertPrefsState = {
   estimateReadyEmail: boolean;
   productUpdatesEmail: boolean;
+  monitorValueChangeEmail: boolean;
 };
 
 export async function getUserAlertPrefs(userId: string): Promise<AlertPrefsState> {
@@ -14,6 +15,7 @@ export async function getUserAlertPrefs(userId: string): Promise<AlertPrefsState
   return {
     estimateReadyEmail: row?.estimateReadyEmail ?? false,
     productUpdatesEmail: row?.productUpdatesEmail ?? false,
+    monitorValueChangeEmail: row?.monitorValueChangeEmail ?? false,
   };
 }
 
@@ -29,12 +31,14 @@ export async function upsertUserAlertPrefs(
       userId,
       estimateReadyEmail: next.estimateReadyEmail,
       productUpdatesEmail: next.productUpdatesEmail,
+      monitorValueChangeEmail: next.monitorValueChangeEmail,
     })
     .onConflictDoUpdate({
       target: userAlertPrefsTable.userId,
       set: {
         estimateReadyEmail: next.estimateReadyEmail,
         productUpdatesEmail: next.productUpdatesEmail,
+        monitorValueChangeEmail: next.monitorValueChangeEmail,
         updatedAt: new Date(),
       },
     });

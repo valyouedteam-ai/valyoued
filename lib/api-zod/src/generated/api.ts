@@ -93,18 +93,20 @@ export const ListEstimatesResponseItem = zod.object({
   adjustedMid: zod.number(),
   currency: zod.string(),
   bestArbitrageRegion: zod.string(),
-  portfolioShelf: zod.enum(["luxury", "everyday", "other"]),
+  portfolioShelf: zod
+    .enum(["luxury", "everyday", "other"])
+    .describe(
+      "Shelf for portfolio grouping — from the seller tier captured on the estimate plus asset-class hints.",
+    ),
   createdAt: zod.coerce.date(),
+  portfolioId: zod.string().uuid().nullish(),
+  intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
 });
 export const ListEstimatesResponse = zod.array(ListEstimatesResponseItem);
 
 /**
- * @summary Create a new asset estimate (free or pro tier)
+ * @summary Create a new asset estimate (tier derived from subscription / free limits)
  */
-export const CreateEstimateQueryParams = zod.object({
-  pro: zod.coerce.boolean().optional(),
-});
-
 export const CreateEstimateBody = zod.object({
   assetTypeId: zod.string(),
   title: zod.string(),
@@ -125,6 +127,13 @@ export const CreateEstimateBody = zod.object({
     .record(zod.string(), zod.string())
     .optional()
     .describe("Free-form key\/value attributes captured from the dynamic form"),
+  portfolioId: zod
+    .string()
+    .uuid()
+    .optional()
+    .describe(
+      "Workspace to attach this valuation to; defaults to primary portfolio",
+    ),
 });
 
 export const CreateEstimateResponse = zod.object({
@@ -151,6 +160,13 @@ export const CreateEstimateResponse = zod.object({
       .optional()
       .describe(
         "Free-form key\/value attributes captured from the dynamic form",
+      ),
+    portfolioId: zod
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        "Workspace to attach this valuation to; defaults to primary portfolio",
       ),
   }),
   assetType: zod.object({
@@ -264,6 +280,7 @@ export const CreateEstimateResponse = zod.object({
       anchorPrice: zod.number(),
     })
     .optional(),
+  intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
 });
 
 /**
@@ -298,6 +315,13 @@ export const GetEstimateResponse = zod.object({
       .describe(
         "Free-form key\/value attributes captured from the dynamic form",
       ),
+    portfolioId: zod
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        "Workspace to attach this valuation to; defaults to primary portfolio",
+      ),
   }),
   assetType: zod.object({
     id: zod.string(),
@@ -410,6 +434,199 @@ export const GetEstimateResponse = zod.object({
       anchorPrice: zod.number(),
     })
     .optional(),
+  intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
+});
+
+/**
+ * @summary Update estimate metadata (intent)
+ */
+export const PatchEstimateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const PatchEstimateBody = zod.object({
+  intent: zod.enum(["hold", "monitor", "sell"]),
+});
+
+export const PatchEstimateResponse = zod.object({
+  id: zod.string(),
+  createdAt: zod.coerce.date(),
+  input: zod.object({
+    assetTypeId: zod.string(),
+    title: zod.string(),
+    brand: zod.string().optional(),
+    model: zod.string().optional(),
+    year: zod.number().optional(),
+    condition: zod.number(),
+    purchasePrice: zod
+      .number()
+      .optional()
+      .describe("Original purchase price in the seller's local currency"),
+    currentRegion: zod.string(),
+    currency: zod
+      .string()
+      .describe("ISO 4217 currency code derived from currentRegion"),
+    attributes: zod.string().optional(),
+    extraFields: zod
+      .record(zod.string(), zod.string())
+      .optional()
+      .describe(
+        "Free-form key\/value attributes captured from the dynamic form",
+      ),
+    portfolioId: zod
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        "Workspace to attach this valuation to; defaults to primary portfolio",
+      ),
+  }),
+  assetType: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    category: zod
+      .string()
+      .describe(
+        'Group label (such as \"Watches & Jewelry\", \"Vehicles\", \"Real Estate\")',
+      ),
+    tagline: zod.string(),
+    fields: zod.array(
+      zod.object({
+        key: zod.string(),
+        label: zod.string(),
+        type: zod.enum(["text", "number", "select", "textarea"]),
+        required: zod.boolean(),
+        placeholder: zod.string().optional(),
+        help: zod.string().optional(),
+        options: zod.array(zod.string()).optional(),
+      }),
+    ),
+    exampleAttributes: zod.string(),
+    internationallyTradeable: zod
+      .boolean()
+      .describe("Whether this asset is practical to ship\/sell across borders"),
+  }),
+  currency: zod.string(),
+  baselineLow: zod.number(),
+  baselineHigh: zod.number(),
+  baselineMid: zod.number(),
+  comparables: zod.array(
+    zod.object({
+      source: zod.string(),
+      description: zod.string(),
+      price: zod.number().describe("Price in the result currency"),
+      year: zod.number(),
+      url: zod.string().optional(),
+    }),
+  ),
+  marketSignals: zod.array(
+    zod.object({
+      label: zod.string(),
+      value: zod.string(),
+      impact: zod.number(),
+      rationale: zod.string(),
+    }),
+  ),
+  worldEvents: zod.array(
+    zod.object({
+      title: zod.string(),
+      summary: zod.string(),
+      sentiment: zod.enum(["positive", "negative", "neutral"]),
+      scope: zod
+        .string()
+        .describe('Typical values: \"Global\", \"United Kingdom\", \"EU\"'),
+      source: zod.string().optional(),
+      url: zod.string().optional(),
+      publishedAt: zod
+        .string()
+        .optional()
+        .describe("Article publication date (RFC 2822 or ISO 8601)"),
+    }),
+  ),
+  netMarketFactor: zod.number(),
+  adjustedLow: zod.number(),
+  adjustedHigh: zod.number(),
+  adjustedMid: zod.number(),
+  arbitrage: zod.array(
+    zod.object({
+      region: zod.string(),
+      marketplace: zod.string(),
+      estimatedSalePrice: zod.number(),
+      estimatedShipping: zod.number(),
+      estimatedFees: zod.number(),
+      estimatedDuties: zod.number(),
+      netToSeller: zod.number(),
+      currency: zod
+        .string()
+        .describe(
+          "Currency for the values in this row (matches result currency)",
+        ),
+      demandNote: zod.string(),
+      recommended: zod.boolean(),
+    }),
+  ),
+  bestArbitrageRegion: zod.string(),
+  report: zod.object({
+    headline: zod.string(),
+    summary: zod.string(),
+    baselineNarrative: zod.string(),
+    marketNarrative: zod.string(),
+    arbitrageNarrative: zod.string(),
+    worldEventsNarrative: zod.string(),
+    finalNarrative: zod.string(),
+  }),
+  tier: zod.enum(["free", "pro"]),
+  proInsights: zod
+    .object({
+      negotiationTactics: zod.array(
+        zod.object({
+          title: zod.string(),
+          detail: zod.string(),
+        }),
+      ),
+      talkingPoints: zod.array(zod.string()),
+      redFlags: zod.array(zod.string()),
+      optimalTiming: zod.string(),
+      listingTips: zod.array(zod.string()),
+      walkAwayPrice: zod.number(),
+      anchorPrice: zod.number(),
+    })
+    .optional(),
+  intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
+});
+
+/**
+ * @summary List portfolio workspaces (primary is auto-created)
+ */
+export const ListPortfoliosResponseItem = zod.object({
+  id: zod.string().uuid(),
+  userId: zod.string(),
+  purpose: zod
+    .string()
+    .describe("primary, inheritance, or pro_board workspace"),
+  label: zod.string(),
+  themeKey: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListPortfoliosResponse = zod.array(ListPortfoliosResponseItem);
+
+/**
+ * @summary Create workspace (e.g. inheritance when add-on active)
+ */
+export const CreatePortfolioBody = zod.object({
+  purpose: zod.enum(["inheritance", "pro_board"]),
+  label: zod.string().optional(),
+});
+
+export const CreatePortfolioResponse = zod.object({
+  id: zod.string().uuid(),
+  userId: zod.string(),
+  purpose: zod
+    .string()
+    .describe("primary, inheritance, or pro_board workspace"),
+  label: zod.string(),
+  themeKey: zod.string(),
+  createdAt: zod.coerce.date(),
 });
 
 /**

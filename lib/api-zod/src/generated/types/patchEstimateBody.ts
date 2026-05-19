@@ -5,7 +5,8 @@
  * ValYoued — multi-asset valuation API
  * OpenAPI spec version: 0.1.0
  */
+import type { PatchEstimateBodyIntent } from "./patchEstimateBodyIntent";
 
-export type CreateEstimateParams = {
-  pro?: boolean;
-};
+export interface PatchEstimateBody {
+  intent: PatchEstimateBodyIntent;
+}

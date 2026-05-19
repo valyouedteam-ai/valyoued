@@ -5,6 +5,8 @@
  * ValYoued — multi-asset valuation API
  * OpenAPI spec version: 0.1.0
  */
+import type { EstimateSummaryIntent } from "./estimateSummaryIntent";
+import type { EstimateSummaryPortfolioShelf } from "./estimateSummaryPortfolioShelf";
 
 export interface EstimateSummary {
   id: string;
@@ -15,6 +17,9 @@ export interface EstimateSummary {
   adjustedMid: number;
   currency: string;
   bestArbitrageRegion: string;
-  portfolioShelf: "luxury" | "everyday" | "other";
+  /** Shelf for portfolio grouping — from the seller tier captured on the estimate plus asset-class hints. */
+  portfolioShelf: EstimateSummaryPortfolioShelf;
   createdAt: Date;
+  portfolioId?: string | null;
+  intent?: EstimateSummaryIntent;
 }

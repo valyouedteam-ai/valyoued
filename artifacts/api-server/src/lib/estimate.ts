@@ -328,6 +328,14 @@ export async function generateEstimate(
     for (const a of arbitrage) if (a.netToSeller > (best?.netToSeller ?? -Infinity)) best = a;
     arbitrage = arbitrage.map((a) => ({ ...a, recommended: a === best }));
   }
+  // Everyday free users: omit international arbitrage — keep a single sensible local/regional comparison row.
+  if (tier === "free" && assetType.internationallyTradeable && arbitrage.length > 1) {
+    const localRow =
+      arbitrage.find((a) => a.region === input.currentRegion) ??
+      arbitrage.find((a) => a.recommended) ??
+      arbitrage[0];
+    arbitrage = localRow ? [{ ...localRow, recommended: true }] : arbitrage;
+  }
   const bestArbitrageRegion = arbitrage.find((a) => a.recommended)?.region ?? input.currentRegion;
 
   const result: Omit<EstimateResult, "id" | "createdAt"> = {

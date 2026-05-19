@@ -1,514 +1,432 @@
+import { useMemo } from "react";
 import { Link } from "wouter";
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useListAssetTypes, useGetEstimateStats } from "@workspace/api-client-react";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+} from "recharts";
+import type { UseQueryOptions } from "@tanstack/react-query";
+import type { EstimateSummary } from "@workspace/api-client-react";
+import {
+  listEstimates,
+  useGetEstimateStats,
+  useGetFxRates,
+  getGetFxRatesQueryKey,
+  useListEstimates,
+} from "@workspace/api-client-react";
+import { convertToUsdApprox } from "@workspace/fx-usd";
+import { useDisplayCurrency } from "@/hooks/use-display-currency";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { useSellerPersonaClerkSync } from "@/hooks/use-persona-sync";
+import {
+  mergePortfolioHref,
+  usePortfolioWorkspace,
+} from "@/context/PortfolioWorkspaceContext";
+import { formatUsdRollupForDisplay } from "@/lib/aggregated-money";
+import { formatMoney, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Calculator,
   ChevronRight,
   Globe2,
   Layers,
+  Lock,
+  Megaphone,
   Sparkles,
-  AlertCircle,
-  BarChart3,
-  DollarSign,
-  MapPin,
   TrendingUp,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  LayoutDashboard,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Progress } from "@/components/ui/progress";
-import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
-import { cn } from "@/lib/utils";
 
-const STEPS = [
-  { id: "welcome", label: "Welcome" },
-  { id: "snapshot", label: "Snapshot" },
-  { id: "shortcuts", label: "Shortcuts" },
-  { id: "catalog", label: "Catalog" },
-  { id: "ready", label: "Ready" },
-] as const;
+type Shelf = EstimateSummary["portfolioShelf"];
 
-const quickLinks = [
-  {
-    href: "/estimate/new",
-    title: "New valuation",
-    desc: "Run the guided form with photo assist and get a full report.",
-    icon: Calculator,
-    emphasis: true as const,
+const SHELF_SECTION_META: Record<Shelf, { title: string; description: string }> = {
+  luxury: {
+    title: "Luxury & collectibles",
+    description: "Watches, signed bags, jewels — the luxury shelf.",
   },
-  {
-    href: "/portfolio",
-    title: "Portfolio",
-    desc: "Diversification, shelves, and combined totals (your chosen display currency).",
-    icon: Layers,
-    emphasis: false as const,
+  everyday: {
+    title: "Everyday & tech",
+    description: "Mass-market staples, closets, rigs.",
   },
-  {
-    href: "/markets",
-    title: "Cross-market",
-    desc: "Regional signals and deep links into each dossier.",
-    icon: Globe2,
-    emphasis: false as const,
+  other: {
+    title: "Other holdings",
+    description: "Autos, antiques, hybrid runs.",
   },
-] as const;
+};
+
+const DONUT_PALETTE = [
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#f59e0b",
+  "#10b981",
+  "#06b6d4",
+  "#ef4444",
+  "#6366f1",
+];
+
+function inActiveWorkspace(
+  e: EstimateSummary,
+  activeId: string | null,
+  primaryId: string | null,
+): boolean {
+  if (!activeId || !primaryId) return true;
+  if (activeId === primaryId) return !e.portfolioId || e.portfolioId === primaryId;
+  return e.portfolioId === activeId;
+}
+
+function ShelfBucket({
+  shelf,
+  count,
+  portfolioQuerySuffix,
+}: {
+  shelf: Shelf;
+  count: number;
+  portfolioQuerySuffix: string;
+}) {
+  const reduceMotion = useReducedMotion();
+  const meta = SHELF_SECTION_META[shelf];
+  const empty = count === 0;
+  return (
+    <motion.div
+      layout
+      initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+      animate={reduceMotion ? false : { opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className={cn(
+        "relative rounded-2xl border border-border/60 bg-card/65 p-4 shadow-sm backdrop-blur-sm overflow-hidden min-h-[120px]",
+        empty && "border-dashed",
+      )}
+    >
+      {!reduceMotion && empty ? (
+        <div className="pointer-events-none absolute inset-2 rounded-xl bg-accent/5 opacity-75 animate-pulse" />
+      ) : null}
+      <div className="relative z-10">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="font-medium leading-tight">{meta.title}</div>
+            <p className="text-xs text-muted-foreground mt-1 leading-snug">{meta.description}</p>
+          </div>
+          <Badge variant={empty ? "secondary" : "default"}>{count}</Badge>
+        </div>
+        {!empty ? (
+          <Link
+            href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}
+            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+          >
+            Add another asset
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        ) : (
+          <p className="text-[11px] text-muted-foreground mt-3">Seed this bucket with your next valuation.</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 export default function HomePage() {
-  const [step, setStep] = useState(0);
-  const total = STEPS.length;
-  const progressPct = ((step + 1) / total) * 100;
+  useSellerPersonaClerkSync();
 
-  const {
-    data: assetTypes,
-    isLoading: loadingTypes,
-    isError: assetTypesQueryError,
-    error: assetTypesErr,
-    refetch: refetchAssetTypes,
-  } = useListAssetTypes();
+  const { code: displayCcy } = useDisplayCurrency();
+  const { data: billing } = useBillingSummary();
+  const paid = billing?.hasPaidValuationTier;
+  const slug = billing?.planSlug ?? "none";
+  const isProfessionalFlavor = slug === "professional";
+
+  const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
+  const { data: estimates, isLoading: estLoading } = useListEstimates({
+    query: {
+      staleTime: 30_000,
+    } as unknown as UseQueryOptions<Awaited<ReturnType<typeof listEstimates>>, Error>,
+  });
+
   const { data: stats, isLoading: statsLoading } = useGetEstimateStats();
+  const { data: fxSnap } = useGetFxRates({
+    query: {
+      queryKey: getGetFxRatesQueryKey(),
+      staleTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  });
+  const fxMult = fxSnap?.rates;
 
-  const assetTypesMalformed =
-    !loadingTypes &&
-    !assetTypesQueryError &&
-    assetTypes != null &&
-    !Array.isArray(assetTypes);
+  const filtered = useMemo(() => {
+    const rows = Array.isArray(estimates) ? estimates : [];
+    const act = activePortfolio?.id ?? null;
+    const prim = primaryPortfolio?.id ?? null;
+    return rows.filter((e) => inActiveWorkspace(e, act, prim));
+  }, [estimates, activePortfolio?.id, primaryPortfolio?.id]);
 
-  const showAssetTypesError = assetTypesQueryError || assetTypesMalformed;
-  const assetTypesDisplayErr: unknown = assetTypesMalformed
-    ? new Error(
-        "The catalog response was not a JSON array. If the UI is on Vercel or another static host, set VITE_API_ORIGIN to your valuation API origin (no trailing slash) so /api/asset-types hits the backend.",
-      )
-    : assetTypesErr;
-
-  const assetTypesErrMessage =
-    assetTypesDisplayErr instanceof Error
-      ? assetTypesDisplayErr.message
-      : String(assetTypesDisplayErr ?? "Unknown error");
-
-  const assetTypeRows = useMemo(() => {
-    if (!Array.isArray(assetTypes)) return [];
-    return assetTypes.filter(
-      (t): t is (typeof assetTypes)[number] => t != null && typeof t === "object",
-    );
-  }, [assetTypes]);
-
-  const assetTypesByCategory = useMemo(() => {
-    if (!assetTypeRows.length) return [];
-    const map = new Map<string, typeof assetTypeRows>();
-    for (const t of assetTypeRows) {
-      const key =
-        typeof t.category === "string" && t.category.trim() !== "" ? t.category : "Other";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(t);
+  const countsByShelf = useMemo(() => {
+    const tally: Record<Shelf, number> = { luxury: 0, everyday: 0, other: 0 };
+    for (const e of filtered) {
+      const k = e.portfolioShelf ?? "other";
+      if (k in tally) tally[k]++;
+      else tally.other++;
     }
-    return Array.from(map.entries())
-      .map(
-        ([category, types]) =>
-          [
-            category,
-            [...types].sort((a, b) =>
-              (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }),
-            ),
-          ] as const,
-      )
-      .sort(([a], [b]) => (a ?? "").localeCompare(b ?? "", undefined, { sensitivity: "base" }));
-  }, [assetTypeRows]);
+    return tally;
+  }, [filtered]);
 
-  const topRegion = stats?.topArbitrageRegions?.[0];
-  const distinctAssetClasses = stats?.byAssetType?.length ?? 0;
+  const donutData = useMemo(() => {
+    return (Object.entries(countsByShelf) as Array<[Shelf, number]>)
+      .filter(([, c]) => c > 0)
+      .map(([name, value]) => ({ name: SHELF_SECTION_META[name].title, value }));
+  }, [countsByShelf]);
 
-  const goNext = () => setStep((s) => Math.min(s + 1, total - 1));
-  const goBack = () => setStep((s) => Math.max(s - 1, 0));
-  const restart = () => setStep(0);
+  const totalAdjustedUsdFiltered = useMemo(() => {
+    return filtered.reduce(
+      (s, e) => s + convertToUsdApprox(e.adjustedMid, e.currency, fxMult),
+      0,
+    );
+  }, [filtered, fxMult]);
+
+  const displayTotal = formatUsdRollupForDisplay(totalAdjustedUsdFiltered, displayCcy, fxMult);
+  const workspaceLabel =
+    activePortfolio?.label ??
+    (activePortfolio?.purpose === "inheritance"
+      ? "Inheritance ledger"
+      : activePortfolio?.purpose === "pro_board"
+        ? "Professional desk"
+        : "Primary portfolio");
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 pb-16 pt-2 sm:pt-6">
-      <header className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="text-ui-caps">Home</span>
+    <div className="space-y-10 pb-16">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-3 max-w-2xl">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            <Badge variant="outline" className="rounded-full px-3 py-0.5">
+              Workspace
+            </Badge>
+            <span className="text-foreground/80">{workspaceLabel}</span>
           </div>
-          {step > 0 ? (
-            <button
-              type="button"
-              onClick={restart}
-              className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Start over
-            </button>
-          ) : null}
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+            Portfolio command center
+          </h1>
+          <p className="text-pretty leading-relaxed text-muted-foreground">
+            {isProfessionalFlavor
+              ? "Track shelf mix across desks without losing granular ledgers inside each workspace."
+              : "Shelf buckets summarise dossiers you've created, shortcuts keep valuations fast, and upgrade tiles mirror billing."}
+          </p>
         </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-            <span>
-              Step {step + 1} of {total}
-            </span>
-            <span className="font-medium text-foreground">{STEPS[step].label}</span>
-          </div>
-          <Progress value={progressPct} className="h-1.5 bg-muted" aria-hidden />
-          <ol className="flex flex-wrap gap-1.5 sm:gap-2" aria-label="Tour progress">
-            {STEPS.map((s, i) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => setStep(i)}
-                  className={cn(
-                    "rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide transition-colors sm:text-xs",
-                    i === step
-                      ? "bg-accent text-accent-foreground"
-                      : i < step
-                        ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                        : "bg-muted/40 text-muted-foreground/70 hover:bg-muted/60",
-                  )}
-                >
-                  {i + 1}. {s.label}
-                </button>
-              </li>
-            ))}
-          </ol>
+        <div className="flex flex-wrap gap-2">
+          <Button size="lg" className="rounded-full shadow-lg" asChild>
+            <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
+              <Calculator className="mr-2 h-5 w-5" />
+              New valuation
+            </Link>
+          </Button>
+          <Button size="lg" variant="outline" className="rounded-full" asChild>
+            <Link href={mergePortfolioHref("/portfolio", portfolioQuerySuffix)}>Deep portfolio view</Link>
+          </Button>
         </div>
       </header>
 
-      <div className="min-h-[320px] sm:min-h-[360px]">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={STEPS[step].id}
-            initial={{ opacity: 0, x: 28 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className={cn(step === 4 ? "space-y-6 text-center" : step === 0 ? "space-y-6" : "space-y-5")}
-          >
-            {step === 0 ? (
+      <section className="grid gap-4 md:grid-cols-4">
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm md:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Estimated value pulse</CardTitle>
+            <CardDescription>Converted via shared FX snapshots into {displayCcy}.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {statsLoading || estLoading ? (
+              <Skeleton className="h-12 w-48" />
+            ) : filtered.length === 0 ? (
+              <div className="text-sm leading-relaxed text-muted-foreground">
+                No dossiers in this workspace yet. Fire a valuation to seed your donut and tally.
+              </div>
+            ) : (
               <>
-              <div className="space-y-3">
-                <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl">
-                  Welcome to your valuation workspace
-                </h1>
-                <p className="text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                  A few quick screens: your stats, handy links, and the kinds of items we can price.
-                </p>
-              </div>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li className="flex gap-3">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
-                    1
-                  </span>
-                  <span>
-                    <span className="font-medium text-foreground">Snapshot.</span> How many valuations you have and
-                    what they look like added up after FX conversion (see Settings for currency).
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
-                    2
-                  </span>
-                  <span>
-                    <span className="font-medium text-foreground">Shortcuts.</span> Start a new valuation, open your
-                    portfolio, or go to markets.
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
-                    3
-                  </span>
-                  <span>
-                    <span className="font-medium text-foreground">Catalog.</span> Skim the item types we cover before
-                    you dive in.
-                  </span>
-                </li>
-              </ul>
-              </>
-            ) : null}
-
-            {step === 1 ? (
-              <>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your snapshot</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Rolled up from valuations on your account using mid-market style FX (for comparison only). For
-                  charts and breakdowns, open analytics anytime.
-                </p>
-              </div>
-              <Link
-                href="/stats"
-                className="inline-flex items-center text-sm font-medium text-accent hover:underline"
-              >
-                Open full analytics
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {statsLoading ? (
-                  Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
-                ) : (
-                  <>
-                    <Card className="border-border/70 bg-card/80 shadow-sm">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Valuations</CardTitle>
-                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-2xl font-semibold tabular-nums tracking-tight">
-                          {stats && stats.count > 0 ? stats.count : "N/A"}
-                        </p>
-                        <CardDescription className="mt-1 text-xs">
-                          {stats && stats.count > 0
-                            ? `${distinctAssetClasses} class${distinctAssetClasses === 1 ? "" : "es"} represented`
-                            : "Create one to see numbers here"}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-border/70 bg-card/80 shadow-sm">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Avg. adjusted</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-2xl font-semibold tabular-nums tracking-tight">
-                          {stats && stats.count > 0 ? formatCurrency(stats.averageAdjustedUsd) : "N/A"}
-                        </p>
-                        <CardDescription className="mt-1 text-xs">Mean midpoint</CardDescription>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-border/70 bg-card/80 shadow-sm">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Avg. uplift</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-2xl font-semibold tabular-nums tracking-tight">
-                          {stats && stats.count > 0 ? formatPercent(stats.averageUplift, true) : "N/A"}
-                        </p>
-                        <CardDescription className="mt-1 text-xs">Adjusted vs. baseline (mean)</CardDescription>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-border/70 bg-card/80 shadow-sm">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Top market</CardTitle>
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-lg font-semibold leading-snug tracking-tight">
-                          {stats && stats.count > 0 && topRegion ? topRegion.region : "N/A"}
-                        </p>
-                        <CardDescription className="mt-1 text-xs">
-                          {stats && stats.count > 0 && topRegion
-                            ? `${topRegion.count} dossier${topRegion.count === 1 ? "" : "s"} lean here`
-                            : "Shows once you have data"}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </div>
-              </>
-            ) : null}
-
-            {step === 2 ? (
-              <>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">Where to next</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Pick a destination now, or continue the tour. You can always reach these from the nav.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3">
-                {quickLinks.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <Card
-                        className={cn(
-                          "group border-border/70 transition-all hover:border-accent/30 hover:shadow-md",
-                          item.emphasis ? "border-accent/25 bg-card ring-1 ring-accent/10" : "bg-card/80",
-                        )}
-                      >
-                        <CardContent className="flex items-center gap-4 p-4 sm:p-5">
-                          <div
-                            className={cn(
-                              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
-                              item.emphasis ? "bg-accent text-accent-foreground" : "bg-muted text-foreground",
-                            )}
-                          >
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-foreground group-hover:text-accent transition-colors">
-                              {item.title}
-                            </h3>
-                            <p className="mt-0.5 text-sm text-muted-foreground">{item.desc}</p>
-                          </div>
-                          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  );
-                })}
-              </div>
-              </>
-            ) : null}
-
-            {step === 3 ? (
-              <>
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-foreground">Supported asset classes</h2>
-                  <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
-                    We model many collectibles and alternative assets. Expand a category to see specific types
-                    before you start a valuation.
-                  </p>
+                <div className="text-4xl font-semibold tabular-nums text-foreground">{displayTotal}</div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Approximate sum of adjusted midpoints converted with the same FX table as Portfolio.
                 </div>
-                <Badge variant="secondary" className="shrink-0 rounded-full font-normal">
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  {assetTypeRows.length > 0 ? `${assetTypeRows.length} types` : "Catalog"}
-                </Badge>
-              </div>
-
-              <Card className="overflow-hidden border-border/70 shadow-sm">
-                <CardContent className="p-0">
-                  {loadingTypes ? (
-                    <div className="space-y-3 p-5">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton key={i} className="h-12 w-full rounded-lg" />
-                      ))}
-                    </div>
-                  ) : showAssetTypesError ? (
-                    <div className="p-5">
-                      <Alert variant="destructive" className="border-destructive/30">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Couldn&apos;t load asset classes</AlertTitle>
-                        <AlertDescription className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <span className="text-balance text-sm">{assetTypesErrMessage}</span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0"
-                            onClick={() => void refetchAssetTypes()}
-                          >
-                            Retry
-                          </Button>
-                        </AlertDescription>
-                        <AssetCategoriesLoadHint error={assetTypesDisplayErr} />
-                      </Alert>
-                    </div>
-                  ) : assetTypesByCategory.length === 0 ? (
-                    <p className="p-5 text-sm text-muted-foreground">
-                      No asset classes returned. Check <span className="font-sans text-xs">/api/asset-types</span>.
-                    </p>
-                  ) : (
-                    <Accordion type="multiple" className="divide-y divide-border/60">
-                      {assetTypesByCategory.map(([category, types]) => (
-                        <AccordionItem key={category} value={category} className="border-0 px-5">
-                          <AccordionTrigger className="py-4 text-sm font-semibold hover:no-underline">
-                            <span className="flex items-center gap-2">
-                              {category}
-                              <span className="text-xs font-normal text-muted-foreground">
-                                {types.length} type{types.length === 1 ? "" : "s"}
-                              </span>
-                            </span>
-                          </AccordionTrigger>
-                          <AccordionContent className="pb-4 pt-0 text-sm leading-relaxed text-muted-foreground">
-                            {types.map((t, i) => (
-                              <span key={t.id ?? `${category}-${i}`}>
-                                <span title={t.tagline ?? undefined} className="text-foreground/90">
-                                  {t.name ?? "Unnamed"}
-                                </span>
-                                {i < types.length - 1 ? <span className="text-border"> · </span> : null}
-                              </span>
-                            ))}
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  )}
-                </CardContent>
-              </Card>
+                <div className="mt-1 text-xs text-muted-foreground tabular-nums">
+                  Workspace contains {filtered.length} {filtered.length === 1 ? "asset" : "assets"}.
+                </div>
               </>
-            ) : null}
+            )}
+          </CardContent>
+        </Card>
 
-            {step === 4 ? (
-              <>
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-accent">
-                <CheckCircle2 className="h-7 w-7" aria-hidden />
+        <Card className="border-border/60 bg-card/65 backdrop-blur-sm md:col-span-2 overflow-hidden relative">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-lg">Shelf mix</CardTitle>
+            <CardDescription>Luxury vs everyday vs other dossiers inside this workspace.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[220px] pt-4">
+            {estLoading ? (
+              <Skeleton className="h-full w-full rounded-xl" />
+            ) : donutData.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                Add valuations to illuminate this donut.
               </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  You&apos;re set
-                </h2>
-                <p className="mx-auto max-w-md text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Start a valuation when you&apos;re ready, or revisit any step using the progress chips above.
-                </p>
-              </div>
-              <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                <Link href="/estimate/new">
-                  <Button size="lg" className="rounded-full px-8 shadow-sm">
-                    <Calculator className="mr-2 h-4 w-4" />
-                    New valuation
-                  </Button>
-                </Link>
-                <Link href="/portfolio">
-                  <Button size="lg" variant="outline" className="rounded-full px-8">
-                    Open portfolio
-                  </Button>
-                </Link>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                <Link href="/stats" className="font-medium text-accent hover:underline">
-                  Analytics
-                </Link>
-                <span className="mx-2 text-border">·</span>
-                <Link href="/markets" className="font-medium text-accent hover:underline">
-                  Markets
-                </Link>
-                <span className="mx-2 text-border">·</span>
-                <Link href="/estimates" className="font-medium text-accent hover:underline">
-                  All estimates
-                </Link>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={donutData} dataKey="value" cx="45%" cy="50%" outerRadius={88} stroke="hsl(var(--border))">
+                    {donutData.map((_, i) => (
+                      <Cell key={`slice-${i}`} fill={DONUT_PALETTE[i % DONUT_PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip formatter={(value: number) => [`${value} assets`, "Count"]} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {(Object.keys(countsByShelf) as Shelf[]).map((shelf) => (
+          <ShelfBucket
+            key={shelf}
+            shelf={shelf}
+            count={countsByShelf[shelf]}
+            portfolioQuerySuffix={portfolioQuerySuffix}
+          />
+        ))}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card className={cn(!paid && "relative overflow-hidden")}>
+          {!paid ? (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-md">
+              <Lock className="h-8 w-8 text-accent" aria-hidden />
+              <p className="max-w-[18rem] text-center text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                International arbitrage previews require Everyday+ or Professional
               </p>
-              </>
-            ) : null}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+              <Button asChild size="sm">
+                <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)}>See billing</Link>
+              </Button>
+            </div>
+          ) : null}
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe2 className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-lg">Regional markets cockpit</CardTitle>
+            </div>
+            <CardDescription>Anchored against your dossier mix — open markets for fuller tables.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {statsLoading ? (
+              <Skeleton className="h-10 w-full" />
+            ) : stats?.topArbitrageRegions?.length ? (
+              (() => {
+                const rows = stats.topArbitrageRegions;
+                const total = rows.reduce((s, r) => s + (r.count ?? 0), 0) || 1;
+                return (
+                  <div className="space-y-2 text-sm">
+                    {rows.slice(0, 4).map((r) => (
+                      <div key={r.region} className="flex items-center justify-between gap-4">
+                        <span className="truncate text-muted-foreground">{r.region}</span>
+                        <span className="tabular-nums font-medium">
+                          {formatPercent((r.count ?? 0) / total)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            ) : (
+              <p className="text-sm text-muted-foreground">Regional spread appears after more dossiers land.</p>
+            )}
+            <Button variant="outline" className="w-full justify-between rounded-xl" asChild>
+              <Link href={mergePortfolioHref("/markets", portfolioQuerySuffix)}>
+                Dive into markets
+                <TrendingUp className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-      <footer className="mt-auto flex flex-col gap-3 border-t border-border/60 pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          className="order-2 sm:order-1"
-          onClick={goBack}
-          disabled={step === 0}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        {step < total - 1 ? (
-          <Button type="button" className="order-1 w-full rounded-full sm:order-2 sm:w-auto" onClick={goNext}>
-            {step === 3 ? "Finish tour" : "Continue"}
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            className="order-1 w-full rounded-full sm:order-2 sm:w-auto"
-            onClick={restart}
-          >
-            Run tour again
-          </Button>
-        )}
-      </footer>
+        <Card className={cn(!paid && "relative overflow-hidden")}>
+          {!paid ? (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-md">
+              <Sparkles className="h-8 w-8 text-accent" aria-hidden />
+              <p className="max-w-[18rem] text-center text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Monitor intents + paid-tier listing tone unlock with Everyday+
+              </p>
+              <Button asChild size="sm">
+                <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)}>Enable perks</Link>
+              </Button>
+            </div>
+          ) : null}
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-lg">Monitor & monetize rails</CardTitle>
+            </div>
+            <CardDescription>Listing drafts · monitor intents · email knobs.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-2">
+            <Button variant="outline" className="h-auto flex-col items-start rounded-2xl py-4 text-left" asChild>
+              <Link href={mergePortfolioHref("/listings", portfolioQuerySuffix)}>
+                <span className="text-sm font-semibold">Listing drafts</span>
+                <span className="text-xs text-muted-foreground">Marketplace wording</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col items-start rounded-2xl py-4 text-left" asChild>
+              <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)}>
+                <span className="text-sm font-semibold">Email alerts</span>
+                <span className="text-xs text-muted-foreground">Tune monitor emails</span>
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card className="border-accent/25 bg-accent/10">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-accent" />
+              <CardTitle>Momentum telemetry</CardTitle>
+            </div>
+            <CardDescription>Across every workspace you own (not scoped to inheritance filters).</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <div className="flex justify-between gap-4">
+              <span>Total dossiers saved</span>
+              <strong className="tabular-nums text-foreground">{statsLoading ? "—" : stats?.count ?? 0}</strong>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span>Mean uplift</span>
+              <strong className="tabular-nums text-foreground">
+                {statsLoading || stats == null ? "—" : formatPercent(stats.averageUplift ?? 0)}
+              </strong>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span>Mean baseline (USD)</span>
+              <strong className="tabular-nums text-foreground">
+                {statsLoading || stats == null
+                  ? "—"
+                  : formatMoney(stats.averageBaselineUsd ?? 0, "USD")}
+              </strong>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/70">
+          <CardHeader>
+            <CardTitle>Workspace hygiene</CardTitle>
+            <CardDescription>Separate inheritance ledgers, professional boards, or stay on primary.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild className="rounded-full">
+              <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} className="flex items-center gap-2">
+                Manage billing &amp; workspaces
+                <Sparkles className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

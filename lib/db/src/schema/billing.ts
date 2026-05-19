@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
 /** Stripe subscription snapshot per Clerk user (Webhook-updated). */
 export const billingSubscriptionsTable = pgTable("billing_subscriptions", {
@@ -6,8 +6,11 @@ export const billingSubscriptionsTable = pgTable("billing_subscriptions", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   status: text("status").notNull().default("inactive"),
-  /** Mirrors Clerk metadata / product tier (such as pro). */
+  /** Legacy: derived boolean — paid valuation features active when tier is `pro`. */
   tier: text("tier").notNull().default("free"),
+  /** `everyday_plus` | `professional` when subscribed; omit when free. */
+  planSlug: text("plan_slug"),
+  hasInheritanceAddon: boolean("has_inheritance_addon").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

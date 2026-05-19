@@ -1,50 +1,23 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  createElement,
-  type ReactNode,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
 
-const STORAGE_KEY = "valyoued.pro";
+/** @deprecated Prefer `useBillingSummary` — legacy layout still imports this provider. */
+export function ProTierProvider({ children }: { children: ReactNode }) {
+  return children;
+}
 
 type ProTierContextValue = {
   isPro: boolean;
+  /** No-op — subscription is Stripe-backed. Kept only for gradual UI clean-up. */
   setIsPro: Dispatch<SetStateAction<boolean>>;
 };
 
-const ProTierContext = createContext<ProTierContextValue | null>(null);
-
-export function ProTierProvider({ children }: { children: ReactNode }) {
-  const [isPro, setIsPro] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(STORAGE_KEY) === "true";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(isPro));
-  }, [isPro]);
-
-  /** Keep tabs in sync when localStorage changes elsewhere. */
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY || e.newValue == null) return;
-      setIsPro(e.newValue === "true");
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  return createElement(ProTierContext.Provider, { value: { isPro, setIsPro } }, children);
-}
-
+/** Back-compat: maps paid valuation entitlements from `GET /api/me/billing`. */
 export function useProTier(): ProTierContextValue {
-  const ctx = useContext(ProTierContext);
-  if (!ctx) {
-    throw new Error("useProTier must be used within a ProTierProvider");
-  }
-  return ctx;
+  const { data } = useBillingSummary();
+  const paid = Boolean(data?.hasPaidValuationTier);
+
+  const setIsPro: Dispatch<SetStateAction<boolean>> = () => {};
+
+  return { isPro: paid, setIsPro };
 }

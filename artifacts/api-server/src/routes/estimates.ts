@@ -2,8 +2,9 @@ import { Router, type IRouter } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { db, estimatesTable, type Estimate } from "@workspace/db";
 import {
+  PatchEstimateBody,
+  PatchEstimateParams,
   CreateEstimateBody,
-  CreateEstimateQueryParams,
   CreateEstimateResponse,
   GetEstimateParams,
   GetEstimateResponse,
@@ -24,6 +25,13 @@ import { convertToUsdApprox } from "@workspace/fx-usd";
 import { portfolioShelfFromEstimate, readAttributesFromStoredResult } from "@workspace/asset-shelf-tier";
 import { logger } from "../lib/logger";
 import { notifyEstimateReadyEmail } from "../lib/estimateReadyEmail";
+import {
+  FREE_MONTHLY_VALUATION_CAP,
+  incrementMonthlyEstimateUsage,
+  resolveUserEntitlements,
+  valuationTierForEstimate,
+} from "../lib/entitlements";
+import { getPortfolioByIdForUser, resolveDefaultPortfolioId } from "../lib/portfoliosService";
 
 const router: IRouter = Router();
 
@@ -171,6 +179,10 @@ function mergeEstimateResultFromRow(row: Estimate, storedUnknown: unknown): Esti
         : row.bestArbitrageRegion,
     id: row.id,
     createdAt: row.createdAt.toISOString(),
+    intent:
+      row.intent === "hold" || row.intent === "monitor" || row.intent === "sell"
+        ? (row.intent as NonNullable<EstimateResult["intent"]>)
+        : null,
   } as unknown as EstimateResult;
 }
 
@@ -208,6 +220,8 @@ router.get("/estimates", async (req, res): Promise<void> => {
       bestArbitrageRegion: r.bestArbitrageRegion,
       portfolioShelf,
       createdAt: r.createdAt.toISOString(),
+      portfolioId: r.portfolioId ?? null,
+      intent: r.intent === "hold" || r.intent === "monitor" || r.intent === "sell" ? r.intent : null,
     };
   });
   res.json(ListEstimatesResponse.parse(summaries));
@@ -272,13 +286,21 @@ router.get("/estimates/stats", async (req, res): Promise<void> => {
 
 router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
+  const ent = await resolveUserEntitlements(userId);
+
   const body = CreateEstimateBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const query = CreateEstimateQueryParams.safeParse(req.query);
-  const tier: "free" | "pro" = query.success && query.data.pro ? "pro" : "free";
+
+  const limit = ent.valuationsMonthLimit ?? null;
+  if (limit != null && ent.valuationsThisMonth >= limit) {
+    res.status(429).json({
+      error: `You've used your ${FREE_MONTHLY_VALUATION_CAP} free valuations this month. Upgrade an Everyday subscription for unlimited personal valuations.`,
+    });
+    return;
+  }
 
   const assetType = getAssetType(body.data.assetTypeId);
   if (!assetType) {
@@ -286,10 +308,26 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  let portfolioIdToUse: string;
+  const requestedPf = body.data.portfolioId;
+  if (typeof requestedPf === "string" && requestedPf.trim() !== "") {
+    const pfRow = await getPortfolioByIdForUser(requestedPf, userId);
+    if (!pfRow) {
+      res.status(400).json({ error: "portfolioId must reference one of your portfolios." });
+      return;
+    }
+    portfolioIdToUse = pfRow.id;
+  } else {
+    portfolioIdToUse = await resolveDefaultPortfolioId(userId);
+  }
+
   const region = getRegion(body.data.currentRegion);
-  const input = {
-    ...body.data,
+  const tier = valuationTierForEstimate(ent);
+
+  const input: EstimateInput = {
+    ...(body.data as EstimateInput),
     currency: region?.currencyCode ?? body.data.currency ?? "USD",
+    portfolioId: portfolioIdToUse,
   };
 
   const computed = await generateEstimate(input, assetType, tier);
@@ -298,6 +336,7 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
     .insert(estimatesTable)
     .values({
       userId,
+      portfolioId: portfolioIdToUse,
       assetTypeId: assetType.id,
       assetTypeName: assetType.name,
       title: input.title,
@@ -309,6 +348,8 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
       result: computed,
     })
     .returning();
+
+  await incrementMonthlyEstimateUsage(userId);
 
   const result = {
     ...computed,
@@ -336,6 +377,31 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
     logger.error({ err }, "notifyEstimateReadyEmail failed");
   });
   res.json(CreateEstimateResponse.parse(result));
+});
+
+router.patch("/estimates/:id", requireAuth, async (req, res): Promise<void> => {
+  const params = PatchEstimateParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsedBody = PatchEstimateBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    res.status(400).json({ error: parsedBody.error.message });
+    return;
+  }
+  const userId = (req as AuthedRequest).userId!;
+  const [updated] = await db
+    .update(estimatesTable)
+    .set({ intent: parsedBody.data.intent })
+    .where(and(eq(estimatesTable.id, params.data.id), eq(estimatesTable.userId, userId)))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Estimate not found" });
+    return;
+  }
+  const merged = mergeEstimateResultFromRow(updated, updated.result);
+  res.json(GetEstimateResponse.parse(merged));
 });
 
 router.get("/estimates/:id", requireAuth, async (req, res): Promise<void> => {

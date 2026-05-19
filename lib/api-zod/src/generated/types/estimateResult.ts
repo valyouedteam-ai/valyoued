@@ -10,6 +10,7 @@ import type { AssetType } from "./assetType";
 import type { Comparable } from "./comparable";
 import type { EstimateInput } from "./estimateInput";
 import type { EstimateReport } from "./estimateReport";
+import type { EstimateResultIntent } from "./estimateResultIntent";
 import type { EstimateResultTier } from "./estimateResultTier";
 import type { MarketSignal } from "./marketSignal";
 import type { ProInsights } from "./proInsights";
@@ -36,4 +37,5 @@ export interface EstimateResult {
   report: EstimateReport;
   tier: EstimateResultTier;
   proInsights?: ProInsights;
+  intent?: EstimateResultIntent;
 }

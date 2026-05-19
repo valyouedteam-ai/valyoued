@@ -18,7 +18,9 @@ import type {
 
 import type {
   AssetType,
-  CreateEstimateParams,
+  CreateEstimate429,
+  CreatePortfolio403,
+  CreatePortfolioBody,
   DeleteListingDraft200,
   EstimateInput,
   EstimateResult,
@@ -28,6 +30,8 @@ import type {
   GenerateListingInput,
   HealthStatus,
   ListingDraft,
+  PatchEstimateBody,
+  Portfolio,
   Region,
   VisionExtractInput,
   VisionExtractResult,
@@ -420,30 +424,17 @@ export function useListEstimates<
 }
 
 /**
- * @summary Create a new asset estimate (free or pro tier)
+ * @summary Create a new asset estimate (tier derived from subscription / free limits)
  */
-export const getCreateEstimateUrl = (params?: CreateEstimateParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/estimates?${stringifiedParams}`
-    : `/api/estimates`;
+export const getCreateEstimateUrl = () => {
+  return `/api/estimates`;
 };
 
 export const createEstimate = async (
   estimateInput: EstimateInput,
-  params?: CreateEstimateParams,
   options?: RequestInit,
 ): Promise<EstimateResult> => {
-  return customFetch<EstimateResult>(getCreateEstimateUrl(params), {
+  return customFetch<EstimateResult>(getCreateEstimateUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -452,20 +443,20 @@ export const createEstimate = async (
 };
 
 export const getCreateEstimateMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<CreateEstimate429>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createEstimate>>,
     TError,
-    { data: BodyType<EstimateInput>; params?: CreateEstimateParams },
+    { data: BodyType<EstimateInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof createEstimate>>,
   TError,
-  { data: BodyType<EstimateInput>; params?: CreateEstimateParams },
+  { data: BodyType<EstimateInput> },
   TContext
 > => {
   const mutationKey = ["createEstimate"];
@@ -479,11 +470,11 @@ export const getCreateEstimateMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof createEstimate>>,
-    { data: BodyType<EstimateInput>; params?: CreateEstimateParams }
+    { data: BodyType<EstimateInput> }
   > = (props) => {
-    const { data, params } = props ?? {};
+    const { data } = props ?? {};
 
-    return createEstimate(data, params, requestOptions);
+    return createEstimate(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -493,26 +484,26 @@ export type CreateEstimateMutationResult = NonNullable<
   Awaited<ReturnType<typeof createEstimate>>
 >;
 export type CreateEstimateMutationBody = BodyType<EstimateInput>;
-export type CreateEstimateMutationError = ErrorType<unknown>;
+export type CreateEstimateMutationError = ErrorType<CreateEstimate429>;
 
 /**
- * @summary Create a new asset estimate (free or pro tier)
+ * @summary Create a new asset estimate (tier derived from subscription / free limits)
  */
 export const useCreateEstimate = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<CreateEstimate429>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createEstimate>>,
     TError,
-    { data: BodyType<EstimateInput>; params?: CreateEstimateParams },
+    { data: BodyType<EstimateInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof createEstimate>>,
   TError,
-  { data: BodyType<EstimateInput>; params?: CreateEstimateParams },
+  { data: BodyType<EstimateInput> },
   TContext
 > => {
   return useMutation(getCreateEstimateMutationOptions(options));
@@ -604,6 +595,254 @@ export function useGetEstimate<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update estimate metadata (intent)
+ */
+export const getPatchEstimateUrl = (id: string) => {
+  return `/api/estimates/${id}`;
+};
+
+export const patchEstimate = async (
+  id: string,
+  patchEstimateBody: PatchEstimateBody,
+  options?: RequestInit,
+): Promise<EstimateResult> => {
+  return customFetch<EstimateResult>(getPatchEstimateUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchEstimateBody),
+  });
+};
+
+export const getPatchEstimateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchEstimate>>,
+    TError,
+    { id: string; data: BodyType<PatchEstimateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchEstimate>>,
+  TError,
+  { id: string; data: BodyType<PatchEstimateBody> },
+  TContext
+> => {
+  const mutationKey = ["patchEstimate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchEstimate>>,
+    { id: string; data: BodyType<PatchEstimateBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return patchEstimate(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchEstimateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchEstimate>>
+>;
+export type PatchEstimateMutationBody = BodyType<PatchEstimateBody>;
+export type PatchEstimateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update estimate metadata (intent)
+ */
+export const usePatchEstimate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchEstimate>>,
+    TError,
+    { id: string; data: BodyType<PatchEstimateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchEstimate>>,
+  TError,
+  { id: string; data: BodyType<PatchEstimateBody> },
+  TContext
+> => {
+  return useMutation(getPatchEstimateMutationOptions(options));
+};
+
+/**
+ * @summary List portfolio workspaces (primary is auto-created)
+ */
+export const getListPortfoliosUrl = () => {
+  return `/api/portfolios`;
+};
+
+export const listPortfolios = async (
+  options?: RequestInit,
+): Promise<Portfolio[]> => {
+  return customFetch<Portfolio[]>(getListPortfoliosUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPortfoliosQueryKey = () => {
+  return [`/api/portfolios`] as const;
+};
+
+export const getListPortfoliosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPortfolios>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPortfolios>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPortfoliosQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPortfolios>>> = ({
+    signal,
+  }) => listPortfolios({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPortfolios>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPortfoliosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPortfolios>>
+>;
+export type ListPortfoliosQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List portfolio workspaces (primary is auto-created)
+ */
+
+export function useListPortfolios<
+  TData = Awaited<ReturnType<typeof listPortfolios>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPortfolios>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPortfoliosQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create workspace (e.g. inheritance when add-on active)
+ */
+export const getCreatePortfolioUrl = () => {
+  return `/api/portfolios`;
+};
+
+export const createPortfolio = async (
+  createPortfolioBody: CreatePortfolioBody,
+  options?: RequestInit,
+): Promise<Portfolio> => {
+  return customFetch<Portfolio>(getCreatePortfolioUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPortfolioBody),
+  });
+};
+
+export const getCreatePortfolioMutationOptions = <
+  TError = ErrorType<CreatePortfolio403>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPortfolio>>,
+    TError,
+    { data: BodyType<CreatePortfolioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPortfolio>>,
+  TError,
+  { data: BodyType<CreatePortfolioBody> },
+  TContext
+> => {
+  const mutationKey = ["createPortfolio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPortfolio>>,
+    { data: BodyType<CreatePortfolioBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPortfolio(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePortfolioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPortfolio>>
+>;
+export type CreatePortfolioMutationBody = BodyType<CreatePortfolioBody>;
+export type CreatePortfolioMutationError = ErrorType<CreatePortfolio403>;
+
+/**
+ * @summary Create workspace (e.g. inheritance when add-on active)
+ */
+export const useCreatePortfolio = <
+  TError = ErrorType<CreatePortfolio403>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPortfolio>>,
+    TError,
+    { data: BodyType<CreatePortfolioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPortfolio>>,
+  TError,
+  { data: BodyType<CreatePortfolioBody> },
+  TContext
+> => {
+  return useMutation(getCreatePortfolioMutationOptions(options));
+};
 
 /**
  * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,

@@ -33,6 +33,10 @@ import { cn } from "@/lib/utils";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { PortfolioFolders } from "@/components/PortfolioFolders";
 import { iconForAssetType } from "@/lib/asset-icons";
+import {
+  mergePortfolioHref,
+  usePortfolioWorkspace,
+} from "@/context/PortfolioWorkspaceContext";
 
 type PortfolioItem = EstimateSummary & {
   liveValue: number;
@@ -49,6 +53,16 @@ type ClassAlbum = {
 };
 
 type PortfolioShelf = EstimateSummary["portfolioShelf"];
+
+function inPortfolioWorkspaceRow(
+  e: EstimateSummary,
+  activeId: string | null,
+  primaryId: string | null,
+): boolean {
+  if (!activeId || !primaryId) return true;
+  if (activeId === primaryId) return !e.portfolioId || e.portfolioId === primaryId;
+  return e.portfolioId === activeId;
+}
 
 function buildClassAlbums(
   items: PortfolioItem[],
@@ -109,6 +123,8 @@ function makeTick(prev: number, seed: number): Tick {
 
 export default function PortfolioPage() {
   const { code: displayCcy } = useDisplayCurrency();
+  const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
+
   const { data: estimates, isLoading, dataUpdatedAt } = useListEstimates({
     query: {
       refetchInterval: POLL_INTERVAL_MS,
@@ -129,15 +145,21 @@ export default function PortfolioPage() {
     [estimates],
   );
 
+  const scopedRows = useMemo(() => {
+    const act = activePortfolio?.id ?? null;
+    const prim = primaryPortfolio?.id ?? null;
+    return estimateRows.filter((e) => inPortfolioWorkspaceRow(e, act, prim));
+  }, [estimateRows, activePortfolio?.id, primaryPortfolio?.id]);
+
   const [ticks, setTicks] = useState<Record<string, Tick>>({});
   const [listingFor, setListingFor] = useState<EstimateSummary | null>(null);
 
   useEffect(() => {
-    if (estimateRows.length === 0) return;
+    if (scopedRows.length === 0) return;
     const interval = setInterval(() => {
       setTicks((prev) => {
         const next: Record<string, Tick> = {};
-        for (const e of estimateRows) {
+        for (const e of scopedRows) {
           const cur = prev[e.id]?.mult ?? 1;
           next[e.id] = makeTick(cur, Date.now() / 1000);
         }
@@ -145,21 +167,21 @@ export default function PortfolioPage() {
       });
     }, TICK_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [estimateRows]);
+  }, [scopedRows]);
 
   useEffect(() => {
     setTicks({});
   }, [dataUpdatedAt]);
 
   const portfolio = useMemo(() => {
-    if (estimateRows.length === 0) return [];
-    return estimateRows.map((e) => {
+    if (scopedRows.length === 0) return [];
+    return scopedRows.map((e) => {
       const tick = ticks[e.id];
       const liveValue = e.adjustedMid * (tick?.mult ?? 1);
       const changeFromBaseline = e.baselineMid > 0 ? (liveValue - e.baselineMid) / e.baselineMid : 0;
       return { ...e, liveValue, changeFromBaseline, tickDir: tick?.dir ?? "flat" };
     });
-  }, [estimateRows, ticks]);
+  }, [scopedRows, ticks]);
 
   const classAlbums = useMemo(
     () => buildClassAlbums(portfolio, fxSnap?.rates),
@@ -223,18 +245,25 @@ export default function PortfolioPage() {
     );
   }
 
-  if (estimateRows.length === 0) {
+  if (scopedRows.length === 0) {
     return (
       <div className="max-w-3xl mx-auto pt-12">
         <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30">
           <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">
             <Briefcase className="h-8 w-8 text-accent" />
           </div>
-          <h3 className="text-2xl font-sans mb-2">Your portfolio is empty</h3>
+          <h3 className="text-2xl font-sans mb-2">
+            {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id
+              ? `${activePortfolio.label ?? "This workspace"} is empty`
+              : "Your portfolio is empty"}
+          </h3>
           <p className="text-muted-foreground max-w-md mb-6">
-            Run a valuation on any asset and it will appear here. We'll keep tracking how its value moves with the market.
+            Run a valuation and attach it to this workspace{" "}
+            {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id
+              ? "— switch back to Primary with the picker in the header to see inherited cross-over."
+              : "to see holdings, shelf mix, and listing shortcuts."}
           </p>
-          <Link href="/estimate/new">
+          <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
             <Button size="lg">
               <Plus className="h-4 w-4 mr-2" />
               Value your first asset
@@ -251,9 +280,17 @@ export default function PortfolioPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
+          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground mt-2">
+            {activePortfolio?.label ??
+              (activePortfolio?.purpose === "inheritance"
+                ? "Inheritance ledger"
+                : activePortfolio?.purpose === "pro_board"
+                  ? "Professional board"
+                  : "Primary")}
+          </p>
         </div>
         <div>
-          <Link href="/estimate/new">
+          <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               New valuation
@@ -416,7 +453,12 @@ export default function PortfolioPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((item) => (
-                    <AssetBox key={item.id} item={item} onListing={() => setListingFor(item)} />
+                    <AssetBox
+                      key={item.id}
+                      item={item}
+                      portfolioHrefSuffix={portfolioQuerySuffix}
+                      onListing={() => setListingFor(item)}
+                    />
                   ))}
                 </div>
               </div>
@@ -440,10 +482,19 @@ export default function PortfolioPage() {
 
 type BoxItem = PortfolioItem;
 
-function AssetBox({ item, onListing }: { item: BoxItem; onListing: () => void }) {
+function AssetBox({
+  item,
+  onListing,
+  portfolioHrefSuffix,
+}: {
+  item: BoxItem;
+  onListing: () => void;
+  portfolioHrefSuffix: string;
+}) {
   const isUp = item.changeFromBaseline >= 0;
   const [, navigate] = useLocation();
-  const goToEstimate = () => navigate(`/estimates/${item.id}`);
+  const goToEstimate = () =>
+    navigate(mergePortfolioHref(`/estimates/${item.id}`, portfolioHrefSuffix));
 
   return (
     <div

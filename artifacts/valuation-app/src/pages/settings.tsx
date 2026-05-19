@@ -26,19 +26,28 @@ import { DISPLAY_CURRENCY_OPTIONS, getStoredReferenceCurrency, getSessionGeoCoun
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
+import { useQueryClient } from "@tanstack/react-query";
 
 type BillingInfo = {
   tier: string;
   status: string;
   stripeCustomerId: string | null;
   stripeStub?: boolean;
+  planSlug?: string | null;
+  hasInheritanceAddon?: boolean;
+  valuationsThisMonth?: number;
+  valuationsMonthLimit?: number | null;
+  valuationsRemainingFree?: number | null;
+  hasPaidValuationTier?: boolean;
 };
 
 type EmailAlertsInfo = {
   estimateReadyEmail: boolean;
   productUpdatesEmail: boolean;
+  monitorValueChangeEmail?: boolean;
   deliveryEnabled: boolean;
 };
 
@@ -83,6 +92,7 @@ async function parseBillingJsonBody(res: Response): Promise<{ ok: true; body: Bi
 async function postBilling(
   path: string,
   getToken: () => Promise<string | null | undefined>,
+  jsonBody: Record<string, unknown> = {},
 ): Promise<{ url?: string; error?: string; stub?: boolean }> {
   const token = await getToken();
   const res = await fetch(apiUrl(`/api/billing/${path}`), {
@@ -92,7 +102,7 @@ async function postBilling(
       "content-type": "application/json",
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
-    body: "{}",
+    body: JSON.stringify(jsonBody),
   });
 
   const parsed = await parseBillingJsonBody(res);
@@ -115,6 +125,7 @@ function SettingsPageInner({
   onOpenProfile?: () => void;
 }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { code: displayCurrencyCode, setCode: setDisplayCurrency } = useDisplayCurrency();
   const geoCountry = (() => {
     try {
@@ -128,6 +139,8 @@ function SettingsPageInner({
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [emailAlerts, setEmailAlerts] = useState<EmailAlertsInfo | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<"everyday_plus" | "professional">("everyday_plus");
+  const [includeInheritanceCheckout, setIncludeInheritanceCheckout] = useState(false);
 
   const refreshEmailAlerts = useCallback(async () => {
     try {
@@ -155,7 +168,11 @@ function SettingsPageInner({
     void refreshEmailAlerts();
   }, [refreshEmailAlerts]);
 
-  const patchEmailAlert = async (patch: Partial<Pick<EmailAlertsInfo, "estimateReadyEmail" | "productUpdatesEmail">>) => {
+  const patchEmailAlert = async (
+    patch: Partial<
+      Pick<EmailAlertsInfo, "estimateReadyEmail" | "productUpdatesEmail" | "monitorValueChangeEmail">
+    >,
+  ) => {
     try {
       const token = await getToken();
       const res = await fetch(apiUrl("/api/me/email-alerts"), {
@@ -179,6 +196,7 @@ function SettingsPageInner({
       try {
         const j = JSON.parse(raw) as EmailAlertsInfo;
         setEmailAlerts(j);
+        queryClient.invalidateQueries({ queryKey: ["me-billing"] });
       } catch {
         void refreshEmailAlerts();
       }
@@ -236,17 +254,14 @@ function SettingsPageInner({
       try {
         const j = JSON.parse(trimmed) as BillingInfo;
         setBilling(j);
+        queryClient.invalidateQueries({ queryKey: ["me-billing"] });
       } catch {
         /* ignore malformed body */
       }
     } catch {
       /* ignore */
     }
-  }, [getToken]);
-
-  useEffect(() => {
-    void refreshBilling();
-  }, [refreshBilling]);
+  }, [getToken, queryClient]);
 
   const exportData = async () => {
     setBusy("export");
@@ -276,7 +291,14 @@ function SettingsPageInner({
   const checkout = async () => {
     setBusy("checkout");
     try {
-      const { url, error, stub } = await postBilling("checkout-session", getToken);
+      const { url, error, stub } = await postBilling(
+        "checkout-session",
+        getToken,
+        {
+          plan: checkoutPlan,
+          includeInheritanceAddon: includeInheritanceCheckout,
+        },
+      );
       if (error) {
         toast({ title: "Checkout unavailable", description: error, variant: "destructive" });
         return;
@@ -293,7 +315,7 @@ function SettingsPageInner({
   const portal = async () => {
     setBusy("portal");
     try {
-      const { url, error, stub } = await postBilling("customer-portal", getToken);
+      const { url, error, stub } = await postBilling("customer-portal", getToken, {});
       if (error) {
         toast({ title: "Billing portal", description: error, variant: "destructive" });
         return;
@@ -362,29 +384,84 @@ function SettingsPageInner({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Sparkles className="h-5 w-5 text-accent" />
-              ValYoued Pro
+              Subscription &amp; valuations
             </CardTitle>
             <CardDescription>
-              Your current tier is{" "}
+              API tier{" "}
               <span className="font-medium text-foreground tabular-nums">{billing?.tier ?? "…"}</span>
               {billing?.status ? (
                 <>
                   {" "}
-                  · status <span className="tabular-nums font-medium">{billing.status}</span>
+                  · <span className="tabular-nums font-medium">{billing.status}</span>
                 </>
               ) : null}
-              .
+              {billing?.planSlug ? (
+                <>
+                  {" "}
+                  · plan <span className="tabular-nums font-medium">{billing.planSlug}</span>
+                </>
+              ) : null}
+              {!billing?.hasPaidValuationTier && billing?.valuationsRemainingFree != null ? (
+                <>
+                  {" "}
+                  ·{" "}
+                  <span className="font-medium text-foreground">{billing.valuationsRemainingFree}</span> free
+                  valuations left this month (Everyday tier cap is{" "}
+                  {billing.valuationsMonthLimit ?? 5}
+                  ).
+                </>
+              ) : null}
+              {billing?.hasInheritanceAddon ? (
+                <span className="block mt-1 text-muted-foreground">
+                  Inheritance workspace add-on is active on Stripe.
+                </span>
+              ) : null}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
+            {!billing?.hasPaidValuationTier ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Plan</Label>
+                  <Select value={checkoutPlan} onValueChange={(v) => setCheckoutPlan(v as typeof checkoutPlan)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pick a plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="everyday_plus">Everyday+ — unlimited valuations (£7.99/mo suggested)</SelectItem>
+                      <SelectItem value="professional">
+                        Professional — full seller voice (£14.99/mo suggested, trial from Stripe config)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/70 bg-muted/40 p-3 text-sm leading-snug">
+                  <Checkbox
+                    checked={includeInheritanceCheckout}
+                    onCheckedChange={(v) => setIncludeInheritanceCheckout(Boolean(v))}
+                  />
+                  <span>
+                    <span className="font-medium text-foreground">Include inheritance workspace add-on</span>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      Second portfolio for estates / segregation; requires Stripe price configured for the add-on.
+                    </span>
+                  </span>
+                </label>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You already have paid valuation tier access. Manage billing to change seats, cards, or add-ons via the
+                customer portal.
+              </p>
+            )}
             <Button
               variant="default"
               className="w-full gap-2"
               onClick={() => void checkout()}
-              disabled={busy !== null}
+              disabled={busy !== null || billing?.hasPaidValuationTier}
             >
               <CreditCard className="h-4 w-4" />
-              {busy === "checkout" ? "Redirecting…" : "Subscribe"}
+              {busy === "checkout" ? "Redirecting…" : "Checkout with Stripe"}
             </Button>
             <Button
               variant="outline"
@@ -445,6 +522,25 @@ function SettingsPageInner({
                 checked={emailAlerts?.productUpdatesEmail ?? false}
                 disabled={emailAlerts == null || busy !== null}
                 onCheckedChange={(v) => void patchEmailAlert({ productUpdatesEmail: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="alert-monitor-value">Portfolio value‑change monitors</Label>
+                <p className="text-xs text-muted-foreground">
+                  When an item intent is “monitor”, we&apos;ll ping you after material re-pricing (runs when the
+                  background job fires). Everyday+ / Professional only.
+                </p>
+              </div>
+              <Switch
+                id="alert-monitor-value"
+                checked={emailAlerts?.monitorValueChangeEmail ?? false}
+                disabled={
+                  emailAlerts == null ||
+                  busy !== null ||
+                  (billing != null && !billing.hasPaidValuationTier)
+                }
+                onCheckedChange={(v) => void patchEmailAlert({ monitorValueChangeEmail: v })}
               />
             </div>
             <Button

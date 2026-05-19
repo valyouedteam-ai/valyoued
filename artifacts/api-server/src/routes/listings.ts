@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-zod";
 import type { EstimateResult } from "@workspace/api-zod";
 import { generateListingDraft, type Platform, type PriceStrategy } from "../lib/listing";
+import { resolveUserEntitlements } from "../lib/entitlements";
 import { logger } from "../lib/logger";
 import { rateLimit } from "../lib/rateLimit";
 import { recordPlatformEvent } from "../lib/platformEvents";
@@ -66,10 +67,13 @@ router.post("/listings", requireAuth, generateLimit, async (req, res): Promise<v
   } as unknown as EstimateResult;
 
   try {
+    const entitlements = await resolveUserEntitlements(userId);
     const generated = await generateListingDraft({
       estimate,
       platform: body.data.platform as Platform,
       priceStrategy: (body.data.priceStrategy ?? "market") as PriceStrategy,
+      listingQuality: entitlements.listingQuality,
+      stripePlanSlug: entitlements.planSlug,
     });
 
     const [row] = await db
