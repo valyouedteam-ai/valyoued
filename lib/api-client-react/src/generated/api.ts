@@ -759,7 +759,7 @@ export function useListPortfolios<
 }
 
 /**
- * @summary Create workspace (e.g. inheritance when add-on active)
+ * @summary Create extra workspace (Professional trading desk)
  */
 export const getCreatePortfolioUrl = () => {
   return `/api/portfolios`;
@@ -822,7 +822,7 @@ export type CreatePortfolioMutationBody = BodyType<CreatePortfolioBody>;
 export type CreatePortfolioMutationError = ErrorType<CreatePortfolio403>;
 
 /**
- * @summary Create workspace (e.g. inheritance when add-on active)
+ * @summary Create extra workspace (Professional trading desk)
  */
 export const useCreatePortfolio = <
   TError = ErrorType<CreatePortfolio403>,

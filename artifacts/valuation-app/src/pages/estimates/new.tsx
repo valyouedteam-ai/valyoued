@@ -162,7 +162,7 @@ function describeValuationGateError(err: unknown): string {
     const payload = err.data as { error?: string } | null | undefined;
     return (
       payload?.error ??
-      "You've used all five Everyday free valuations this month. Upgrade via Settings for unlimited dossiers."
+      "You've used all five Everyday free valuations this month. Upgrade via Settings for unlimited valuations."
     );
   }
   return "";

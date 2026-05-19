@@ -204,8 +204,6 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
           <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
             {remaining} valuations left · upgrade
           </span>
-        ) : paid && data?.hasInheritanceAddon ? (
-          <span className="text-[10px] text-muted-foreground">Inheritance workspace</span>
         ) : null}
       </div>
     </Link>
@@ -228,11 +226,7 @@ function WorkspacePicker({
   if (!show) return null;
 
   const subtitle =
-    activePortfolio?.purpose === "inheritance"
-      ? "Inheritance workspace"
-      : activePortfolio?.purpose === "pro_board"
-        ? "Professional desk"
-        : "Primary ledger";
+    activePortfolio?.purpose === "pro_board" ? "Professional desk" : "Primary ledger";
 
   return (
     <DropdownMenu>
@@ -261,12 +255,7 @@ function WorkspacePicker({
           }}
         >
           {(portfolios ?? []).map((p) => {
-            const pretty =
-              p.purpose === "inheritance"
-                ? "Inheritance workspace"
-                : p.purpose === "pro_board"
-                  ? "Professional desk"
-                  : "Primary ledger";
+            const pretty = p.purpose === "pro_board" ? "Professional desk" : "Primary ledger";
             return (
               <DropdownMenuRadioItem key={p.id} value={p.id} className="items-start gap-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
@@ -280,7 +269,7 @@ function WorkspacePicker({
         <DropdownMenuSeparator />
         <Button variant="ghost" size="sm" className="h-9 w-full justify-start gap-2 text-xs" asChild>
           <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => onNavigate?.()}>
-            Manage inheritance / desks
+            Manage workspaces
           </Link>
         </Button>
       </DropdownMenuContent>
@@ -371,9 +360,7 @@ function MobileNavSheet() {
 function AppLayoutShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const isMobile = useIsMobile();
-  const { portfolioQuerySuffix, activePortfolio } = usePortfolioWorkspace();
-  const inheritance = activePortfolio?.purpose === "inheritance";
-
+  const { portfolioQuerySuffix } = usePortfolioWorkspace();
   const isActive = (href: string) =>
     location === href || (href !== "/dashboard" && location.startsWith(href));
 
@@ -392,12 +379,6 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
               ValYoued
             </span>
           </Link>
-
-          {inheritance ? (
-            <span className="hidden rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent md:inline-flex">
-              Inheritance
-            </span>
-          ) : null}
 
           <nav className="hidden min-w-0 flex-1 justify-center md:flex">
             <div className="flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none rounded-full border border-border/60 bg-muted/40 p-1">
@@ -446,7 +427,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         ) : null}
       </header>
 
-      <main className={cn("mesh-bg flex-1", inheritance && "portfolio-workspace-inheritance")}>
+      <main className="mesh-bg flex-1">
         <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]">
           <div className="grid-bg absolute inset-0" />
         </div>

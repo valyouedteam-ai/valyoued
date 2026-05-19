@@ -9,7 +9,7 @@
 export interface Portfolio {
   id: string;
   userId: string;
-  /** primary, inheritance, or pro_board workspace */
+  /** primary or pro_board workspace */
   purpose: string;
   label: string;
   themeKey: string;

@@ -26,7 +26,6 @@ import { DISPLAY_CURRENCY_OPTIONS, getStoredReferenceCurrency, getSessionGeoCoun
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,7 +36,6 @@ type BillingInfo = {
   stripeCustomerId: string | null;
   stripeStub?: boolean;
   planSlug?: string | null;
-  hasInheritanceAddon?: boolean;
   valuationsThisMonth?: number;
   valuationsMonthLimit?: number | null;
   valuationsRemainingFree?: number | null;
@@ -140,7 +138,6 @@ function SettingsPageInner({
   const [emailAlerts, setEmailAlerts] = useState<EmailAlertsInfo | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<"everyday_plus" | "professional">("everyday_plus");
-  const [includeInheritanceCheckout, setIncludeInheritanceCheckout] = useState(false);
 
   const refreshEmailAlerts = useCallback(async () => {
     try {
@@ -296,7 +293,6 @@ function SettingsPageInner({
         getToken,
         {
           plan: checkoutPlan,
-          includeInheritanceAddon: includeInheritanceCheckout,
         },
       );
       if (error) {
@@ -411,11 +407,6 @@ function SettingsPageInner({
                   ).
                 </>
               ) : null}
-              {billing?.hasInheritanceAddon ? (
-                <span className="block mt-1 text-muted-foreground">
-                  Inheritance workspace add-on is active on Stripe.
-                </span>
-              ) : null}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -435,18 +426,6 @@ function SettingsPageInner({
                     </SelectContent>
                   </Select>
                 </div>
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/70 bg-muted/40 p-3 text-sm leading-snug">
-                  <Checkbox
-                    checked={includeInheritanceCheckout}
-                    onCheckedChange={(v) => setIncludeInheritanceCheckout(Boolean(v))}
-                  />
-                  <span>
-                    <span className="font-medium text-foreground">Include inheritance workspace add-on</span>
-                    <span className="block text-xs text-muted-foreground mt-1">
-                      Second portfolio for estates / segregation; requires Stripe price configured for the add-on.
-                    </span>
-                  </span>
-                </label>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">

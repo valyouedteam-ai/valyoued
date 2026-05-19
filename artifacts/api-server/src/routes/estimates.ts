@@ -136,7 +136,7 @@ function resolveEstimateReport(embedded: unknown, title: string): EstimateReport
     headline: partial.headline ?? `Valuation · ${title}`,
     summary:
       partial.summary ??
-      "This dossier was recovered from older data; some narrative sections may be missing.",
+      "This valuation was recovered from older data; some narrative sections may be missing.",
     baselineNarrative: partial.baselineNarrative ?? "",
     marketNarrative: partial.marketNarrative ?? "",
     arbitrageNarrative: partial.arbitrageNarrative ?? "",

@@ -264,12 +264,6 @@
   opacity: 0.4;
 }
 
-/** Inheritance / secondary workspaces — violet accent cue on main canvas */
-.portfolio-workspace-inheritance.mesh-bg {
-  --accent: 258 55% 46%;
-  --ring: 258 55% 52%;
-}
-
 @media print {
   body {
     background: white;

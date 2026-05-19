@@ -114,7 +114,7 @@ export interface PatchEstimateBody {
 export interface Portfolio {
   id: string;
   userId: string;
-  /** primary, inheritance, or pro_board workspace */
+  /** primary or pro_board workspace */
   purpose: string;
   label: string;
   themeKey: string;
@@ -125,7 +125,6 @@ export type CreatePortfolioBodyPurpose =
   (typeof CreatePortfolioBodyPurpose)[keyof typeof CreatePortfolioBodyPurpose];
 
 export const CreatePortfolioBodyPurpose = {
-  inheritance: "inheritance",
   pro_board: "pro_board",
 } as const;
 

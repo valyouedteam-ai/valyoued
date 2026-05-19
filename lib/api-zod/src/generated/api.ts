@@ -601,9 +601,7 @@ export const PatchEstimateResponse = zod.object({
 export const ListPortfoliosResponseItem = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  purpose: zod
-    .string()
-    .describe("primary, inheritance, or pro_board workspace"),
+  purpose: zod.string().describe("primary or pro_board workspace"),
   label: zod.string(),
   themeKey: zod.string(),
   createdAt: zod.coerce.date(),
@@ -611,19 +609,17 @@ export const ListPortfoliosResponseItem = zod.object({
 export const ListPortfoliosResponse = zod.array(ListPortfoliosResponseItem);
 
 /**
- * @summary Create workspace (e.g. inheritance when add-on active)
+ * @summary Create extra workspace (Professional trading desk)
  */
 export const CreatePortfolioBody = zod.object({
-  purpose: zod.enum(["inheritance", "pro_board"]),
+  purpose: zod.enum(["pro_board"]),
   label: zod.string().optional(),
 });
 
 export const CreatePortfolioResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  purpose: zod
-    .string()
-    .describe("primary, inheritance, or pro_board workspace"),
+  purpose: zod.string().describe("primary or pro_board workspace"),
   label: zod.string(),
   themeKey: zod.string(),
   createdAt: zod.coerce.date(),

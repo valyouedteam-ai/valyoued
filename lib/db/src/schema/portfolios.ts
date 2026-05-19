@@ -1,6 +1,6 @@
 import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
 
-/** User-owned portfolio workspace (primary, inheritance add-on, or pro board). */
+/** User-owned portfolio workspace (primary or Professional trading desk). */
 export const portfoliosTable = pgTable("portfolios", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),

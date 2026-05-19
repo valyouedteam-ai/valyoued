@@ -24,7 +24,7 @@ export interface UserEntitlements {
   tier: "free" | "pro";
   planSlug: PlanSlug;
   subscriptionStatus: string;
-  /** Stripe add-on entitlement */
+  /** Deprecated: always false (inheritance add-on removed). */
   hasInheritanceAddon: boolean;
   /** Valuations created this UTC month */
   valuationsThisMonth: number;
@@ -40,13 +40,11 @@ export interface UserEntitlements {
   canUseMonitorEmailAlerts: boolean;
 }
 
-export function classifyStripePriceId(priceId: string): "everyday_plus" | "professional" | "inheritance" | null {
+export function classifyStripePriceId(priceId: string): "everyday_plus" | "professional" | null {
   const everyday = process.env.STRIPE_PRICE_EVERYDAY_PLUS?.trim();
   const professional = process.env.STRIPE_PRICE_PROFESSIONAL?.trim();
   const legacyPro = process.env.STRIPE_PRICE_PRO?.trim();
-  const inheritance = process.env.STRIPE_PRICE_INHERITANCE_ADDON?.trim();
 
-  if (inheritance && priceId === inheritance) return "inheritance";
   if (professional && priceId === professional) return "professional";
   if (everyday && priceId === everyday) return "everyday_plus";
   if (legacyPro && priceId === legacyPro) {
@@ -56,17 +54,15 @@ export function classifyStripePriceId(priceId: string): "everyday_plus" | "profe
   return null;
 }
 
-export function stripePriceIdMap(): Record<string, "everyday_plus" | "professional" | "inheritance"> {
+export function stripePriceIdMap(): Record<string, "everyday_plus" | "professional"> {
   const everyday =
     process.env.STRIPE_PRICE_EVERYDAY_PLUS?.trim() || process.env.STRIPE_PRICE_PRO?.trim();
   const professional =
     process.env.STRIPE_PRICE_PROFESSIONAL?.trim() || process.env.STRIPE_PRICE_PRO?.trim();
-  const inheritance = process.env.STRIPE_PRICE_INHERITANCE_ADDON?.trim();
-  const map: Record<string, "everyday_plus" | "professional" | "inheritance"> = {};
+  const map: Record<string, "everyday_plus" | "professional"> = {};
   if (everyday) map[everyday] = "everyday_plus";
   if (professional && professional !== everyday) map[professional] = "professional";
   if (!professional && everyday) map[everyday] = "everyday_plus";
-  if (inheritance) map[inheritance] = "inheritance";
   return map;
 }
 
@@ -133,7 +129,7 @@ export async function resolveUserEntitlements(userId: string): Promise<UserEntit
     tier: hasPaidValuationTier ? "pro" : "free",
     planSlug,
     subscriptionStatus: status,
-    hasInheritanceAddon: row?.hasInheritanceAddon ?? false,
+    hasInheritanceAddon: false,
     valuationsThisMonth,
     valuationsMonthLimit,
     valuationsRemainingFree,

@@ -10,25 +10,22 @@ const ACTIVE = new Set(["active", "trialing", "past_due"]);
 
 function summarizeStripeLineItems(items: Stripe.SubscriptionItem[]): {
   planSlug: "everyday_plus" | "professional" | null;
-  hasInheritanceAddon: boolean;
 } {
   let hasProfessional = false;
   let hasEveryday = false;
-  let hasInheritance = false;
 
   for (const it of items) {
     const pid = typeof it.price === "object" ? it.price?.id : undefined;
     if (!pid) continue;
     const tag = classifyStripePriceId(pid);
     if (!tag) continue;
-    if (tag === "inheritance") hasInheritance = true;
     if (tag === "professional") hasProfessional = true;
     if (tag === "everyday_plus") hasEveryday = true;
   }
 
   const planSlug: "everyday_plus" | "professional" | null = hasProfessional ? "professional" : hasEveryday ? "everyday_plus" : null;
 
-  return { planSlug, hasInheritanceAddon: hasInheritance };
+  return { planSlug };
 }
 
 async function resolveUserIdFromCustomer(customerId: string | undefined): Promise<string | undefined> {
@@ -96,13 +93,10 @@ async function applyStripeSubscription(sub: Stripe.Subscription): Promise<void> 
     status: sub.status,
     tierDerived,
     planSlug: ACTIVE.has(sub.status) ? summarized.planSlug : null,
-    hasInheritanceAddon: ACTIVE.has(sub.status) ? summarized.hasInheritanceAddon : false,
+    hasInheritanceAddon: false,
   });
 
-  logger.info(
-    { userId, subStatus: sub.status, planSlug: summarized.planSlug, hasInheritance: summarized.hasInheritanceAddon },
-    "billingSubscriptions synced",
-  );
+  logger.info({ userId, subStatus: sub.status, planSlug: summarized.planSlug }, "billingSubscriptions synced");
 }
 
 async function hydrateSubscription(client: Stripe, subId: string): Promise<Stripe.Subscription> {
@@ -165,7 +159,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
               status: "active",
               tierDerived: "pro",
               planSlug: session.metadata?.planSlug === "professional" ? "professional" : "everyday_plus",
-              hasInheritanceAddon: session.metadata?.includeInheritance === "true",
+              hasInheritanceAddon: false,
             });
           }
         } else {
@@ -176,7 +170,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
             status: "active",
             tierDerived: "pro",
             planSlug: session.metadata?.planSlug === "professional" ? "professional" : "everyday_plus",
-            hasInheritanceAddon: session.metadata?.includeInheritance === "true",
+            hasInheritanceAddon: false,
           });
         }
         break;

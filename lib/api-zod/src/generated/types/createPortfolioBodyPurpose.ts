@@ -10,6 +10,5 @@ export type CreatePortfolioBodyPurpose =
   (typeof CreatePortfolioBodyPurpose)[keyof typeof CreatePortfolioBodyPurpose];
 
 export const CreatePortfolioBodyPurpose = {
-  inheritance: "inheritance",
   pro_board: "pro_board",
 } as const;

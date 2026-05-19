@@ -8,6 +8,7 @@ import {
   ensurePrimaryPortfolio,
   listPortfoliosForUser,
   portfolioExistsForPurpose,
+  retireInheritancePortfoliosForUser,
 } from "../lib/portfoliosService";
 
 const router: IRouter = Router();
@@ -26,6 +27,7 @@ function toApiPortfolio(row: typeof portfoliosTable.$inferSelect) {
 router.get("/portfolios", requireAuth, async (_req, res): Promise<void> => {
   const userId = (_req as AuthedRequest).userId!;
   await ensurePrimaryPortfolio(userId);
+  await retireInheritancePortfoliosForUser(userId);
   const rows = await listPortfoliosForUser(userId);
   res.json(ListPortfoliosResponse.parse(rows.map(toApiPortfolio)));
 });
@@ -38,32 +40,6 @@ router.post("/portfolios", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const ent = await resolveUserEntitlements(userId);
-
-  if (body.data.purpose === "inheritance") {
-    if (!ent.hasInheritanceAddon) {
-      res.status(403).json({ error: "Inheritance workspace requires the inheritance add-on subscription." });
-      return;
-    }
-    if (await portfolioExistsForPurpose(userId, "inheritance")) {
-      res.status(403).json({ error: "You already have an inheritance workspace." });
-      return;
-    }
-    const label =
-      typeof body.data.label === "string" && body.data.label.trim() !== ""
-        ? body.data.label.trim()
-        : "Inheritance workspace";
-    const [created] = await db
-      .insert(portfoliosTable)
-      .values({
-        userId,
-        purpose: "inheritance",
-        label,
-        themeKey: "inheritance_lilac",
-      })
-      .returning();
-    res.json(toApiPortfolio(created!));
-    return;
-  }
 
   if (body.data.purpose === "pro_board") {
     if (ent.planSlug !== "professional") {

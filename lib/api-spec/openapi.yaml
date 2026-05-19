@@ -176,7 +176,7 @@ paths:
     post:
       operationId: createPortfolio
       tags: [portfolio]
-      summary: Create workspace (e.g. inheritance when add-on active)
+      summary: Create extra workspace (Professional trading desk)
       requestBody:
         required: true
         content:
@@ -441,7 +441,7 @@ components:
           type: string
         purpose:
           type: string
-          description: primary, inheritance, or pro_board workspace
+          description: primary or pro_board workspace
         label:
           type: string
         themeKey:
@@ -456,7 +456,7 @@ components:
       properties:
         purpose:
           type: string
-          enum: [inheritance, pro_board]
+          enum: [pro_board]
         label:
           type: string
     Comparable:

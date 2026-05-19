@@ -260,7 +260,7 @@ export default function PortfolioPage() {
           <p className="text-muted-foreground max-w-md mb-6">
             Run a valuation and attach it to this workspace{" "}
             {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id
-              ? "— switch back to Primary with the picker in the header to see inherited cross-over."
+              ? "— switch back to Primary in the header to see your main ledger."
               : "to see holdings, shelf mix, and listing shortcuts."}
           </p>
           <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
@@ -282,11 +282,7 @@ export default function PortfolioPage() {
           <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground mt-2">
             {activePortfolio?.label ??
-              (activePortfolio?.purpose === "inheritance"
-                ? "Inheritance ledger"
-                : activePortfolio?.purpose === "pro_board"
-                  ? "Professional board"
-                  : "Primary")}
+              (activePortfolio?.purpose === "pro_board" ? "Professional board" : "Primary")}
           </p>
         </div>
         <div>

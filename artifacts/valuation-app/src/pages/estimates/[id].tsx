@@ -119,7 +119,7 @@ export default function EstimateReportPage() {
     summary:
       stripQ(
         partialReport?.summary ??
-          "Legacy dossier. Narrative sections may be incomplete.",
+          "Legacy valuation. Narrative sections may be incomplete.",
       ),
     baselineNarrative: stripQ(partialReport?.baselineNarrative ?? ""),
     marketNarrative: stripQ(partialReport?.marketNarrative ?? ""),

@@ -12,7 +12,6 @@ const router: IRouter = Router();
 const CheckoutSessionBody = z
   .object({
     plan: z.enum(["everyday_plus", "professional"]).default("everyday_plus"),
-    includeInheritanceAddon: z.boolean().optional(),
   })
   .strict();
 
@@ -55,7 +54,6 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
   const everyday = process.env.STRIPE_PRICE_EVERYDAY_PLUS?.trim();
   const professional = process.env.STRIPE_PRICE_PROFESSIONAL?.trim();
   const legacyPro = process.env.STRIPE_PRICE_PRO?.trim();
-  const inheritance = process.env.STRIPE_PRICE_INHERITANCE_ADDON?.trim();
 
   const primaryPrice =
     body.data.plan === "professional"
@@ -100,15 +98,8 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
   }
 
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: primaryPrice, quantity: 1 }];
-  if (body.data.includeInheritanceAddon && inheritance) {
-    lineItems.push({ price: inheritance, quantity: 1 });
-  } else if (body.data.includeInheritanceAddon && !inheritance) {
-    res.status(503).json({ error: "Inheritance add-on price is not configured (STRIPE_PRICE_INHERITANCE_ADDON)." });
-    return;
-  }
 
   const planSlugMeta = body.data.plan === "professional" ? "professional" : "everyday_plus";
-  const incl = body.data.includeInheritanceAddon ?? false ? "true" : "false";
   const trialDays =
     body.data.plan === "professional" ? parseTrialDaysProfessional() : undefined;
 
@@ -119,9 +110,9 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
       line_items: lineItems,
       success_url: `${baseUrl.replace(/\/$/, "")}/settings?checkout=success`,
       cancel_url: `${baseUrl.replace(/\/$/, "")}/settings?checkout=cancel`,
-      metadata: { clerkUserId: userId, planSlug: planSlugMeta, includeInheritance: incl },
+      metadata: { clerkUserId: userId, planSlug: planSlugMeta },
       subscription_data: {
-        metadata: { clerkUserId: userId, planSlug: planSlugMeta, includeInheritance: incl },
+        metadata: { clerkUserId: userId, planSlug: planSlugMeta },
         ...(trialDays != null ? { trial_period_days: trialDays } : {}),
       },
     });

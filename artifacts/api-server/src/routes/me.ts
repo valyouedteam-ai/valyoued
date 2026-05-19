@@ -128,7 +128,7 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
     stripeCustomerId: sub?.stripeCustomerId ?? null,
     stripeStub: isStripeStubMode(),
     planSlug: ent.planSlug,
-    hasInheritanceAddon: sub?.hasInheritanceAddon ?? false,
+    hasInheritanceAddon: false,
     valuationsThisMonth: ent.valuationsThisMonth,
     valuationsMonthLimit: ent.valuationsMonthLimit,
     valuationsRemainingFree: ent.valuationsRemainingFree,

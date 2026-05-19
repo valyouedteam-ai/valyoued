@@ -9,7 +9,6 @@ export type MeBillingResponse = {
   stripeCustomerId: string | null;
   stripeStub?: boolean;
   planSlug: string;
-  hasInheritanceAddon: boolean;
   valuationsThisMonth?: number;
   valuationsMonthLimit: number | null;
   valuationsRemainingFree: number | null;

@@ -32,17 +32,17 @@ function PricingSticky() {
           <div>
             <p className="text-ui-caps text-accent">Straightforward tiers</p>
             <h2 className="mt-1 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Everyday free caps at five dossiers/month — upgrade removes the leash
+              Everyday free caps at five valuations/month — upgrade removes the leash
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
               Trials and exact pricing come from Stripe; copy below mirrors the roadmap you wired on the backend.
             </p>
           </div>
           <Badge variant="secondary" className="w-fit shrink-0 border border-border/70">
-            Inheritance ledger add-on bundles with checkout
+            Paid tiers via Stripe
           </Badge>
         </div>
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           {[
             {
               title: "Everyday · Free",
@@ -67,14 +67,6 @@ function PricingSticky() {
               ctaLabel: "Create professional account",
               ctaHref: "/welcome",
               variant: "secondary" as const,
-            },
-            {
-              title: "Inheritance add-on",
-              price: "+ add-on",
-              bullets: ["Second ledger for estates & heirs", "Pairs with Everyday+ checkout", "Themed workspace cue in-app"],
-              ctaLabel: "See workspace setup",
-              ctaHref: "/welcome",
-              variant: "outline" as const,
             },
           ].map((p) => (
             <Card
@@ -188,7 +180,7 @@ export default function LandingPage() {
           </motion.h1>
           <motion.p variants={reduceMotion ? undefined : item} className="max-w-lg text-lg leading-relaxed text-muted-foreground">
             Structured valuations you can revisit, regional demand shifts, and listing drafts tuned by plan tier —
-            Everyday, Everyday+, Professional, optional inheritance workspaces.
+            Everyday, Everyday+, and Professional.
           </motion.p>
           <motion.div variants={reduceMotion ? undefined : item} className="flex flex-wrap gap-3">
             <Link href="/welcome">
@@ -213,7 +205,7 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="text-2xl font-semibold tabular-nums text-foreground">Stripe</div>
-              plans + inheritance add-ons
+              subscription billing
             </div>
             <div>
               <div className="text-2xl font-semibold tabular-nums text-foreground">1-click</div>
