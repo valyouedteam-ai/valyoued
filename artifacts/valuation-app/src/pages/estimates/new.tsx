@@ -22,11 +22,8 @@ import {
   Smartphone,
   Tablet,
   Laptop,
-  Gamepad2,
-  Headphones,
   Camera,
   Footprints,
-  Guitar,
   type LucideIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -65,6 +62,8 @@ import { PhotoUploadCard } from "@/components/PhotoUploadCard";
 import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
 
 const PENDING_KEY = "valyoued.pendingEstimate";
+/** When a type has more driver fields than this, the wizard adds a second "details" step. */
+const VALUE_DRIVER_STEP_CAP = 8;
 /** Fallback type for items that do not match a predefined class (see assetTypes.ts). */
 const GENERAL_ITEM_ASSET_TYPE_ID = "general-item";
 
@@ -93,6 +92,20 @@ const GENERAL_ITEM_FALLBACK: AssetType = {
       type: "number",
       required: false,
       help: "We will assume this is in your local currency.",
+    },
+    {
+      key: "itemCategory",
+      label: "What kind of thing is it?",
+      type: "select",
+      required: false,
+      options: ["Tool or machine", "Toy or game", "Home appliance", "Tooling / workshop", "Art or decor", "Something else"],
+    },
+    {
+      key: "keywordsForComps",
+      label: "Search keywords a buyer would use",
+      type: "text",
+      required: false,
+      placeholder: "DeWalt 18V hammer drill DCD996",
     },
   ],
 };
@@ -153,13 +166,13 @@ const QUICK_VALUE_ASSETS: { id: string; label: string; Icon: LucideIcon }[] = [
   { id: "smartphone", label: "Smartphone", Icon: Smartphone },
   { id: "tablet", label: "Tablet", Icon: Tablet },
   { id: "laptop", label: "Laptop", Icon: Laptop },
-  { id: "gaming-console", label: "Console", Icon: Gamepad2 },
-  { id: "audio-hifi", label: "Headphones", Icon: Headphones },
+  { id: "luxury-watch", label: "Watches", Icon: Watch },
+  { id: "fine-jewelry", label: "Jewelry", Icon: Gem },
   { id: "camera", label: "Camera", Icon: Camera },
   { id: "bicycle", label: "Bike", Icon: Bike },
   { id: "sneakers", label: "Sneakers", Icon: Footprints },
   { id: "designer-handbag", label: "Handbag", Icon: ShoppingBag },
-  { id: "musical-instrument", label: "Instrument", Icon: Guitar },
+  { id: "everyday-car", label: "Car", Icon: Car },
 ];
 
 type WizardStepId =
@@ -169,6 +182,7 @@ type WizardStepId =
   | "region"
   | "identity"
   | "valueDrivers"
+  | "valueDrivers2"
   | "photos"
   | "condition"
   | "purchasePrice"
@@ -200,6 +214,8 @@ function stepTitle(id: WizardStepId): string {
       return "Basics: brand, model, year";
     case "valueDrivers":
       return "Details buyers care about";
+    case "valueDrivers2":
+      return "More details";
     case "photos":
       return "Photos (optional)";
     case "condition":
@@ -507,13 +523,22 @@ function NewEstimatePageInner({
     }
   }, [selectedType, selectedCategory]);
 
-  const { identityFields, driverFields, wizardSteps } = useMemo(() => {
+  const { identityFields, driverFieldsPage1, driverFieldsPage2, wizardSteps } = useMemo(() => {
     const c = classifyAssetFields(selectedType);
+    const drivers = c.drivers;
     const steps: WizardStepId[] = ["tier", "pickType", "title", "region"];
     if (c.identity.length) steps.push("identity");
-    if (c.drivers.length) steps.push("valueDrivers");
+    if (drivers.length) {
+      steps.push("valueDrivers");
+      if (drivers.length > VALUE_DRIVER_STEP_CAP) steps.push("valueDrivers2");
+    }
     steps.push("photos", "condition", "purchasePrice", "additional");
-    return { identityFields: c.identity, driverFields: c.drivers, wizardSteps: steps };
+    return {
+      identityFields: c.identity,
+      driverFieldsPage1: drivers.slice(0, VALUE_DRIVER_STEP_CAP),
+      driverFieldsPage2: drivers.slice(VALUE_DRIVER_STEP_CAP),
+      wizardSteps: steps,
+    };
   }, [selectedType]);
 
   const [wizardStep, setWizardStep] = useState(0);
@@ -596,7 +621,19 @@ function NewEstimatePageInner({
         }
         return true;
       case "valueDrivers":
-        for (const f of driverFields) {
+        for (const f of driverFieldsPage1) {
+          if (f.required && (v[f.key] === undefined || v[f.key] === "")) {
+            toast({
+              title: "Missing detail",
+              description: `${f.label} is required.`,
+              variant: "destructive",
+            });
+            return false;
+          }
+        }
+        return true;
+      case "valueDrivers2":
+        for (const f of driverFieldsPage2) {
           if (f.required && (v[f.key] === undefined || v[f.key] === "")) {
             toast({
               title: "Missing detail",
@@ -1133,9 +1170,24 @@ function NewEstimatePageInner({
                 </div>
               )}
 
-              {currentStepId === "valueDrivers" && selectedType && driverFields.length > 0 && (
+              {currentStepId === "valueDrivers" && selectedType && driverFieldsPage1.length > 0 && (
                 <div className="grid gap-6 md:grid-cols-2">
-                  {driverFields.map((rawF) => (
+                  {driverFieldsPage1.map((rawF) => (
+                    <DynamicAssetFieldRow
+                      key={rawF.key}
+                      form={form}
+                      rawF={rawF}
+                      selectedRegion={selectedRegion}
+                      selectedRegionName={selectedRegionName}
+                      assetTypeId={selectedType.id}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {currentStepId === "valueDrivers2" && selectedType && driverFieldsPage2.length > 0 && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {driverFieldsPage2.map((rawF) => (
                     <DynamicAssetFieldRow
                       key={rawF.key}
                       form={form}

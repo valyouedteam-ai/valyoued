@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { GlossaryEntry } from "@/lib/estimate-glossary";
 
 export function GlossaryHelp({ entry, label }: { entry: GlossaryEntry; label: string }) {
+  const Icon = entry.icon;
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -18,7 +19,10 @@ export function GlossaryHelp({ entry, label }: { entry: GlossaryEntry; label: st
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 text-sm" align="start">
-        <p className="font-semibold text-foreground">{entry.title}</p>
+        <div className="flex items-start gap-2">
+          {Icon ? <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
+          <p className="font-semibold text-foreground">{entry.title}</p>
+        </div>
         <p className="mt-2 leading-relaxed text-muted-foreground">{entry.body}</p>
         {entry.imageSrc ? (
           <img src={entry.imageSrc} alt="" className="mt-3 w-full rounded-md border border-border/60" />

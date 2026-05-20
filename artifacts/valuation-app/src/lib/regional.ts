@@ -120,7 +120,7 @@ export function localizeField<T extends GenericField>(field: T, regionName: stri
   }
 
   // Bonded warehouse for wine/spirits: UK term
-  if (k === "storage" && (field.options || []).some((o) => o.toLowerCase().includes("bonded"))) {
+  if (k === "wineCellarStorage" && (field.options || []).some((o) => o.toLowerCase().includes("bonded"))) {
     if (loc.fuel === "gas") {
       out.options = field.options!.map((o) =>
         o.includes("Professional bonded warehouse") ? "Climate-controlled storage facility" : o
