@@ -27,7 +27,15 @@ if (!AUTH_STUB_MODE && !PUBLISHABLE_KEY) {
     "Missing VITE_CLERK_PUBLISHABLE_KEY (or set VITE_AUTH_STUB_MODE=1 for local dev without real sign-in).",
   );
 }
-const PROXY_URL = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
+/**
+ * Clerk proxy is optional (Replit / custom setups). Only pass a real absolute URL;
+ * an empty or garbage value makes Clerk try to load clerk-js from bogus hosts like `https://npm/...`.
+ */
+function clerkProxyUrl(): string | undefined {
+  const raw = (import.meta.env.VITE_CLERK_PROXY_URL as string | undefined)?.trim();
+  if (!raw || !/^https?:\/\//i.test(raw)) return undefined;
+  return raw;
+}
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -73,7 +81,7 @@ function ClerkProviderWithRouter() {
   return (
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY!}
-      proxyUrl={PROXY_URL}
+      proxyUrl={clerkProxyUrl()}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
       routerPush={(to) => setLocation(stripBase(to))}
