@@ -105,7 +105,7 @@ export function usePortfolioWorkspace(): PortfolioWorkspaceContextValue {
   return ctx;
 }
 
-/** Safe optional hook — returns null outside the provider for pages that rarely need it. */
+/** Safe optional hook: returns null outside the provider for pages that rarely need it. */
 export function tryUsePortfolioWorkspace(): PortfolioWorkspaceContextValue | null {
   return useContext(PortfolioWorkspaceContext);
 }

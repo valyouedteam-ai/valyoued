@@ -32,7 +32,7 @@ function PricingSticky() {
           <div>
             <p className="text-ui-caps text-accent">Straightforward tiers</p>
             <h2 className="mt-1 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Everyday free caps at five valuations/month — upgrade removes the leash
+              Everyday free caps at five valuations/month. Upgrade removes the leash
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
               Trials and exact pricing come from Stripe; copy below mirrors the roadmap you wired on the backend.
@@ -179,13 +179,13 @@ export default function LandingPage() {
             <span className="brand-gradient">sell when the window is right.</span>
           </motion.h1>
           <motion.p variants={reduceMotion ? undefined : item} className="max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Structured valuations you can revisit, regional demand shifts, and listing drafts tuned by plan tier —
+            Structured valuations you can revisit, regional demand shifts, and listing drafts tuned by plan tier:
             Everyday, Everyday+, and Professional.
           </motion.p>
           <motion.div variants={reduceMotion ? undefined : item} className="flex flex-wrap gap-3">
             <Link href="/welcome">
               <Button size="lg" className="h-12 rounded-full px-7 shadow-lg" data-testid="hero-create-account">
-                Create account — pick Everyday or Pro
+                Create account: pick Everyday or Pro
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>

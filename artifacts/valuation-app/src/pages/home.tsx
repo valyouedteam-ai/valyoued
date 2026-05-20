@@ -75,7 +75,7 @@ export default function HomePage() {
 
   const workspaceLabel =
     activePortfolio?.label ??
-    (activePortfolio?.purpose === "pro_board" ? "Professional desk" : "Primary portfolio");
+    (activePortfolio?.purpose === "pro_board" ? "Professional desk" : null);
 
   const quickLinks: Array<{
     href: string;
@@ -119,19 +119,21 @@ export default function HomePage() {
     <div className="space-y-10 pb-16">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3 max-w-2xl">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-            <Badge variant="outline" className="rounded-full px-3 py-0.5">
-              Workspace
-            </Badge>
-            <span className="text-foreground/80">{workspaceLabel}</span>
-          </div>
+          {workspaceLabel ? (
+            <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+              <Badge variant="outline" className="rounded-full px-3 py-0.5">
+                Workspace
+              </Badge>
+              <span className="text-foreground/80">{workspaceLabel}</span>
+            </div>
+          ) : null}
           <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
             Home
           </h1>
           <p className="text-pretty leading-relaxed text-muted-foreground">
             {isProfessionalFlavor
               ? "Jump into desks and tools from here. Portfolio keeps the live ledger, folders, and shelf breakdown for each workspace."
-              : "Shortcuts and snapshots for this workspace. Open Portfolio for totals, mix charts, and every holding — nothing here replaces that view."}
+              : "Quick links and a short list of recent valuations. For live totals, mix charts, and the full holdings list, use Portfolio."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -181,7 +183,9 @@ export default function HomePage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Recent valuations</CardTitle>
             <CardDescription>
-              Newest saves in <span className="text-foreground/90">{workspaceLabel}</span>. Portfolio lists everything with live ticks and folders.
+              Newest saves in{" "}
+              <span className="text-foreground/90">{workspaceLabel ?? "this workspace"}</span>.
+              Portfolio lists everything with live ticks and folders.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -258,7 +262,7 @@ export default function HomePage() {
               <Globe2 className="h-5 w-5 text-muted-foreground" />
               <CardTitle className="text-lg">Regional markets cockpit</CardTitle>
             </div>
-            <CardDescription>Weighted by your valuation mix — open Markets for fuller tables.</CardDescription>
+            <CardDescription>Weighted by your valuation mix. Open Markets for fuller tables.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {statsLoading ? (

@@ -47,11 +47,11 @@ export default function WelcomePersonaPage() {
         >
           <p className="text-ui-caps text-accent">Tailor ValYoued</p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Choose how you use your portfolio — you can mix both anytime
+            Choose how you use your portfolio. You can mix both anytime.
           </h1>
           <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
             We remember this lightly to tune copy on your dashboard. It stays on-device until you finish sign-up or first
-            sign-in — then maps to your account profile.
+            sign-in, then maps to your account profile.
           </p>
         </motion.div>
 
@@ -133,7 +133,7 @@ export default function WelcomePersonaPage() {
         </div>
 
         <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
-          Tip: Everyday free includes five valuations per calendar month — upgrade anytime for unlimited runs and richer
+          Tip: Everyday free includes five valuations per calendar month. Upgrade anytime for unlimited runs and richer
           market rows. See Settings after you sign up.
         </p>
       </main>

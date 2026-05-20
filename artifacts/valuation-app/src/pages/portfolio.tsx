@@ -260,7 +260,7 @@ export default function PortfolioPage() {
           <p className="text-muted-foreground max-w-md mb-6">
             Run a valuation and attach it to this workspace{" "}
             {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id
-              ? "— switch back to Primary in the header to see your main ledger."
+              ? "Pick another workspace in Settings to see your main ledger."
               : "to see holdings, shelf mix, and listing shortcuts."}
           </p>
           <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>

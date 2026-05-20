@@ -260,6 +260,10 @@ function SettingsPageInner({
     }
   }, [getToken, queryClient]);
 
+  useEffect(() => {
+    void refreshBilling();
+  }, [refreshBilling]);
+
   const exportData = async () => {
     setBusy("export");
     try {
@@ -344,7 +348,7 @@ function SettingsPageInner({
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 md:[&>*]:min-w-0">
         <Card className="border-border/80 bg-card/40 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -352,8 +356,7 @@ function SettingsPageInner({
               Data & privacy
             </CardTitle>
             <CardDescription>
-              Download everything ValYoued stores about your valuations and listing drafts. Account
-              deletion is handled through your account provider's profile or security settings.
+              Download everything ValYoued stores about your valuations and listing drafts.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -382,31 +385,37 @@ function SettingsPageInner({
               <Sparkles className="h-5 w-5 text-accent" />
               Subscription &amp; valuations
             </CardTitle>
-            <CardDescription>
-              API tier{" "}
-              <span className="font-medium text-foreground tabular-nums">{billing?.tier ?? "…"}</span>
-              {billing?.status ? (
+            <CardDescription className="leading-relaxed text-pretty">
+              {billing ? (
                 <>
-                  {" "}
-                  · <span className="tabular-nums font-medium">{billing.status}</span>
+                  API tier{" "}
+                  <span className="font-medium text-foreground tabular-nums">{billing.tier}</span>
+                  {billing.status ? (
+                    <>
+                      {" "}
+                      · <span className="tabular-nums font-medium">{billing.status}</span>
+                    </>
+                  ) : null}
+                  {billing.planSlug ? (
+                    <>
+                      {" "}
+                      · plan <span className="tabular-nums font-medium">{billing.planSlug}</span>
+                    </>
+                  ) : null}
+                  {!billing.hasPaidValuationTier && billing.valuationsRemainingFree != null ? (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <span className="font-medium text-foreground">{billing.valuationsRemainingFree}</span> free
+                      valuations left this month (Everyday tier cap is{" "}
+                      {billing.valuationsMonthLimit ?? 5}
+                      ).
+                    </>
+                  ) : null}
                 </>
-              ) : null}
-              {billing?.planSlug ? (
-                <>
-                  {" "}
-                  · plan <span className="tabular-nums font-medium">{billing.planSlug}</span>
-                </>
-              ) : null}
-              {!billing?.hasPaidValuationTier && billing?.valuationsRemainingFree != null ? (
-                <>
-                  {" "}
-                  ·{" "}
-                  <span className="font-medium text-foreground">{billing.valuationsRemainingFree}</span> free
-                  valuations left this month (Everyday tier cap is{" "}
-                  {billing.valuationsMonthLimit ?? 5}
-                  ).
-                </>
-              ) : null}
+              ) : (
+                <>Fetching billing snapshot from the API…</>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -419,9 +428,9 @@ function SettingsPageInner({
                       <SelectValue placeholder="Pick a plan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="everyday_plus">Everyday+ — unlimited valuations (£7.99/mo suggested)</SelectItem>
+                      <SelectItem value="everyday_plus">Everyday+: unlimited valuations (£7.99/mo suggested)</SelectItem>
                       <SelectItem value="professional">
-                        Professional — full seller voice (£14.99/mo suggested, trial from Stripe config)
+                        Professional: full seller voice (£14.99/mo suggested, trial from Stripe config)
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -462,17 +471,6 @@ function SettingsPageInner({
               <Mail className="h-5 w-5 text-accent" />
               Email alerts
             </CardTitle>
-            <CardDescription>
-              Choose what we send to your account email from Clerk. Product updates are rare; estimate alerts fire when
-              a new valuation report is created. Messaging requires{" "}
-              <span className="text-foreground font-medium">Resend</span> on the API (
-              {emailAlerts?.deliveryEnabled ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">delivery enabled</span>
-              ) : (
-                <span className="text-amber-600 dark:text-amber-400 font-medium">delivery not configured</span>
-              )}
-              ).
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 max-w-lg">
             <div className="flex items-center justify-between gap-4">

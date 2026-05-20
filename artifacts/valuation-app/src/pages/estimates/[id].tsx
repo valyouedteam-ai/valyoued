@@ -167,7 +167,7 @@ export default function EstimateReportPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-sans">Plans for this asset</CardTitle>
             <CardDescription>
-              Tell us whether you&apos;re holding, watching value changes, or ready to draft a listing — we steer reminders and
+              Tell us whether you&apos;re holding, watching value changes, or ready to draft a listing. We steer reminders and
               tools from this intent.
             </CardDescription>
           </CardHeader>
@@ -556,7 +556,7 @@ export default function EstimateReportPage() {
                     <p className="text-sm font-medium line-clamp-3 mb-2">{comp.description}</p>
                     <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
                       <span className="inline-flex items-center gap-1.5">
-                        Sale year {saleYear ?? "—"}
+                        Sale year {saleYear ?? "-"}
                         {isStaleSale ? (
                           <Badge variant="secondary" className="text-[9px] font-normal uppercase tracking-wide">
                             Older sale

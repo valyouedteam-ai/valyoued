@@ -4,9 +4,7 @@ import { useUser, useClerk } from "@clerk/react";
 import {
   Briefcase,
   Calculator,
-  ChevronDown,
   LayoutDashboard,
-  Layers,
   LibrarySquare,
   LogOut,
   Megaphone,
@@ -16,8 +14,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { useProTier } from "@/hooks/use-pro-tier";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -28,14 +29,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   mergePortfolioHref,
   PortfolioWorkspaceProvider,
@@ -176,6 +169,54 @@ function UserMenu({ compact }: { compact?: boolean }) {
   return <UserMenuClerk compact={compact} />;
 }
 
+function DevProPreviewToggle({ compact }: { compact?: boolean }) {
+  const authStub = useAuthStubContext();
+  const showToggle =
+    import.meta.env.DEV ||
+    Boolean(authStub) ||
+    import.meta.env.VITE_SHOW_PRO_PREVIEW_TOGGLE === "true";
+  const { data } = useBillingSummary();
+  const paid = Boolean(data?.hasPaidValuationTier);
+  const { devProPreview, setDevProPreview } = useProTier();
+
+  if (!showToggle) return null;
+
+  const checked = paid || devProPreview;
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-2 py-1 shadow-sm",
+        compact ? "px-2" : "sm:gap-2 sm:px-2.5",
+      )}
+      title={
+        paid
+          ? "Your subscription already includes Pro features."
+          : "Toggle Professional-tier UI locally for testing (saved in this browser only)."
+      }
+    >
+      <Label
+        htmlFor="header-pro-preview"
+        className={cn(
+          "cursor-pointer whitespace-nowrap text-[11px] font-medium text-muted-foreground",
+          !compact && "sm:text-xs",
+        )}
+      >
+        Pro
+      </Label>
+      <Switch
+        id="header-pro-preview"
+        className="scale-90 data-[state=checked]:bg-accent"
+        checked={checked}
+        disabled={paid}
+        onCheckedChange={(on) => {
+          if (!paid) setDevProPreview(on);
+        }}
+      />
+    </div>
+  );
+}
+
 function PlanBrief({ className, block }: { className?: string; block?: boolean }) {
   const { data } = useBillingSummary();
   const paid = data?.hasPaidValuationTier;
@@ -210,73 +251,6 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
   );
 }
 
-function WorkspacePicker({
-  compact,
-  onNavigate,
-  className,
-}: {
-  compact?: boolean;
-  onNavigate?: () => void;
-  className?: string;
-}) {
-  const { portfolios, activePortfolio, isLoading, portfolioQuerySuffix, selectPortfolioById } =
-    usePortfolioWorkspace();
-
-  const show = Boolean(isLoading || (portfolios && portfolios.length > 1));
-  if (!show) return null;
-
-  const subtitle =
-    activePortfolio?.purpose === "pro_board" ? "Professional desk" : "Primary ledger";
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size={compact ? "sm" : "sm"}
-          className={cn("h-9 gap-2 rounded-full border-border/70 bg-card/80 px-3 text-xs shadow-sm", className)}
-          aria-label="Switch portfolio workspace"
-        >
-          <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
-          {!compact ? (
-            <span className="hidden min-w-0 max-w-[120px] truncate sm:inline">
-              {activePortfolio?.label ?? subtitle}
-            </span>
-          ) : null}
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={() => onNavigate?.()}>
-        <DropdownMenuRadioGroup
-          value={activePortfolio?.id ?? ""}
-          onValueChange={(v) => {
-            selectPortfolioById(v);
-            onNavigate?.();
-          }}
-        >
-          {(portfolios ?? []).map((p) => {
-            const pretty = p.purpose === "pro_board" ? "Professional desk" : "Primary ledger";
-            return (
-              <DropdownMenuRadioItem key={p.id} value={p.id} className="items-start gap-3">
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="leading-tight font-medium">{p.label ?? pretty}</span>
-                  <span className="text-[11px] text-muted-foreground">{pretty}</span>
-                </div>
-              </DropdownMenuRadioItem>
-            );
-          })}
-        </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <Button variant="ghost" size="sm" className="h-9 w-full justify-start gap-2 text-xs" asChild>
-          <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => onNavigate?.()}>
-            Manage workspaces
-          </Link>
-        </Button>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 function MobileNavSheet() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
@@ -294,12 +268,6 @@ function MobileNavSheet() {
           <SheetTitle className="font-brand text-xl">Menu</SheetTitle>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-5">
-          <div>
-            <div className="text-ui-caps text-muted-foreground mb-2 px-2">Portfolio</div>
-            <div className="px-2 pb-2 [&_button]:w-full [&_button]:justify-between">
-              <WorkspacePicker compact onNavigate={() => setOpen(false)} />
-            </div>
-          </div>
           <div>
             <div className="text-ui-caps text-muted-foreground mb-2 px-2">Navigate</div>
             <div className="flex flex-col gap-1">
@@ -393,7 +361,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {!isMobile ? <WorkspacePicker /> : null}
+            {!isMobile ? <DevProPreviewToggle /> : null}
             {!isMobile ? <PlanBrief className="hidden lg:flex" /> : null}
             <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
               <Button
@@ -418,11 +386,9 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         {isMobile ? (
-          <div className="flex flex-col items-stretch gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            <div className="flex items-center justify-center gap-2">
-              <WorkspacePicker />
-              <PlanBrief />
-            </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
+            <DevProPreviewToggle compact />
+            <PlanBrief />
           </div>
         ) : null}
       </header>
