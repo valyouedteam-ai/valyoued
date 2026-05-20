@@ -14,11 +14,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
-import { useProTier } from "@/hooks/use-pro-tier";
+import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -169,54 +167,6 @@ function UserMenu({ compact }: { compact?: boolean }) {
   return <UserMenuClerk compact={compact} />;
 }
 
-function DevProPreviewToggle({ compact }: { compact?: boolean }) {
-  const authStub = useAuthStubContext();
-  const showToggle =
-    import.meta.env.DEV ||
-    Boolean(authStub) ||
-    import.meta.env.VITE_SHOW_PRO_PREVIEW_TOGGLE === "true";
-  const { data } = useBillingSummary();
-  const paid = Boolean(data?.hasPaidValuationTier);
-  const { devProPreview, setDevProPreview } = useProTier();
-
-  if (!showToggle) return null;
-
-  const checked = paid || devProPreview;
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-2 py-1 shadow-sm",
-        compact ? "px-2" : "sm:gap-2 sm:px-2.5",
-      )}
-      title={
-        paid
-          ? "Your subscription already includes Pro features."
-          : "Toggle Professional-tier UI locally for testing (saved in this browser only)."
-      }
-    >
-      <Label
-        htmlFor="header-pro-preview"
-        className={cn(
-          "cursor-pointer whitespace-nowrap text-[11px] font-medium text-muted-foreground",
-          !compact && "sm:text-xs",
-        )}
-      >
-        Pro
-      </Label>
-      <Switch
-        id="header-pro-preview"
-        className="scale-90 data-[state=checked]:bg-accent"
-        checked={checked}
-        disabled={paid}
-        onCheckedChange={(on) => {
-          if (!paid) setDevProPreview(on);
-        }}
-      />
-    </div>
-  );
-}
-
 function PlanBrief({ className, block }: { className?: string; block?: boolean }) {
   const { data } = useBillingSummary();
   const paid = data?.hasPaidValuationTier;
@@ -361,7 +311,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {!isMobile ? <DevProPreviewToggle /> : null}
+            {!isMobile ? <ProPreviewToggle /> : null}
             {!isMobile ? <PlanBrief className="hidden lg:flex" /> : null}
             <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
               <Button
@@ -387,7 +337,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         </div>
         {isMobile ? (
           <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            <DevProPreviewToggle compact />
+            <ProPreviewToggle compact />
             <PlanBrief />
           </div>
         ) : null}

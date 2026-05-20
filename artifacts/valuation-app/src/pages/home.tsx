@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Briefcase,
@@ -28,7 +29,6 @@ import {
   Globe2,
   Lock,
   Megaphone,
-  Settings,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -107,12 +107,6 @@ export default function HomePage() {
       description: "Drafts and marketplace wording.",
       icon: Megaphone,
     },
-    {
-      href: mergePortfolioHref("/settings", portfolioQuerySuffix),
-      title: "Settings",
-      description: "Billing, workspaces, and alerts.",
-      icon: Settings,
-    },
   ];
 
   return (
@@ -136,7 +130,8 @@ export default function HomePage() {
               : "Quick links and a short list of recent valuations. For live totals, mix charts, and the full holdings list, use Portfolio."}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ProPreviewToggle label="Pro mode" />
           <Button size="lg" className="rounded-full shadow-lg" asChild>
             <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
               <Calculator className="mr-2 h-5 w-5" />
@@ -152,7 +147,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {quickLinks.map(({ href, title, description, icon: Icon }) => (
           <Link
             key={href}
