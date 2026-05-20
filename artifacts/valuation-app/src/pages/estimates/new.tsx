@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   BrainCircuit,
@@ -20,6 +19,14 @@ import {
   Briefcase,
   Sparkles,
   AlertCircle,
+  Smartphone,
+  Tablet,
+  Laptop,
+  Gamepad2,
+  Headphones,
+  Camera,
+  Footprints,
+  Guitar,
   type LucideIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,7 +43,7 @@ import {
   getListEstimatesQueryKey,
   getGetEstimateStatsQueryKey,
 } from "@workspace/api-client-react";
-import type { EstimateInput, AssetType } from "@workspace/api-client-react";
+import type { EstimateInput, AssetType, AssetField } from "@workspace/api-client-react";
 import { assetTypeAllowedForSellerTier } from "@workspace/asset-shelf-tier";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -44,14 +51,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { GlossaryHelp } from "@/components/estimate/GlossaryHelp";
+import { getGlossaryForField, GLOSSARY } from "@/lib/estimate-glossary";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 import { localizeField } from "@/lib/regional";
 import { tryUsePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
@@ -83,26 +88,11 @@ const GENERAL_ITEM_FALLBACK: AssetType = {
     },
     { key: "year", label: "Year", type: "number", required: false },
     {
-      key: "condition",
-      label: "Condition (1=poor, 10=mint)",
-      type: "number",
-      required: true,
-      placeholder: "8",
-    },
-    {
       key: "purchasePrice",
       label: "Original purchase price",
       type: "number",
       required: false,
       help: "We will assume this is in your local currency.",
-    },
-    {
-      key: "extraNotes",
-      label: "Other relevant details",
-      type: "textarea",
-      required: false,
-      placeholder: "Tell us everything: materials, history, why it's special",
-      help: "Materials, history, accessories, why it's worth what you think",
     },
   ],
 };
@@ -155,6 +145,159 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 function iconForCategory(cat: string): LucideIcon {
   return CATEGORY_ICONS[cat] ?? Sparkles;
+}
+
+const SAAS_MICRO_ID = "saas-micro";
+
+const QUICK_VALUE_ASSETS: { id: string; label: string; Icon: LucideIcon }[] = [
+  { id: "smartphone", label: "Smartphone", Icon: Smartphone },
+  { id: "tablet", label: "Tablet", Icon: Tablet },
+  { id: "laptop", label: "Laptop", Icon: Laptop },
+  { id: "gaming-console", label: "Console", Icon: Gamepad2 },
+  { id: "audio-hifi", label: "Headphones", Icon: Headphones },
+  { id: "camera", label: "Camera", Icon: Camera },
+  { id: "bicycle", label: "Bike", Icon: Bike },
+  { id: "sneakers", label: "Sneakers", Icon: Footprints },
+  { id: "designer-handbag", label: "Handbag", Icon: ShoppingBag },
+  { id: "musical-instrument", label: "Instrument", Icon: Guitar },
+];
+
+type WizardStepId =
+  | "tier"
+  | "pickType"
+  | "title"
+  | "region"
+  | "identity"
+  | "valueDrivers"
+  | "photos"
+  | "condition"
+  | "purchasePrice"
+  | "additional";
+
+function classifyAssetFields(type: AssetType | undefined): {
+  identity: AssetField[];
+  drivers: AssetField[];
+} {
+  if (!type) return { identity: [], drivers: [] };
+  const identityKeys = new Set(["brand", "model", "year"]);
+  const withoutPrice = type.fields.filter((f) => f.key !== "purchasePrice");
+  const identity = withoutPrice.filter((f) => identityKeys.has(f.key));
+  const drivers = withoutPrice.filter((f) => !identityKeys.has(f.key) && f.key !== "condition");
+  return { identity, drivers };
+}
+
+function stepTitle(id: WizardStepId): string {
+  switch (id) {
+    case "tier":
+      return "What kind of item is it?";
+    case "pickType":
+      return "What are you valuing?";
+    case "title":
+      return "Short listing headline";
+    case "region":
+      return "Where you are selling from";
+    case "identity":
+      return "Basics: brand, model, year";
+    case "valueDrivers":
+      return "Details buyers care about";
+    case "photos":
+      return "Photos (optional)";
+    case "condition":
+      return "Overall condition";
+    case "purchasePrice":
+      return "Price context (optional)";
+    case "additional":
+      return "Anything else?";
+    default:
+      return "";
+  }
+}
+
+type EstimateForm = UseFormReturn<FormValues>;
+
+function DynamicAssetFieldRow({
+  form,
+  rawF,
+  selectedRegion,
+  selectedRegionName,
+  assetTypeId,
+}: {
+  form: EstimateForm;
+  rawF: AssetField;
+  selectedRegion: { currencySymbol: string; currencyCode: string } | undefined;
+  selectedRegionName: string;
+  assetTypeId: string;
+}) {
+  const f = localizeField(rawF, selectedRegionName);
+  const gloss = getGlossaryForField(f.key, assetTypeId);
+  const isPrice = f.key === "purchasePrice";
+  const labelSuffix = isPrice && selectedRegion ? ` (${selectedRegion.currencyCode})` : "";
+
+  return (
+    <FormField
+      key={f.key}
+      control={form.control}
+      name={f.key as keyof FormValues}
+      render={({ field: formField }) => (
+        <FormItem className={f.type === "textarea" ? "md:col-span-2" : ""}>
+          <div className="flex items-center gap-1">
+            <FormLabel>
+              {f.label}
+              {labelSuffix}
+              {f.required ? " *" : ""}
+            </FormLabel>
+            {gloss ? <GlossaryHelp entry={gloss} label={f.label} /> : null}
+          </div>
+          <FormControl>
+            {f.type === "textarea" ? (
+              <Textarea
+                placeholder={f.placeholder}
+                className="resize-y min-h-[100px] bg-background"
+                {...formField}
+                value={formField.value ?? ""}
+              />
+            ) : f.type === "select" ? (
+              <Select onValueChange={formField.onChange} value={(formField.value ?? "") as string}>
+                <SelectTrigger className="h-10 bg-background">
+                  <SelectValue placeholder={f.placeholder || "Select..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {f.options?.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : isPrice && selectedRegion ? (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular-nums">
+                  {selectedRegion.currencySymbol}
+                </span>
+                <Input
+                  type="number"
+                  placeholder={f.placeholder}
+                  className="h-10 bg-background pl-10"
+                  {...formField}
+                  value={formField.value ?? ""}
+                />
+              </div>
+            ) : (
+              <Input
+                type={f.type === "number" ? "number" : "text"}
+                placeholder={f.placeholder}
+                className="h-10 bg-background"
+                {...formField}
+                value={formField.value ?? ""}
+              />
+            )}
+          </FormControl>
+          {f.help ? <FormDescription>{f.help}</FormDescription> : null}
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
 }
 
 function describeValuationGateError(err: unknown): string {
@@ -364,6 +507,139 @@ function NewEstimatePageInner({
     }
   }, [selectedType, selectedCategory]);
 
+  const { identityFields, driverFields, wizardSteps } = useMemo(() => {
+    const c = classifyAssetFields(selectedType);
+    const steps: WizardStepId[] = ["tier", "pickType", "title", "region"];
+    if (c.identity.length) steps.push("identity");
+    if (c.drivers.length) steps.push("valueDrivers");
+    steps.push("photos", "condition", "purchasePrice", "additional");
+    return { identityFields: c.identity, driverFields: c.drivers, wizardSteps: steps };
+  }, [selectedType]);
+
+  const [wizardStep, setWizardStep] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    setWizardStep(0);
+  }, [selectedTier]);
+
+  useEffect(() => {
+    setWizardStep((i) => Math.min(i, Math.max(0, wizardSteps.length - 1)));
+  }, [wizardSteps.length]);
+
+  useEffect(() => {
+    stepHeadingRef.current?.focus();
+  }, [wizardStep]);
+
+  const currentStepId: WizardStepId = wizardSteps[wizardStep] ?? "tier";
+  const progressPct =
+    wizardSteps.length > 1 ? Math.round((wizardStep / (wizardSteps.length - 1)) * 100) : 100;
+
+  const purchaseFieldDef = useMemo(
+    () => selectedType?.fields.find((f) => f.key === "purchasePrice"),
+    [selectedType],
+  );
+
+  function validateWizardStep(stepId: WizardStepId): boolean {
+    const v = form.getValues();
+    switch (stepId) {
+      case "tier":
+        if (!v.assetTier) {
+          toast({
+            title: "Pick a track",
+            description: "Choose everyday or luxury so we match the right shelf.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      case "pickType":
+        if (!v.assetTypeId) {
+          toast({
+            title: "Pick an item type",
+            description: "Select what you are valuing to continue.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      case "title":
+        if (!String(v.title ?? "").trim()) {
+          toast({
+            title: "Add a short title",
+            description: "A headline helps the report and listings.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      case "region":
+        if (!v.currentRegion) {
+          toast({
+            title: "Pick a region",
+            description: "We need your region for currency and local comps.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      case "identity":
+        for (const f of identityFields) {
+          if (f.required && (v[f.key] === undefined || v[f.key] === "")) {
+            toast({
+              title: "Missing detail",
+              description: `${f.label} is required.`,
+              variant: "destructive",
+            });
+            return false;
+          }
+        }
+        return true;
+      case "valueDrivers":
+        for (const f of driverFields) {
+          if (f.required && (v[f.key] === undefined || v[f.key] === "")) {
+            toast({
+              title: "Missing detail",
+              description: `${f.label} is required.`,
+              variant: "destructive",
+            });
+            return false;
+          }
+        }
+        return true;
+      case "photos":
+        return true;
+      case "condition": {
+        const c0 = Number(v.condition);
+        if (!Number.isFinite(c0) || c0 < 1 || c0 > 10) {
+          toast({
+            title: "Set condition",
+            description: "Move the slider to set overall condition.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      }
+      case "purchasePrice":
+      case "additional":
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  function goNext() {
+    const sid = wizardSteps[wizardStep];
+    if (sid === undefined) return;
+    if (!validateWizardStep(sid)) return;
+    if (wizardStep < wizardSteps.length - 1) setWizardStep((s) => s + 1);
+  }
+
+  function goBack() {
+    if (wizardStep > 0) setWizardStep((s) => s - 1);
+  }
+
   const onSubmit = (data: any) => {
     if (!selectedType) {
       toast({ title: "Pick an asset class first", description: "Choose what you're valuing from the dropdown.", variant: "destructive" });
@@ -487,518 +763,526 @@ function NewEstimatePageInner({
       <div>
         <h1 className="text-3xl font-sans font-bold text-foreground">New Estimate</h1>
         <p className="text-muted-foreground mt-2">
-          Pick what you're selling, tell us where you are, and we'll value it in your local currency with global market context.
+          Pick what you are selling, tell us where you are, and we will value it in your local currency with global market context.
         </p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-6">
           <Card className="border-border/50 bg-card/50 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-sans">What kind of item is it?</CardTitle>
+            <CardHeader className="space-y-3 pb-2">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Step {wizardStep + 1} of {wizardSteps.length}
+                  </span>
+                  <span className="tabular-nums">{progressPct}%</span>
+                </div>
+                <Progress value={progressPct} aria-valuenow={progressPct} />
+              </div>
+              <h2
+                ref={stepHeadingRef}
+                tabIndex={-1}
+                className="text-lg font-sans font-semibold tracking-tight text-foreground outline-none"
+              >
+                {stepTitle(currentStepId)}
+              </h2>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="assetTier"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      {[
-                        {
-                          value: "everyday",
-                          label: "Everyday asset",
-                          desc: "Cars, electronics, furniture, ordinary home goods. Usually depreciates over time.",
-                          Icon: House,
-                        },
-                        {
-                          value: "luxury",
-                          label: "Luxury / Collectible",
-                          desc: "Vintage watches, rare wines, classic Mini Coopers, designer bags, limited art. Often appreciates.",
-                          Icon: Gem,
-                        },
-                      ].map((opt) => {
-                        const active = field.value === opt.value;
-                        const TierIcon = opt.Icon;
-                        return (
-                          <button
-                            type="button"
-                            key={opt.value}
-                            onClick={() => field.onChange(opt.value)}
-                            data-testid={`tier-${opt.value}`}
-                            className={`text-left rounded-lg border p-4 transition-all ${
-                              active
-                                ? "border-accent bg-accent/10 ring-2 ring-accent/40"
-                                : "border-border bg-background hover:border-accent/50"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              <TierIcon className="h-5 w-5 shrink-0 text-accent" />
-                              <span className="font-medium">{opt.label}</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed">{opt.desc}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          {selectedTier && <Card className="border-border/50 bg-card/50 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-sans">
-                Classification: {selectedTier === "luxury" ? "Luxury / collectible" : "Everyday"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="assetTypeId"
-                render={({ field }) => {
-                  const currentList = selectedCategory
-                    ? grouped.find(([c]) => c === selectedCategory)?.[1] ?? []
-                    : [];
-                  return (
+            <CardContent className="space-y-6">
+              {currentStepId === "tier" && (
+                <FormField
+                  control={form.control}
+                  name="assetTier"
+                  render={({ field }) => (
                     <FormItem>
-                      <p className="text-sm font-medium text-foreground leading-snug">
-                        {selectedCategory
-                          ? `Pick the specific item type in ${selectedCategory}`
-                          : "Step 1: pick a category"}
-                      </p>
+                      <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
+                        {[
+                          {
+                            value: "everyday" as const,
+                            label: "Everyday asset",
+                            desc: "Cars, electronics, furniture, ordinary home goods. Usually depreciates over time.",
+                            Icon: House,
+                          },
+                          {
+                            value: "luxury" as const,
+                            label: "Luxury / Collectible",
+                            desc: "Vintage watches, rare wines, classic Mini Coopers, designer bags, limited art. Often appreciates.",
+                            Icon: Gem,
+                          },
+                        ].map((opt) => {
+                          const active = field.value === opt.value;
+                          const TierIcon = opt.Icon;
+                          return (
+                            <button
+                              type="button"
+                              key={opt.value}
+                              onClick={() => field.onChange(opt.value)}
+                              data-testid={`tier-${opt.value}`}
+                              className={`rounded-lg border p-4 text-left transition-all ${
+                                active
+                                  ? "border-accent bg-accent/10 ring-2 ring-accent/40"
+                                  : "border-border bg-background hover:border-accent/50"
+                              }`}
+                            >
+                              <div className="mb-1 flex items-center gap-2">
+                                <TierIcon className="h-5 w-5 shrink-0 text-accent" />
+                                <span className="font-medium">{opt.label}</span>
+                              </div>
+                              <p className="text-xs leading-relaxed text-muted-foreground">{opt.desc}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-                      {/* Step 1: category grid */}
-                      {!selectedCategory && (
-                        <>
-                        {assetTypesLoading && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1" aria-busy="true">
-                            {Array.from({ length: 9 }).map((_, i) => (
-                              <div
-                                key={i}
-                                className="h-[4.25rem] rounded-lg bg-muted/55 animate-pulse border border-border/30"
-                              />
-                            ))}
-                          </div>
-                        )}
-                        {assetTypesError && (
-                          <Alert variant="destructive" className="mt-1">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Couldn&apos;t load asset categories</AlertTitle>
-                            <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                              <span className="text-balance">
-                                {assetTypesErrMessage}
-                                <AssetCategoriesLoadHint error={assetTypesErr} />
-                              </span>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="shrink-0 border-destructive/40"
-                                onClick={() => void refetchAssetTypes()}
-                              >
-                                Retry
-                              </Button>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                        {!assetTypesLoading && !assetTypesError && grouped.length === 0 && (
-                          <p className="text-sm text-muted-foreground pt-2">
-                            The server returned no asset categories. Try again shortly or describe a custom item below.
-                          </p>
-                        )}
-                        {!assetTypesLoading && !assetTypesError && grouped.length > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                          {grouped.map(([cat, list]) => {
-                            const Icon = iconForCategory(cat);
+              {currentStepId === "pickType" && selectedTier && (
+                <FormField
+                  control={form.control}
+                  name="assetTypeId"
+                  render={({ field }) => {
+                    const currentList = selectedCategory
+                      ? grouped.find(([c]) => c === selectedCategory)?.[1] ?? []
+                      : [];
+                    return (
+                      <FormItem>
+                        <p className="mb-2 text-sm font-medium leading-snug text-foreground">Quick value (common types)</p>
+                        <div className="flex flex-wrap gap-2">
+                          {QUICK_VALUE_ASSETS.map(({ id: qid, label, Icon }) => {
+                            const t = tierFilteredAssetTypes.find((x) => x.id === qid);
+                            if (!t) return null;
                             return (
                               <button
                                 type="button"
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                data-testid={`category-${cat.replace(/\s+/g, "-").toLowerCase()}`}
-                                className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left transition-all hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                                key={qid}
+                                onClick={() => {
+                                  if (selectedType && selectedType.id !== qid) {
+                                    selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
+                                  }
+                                  setSelectedCategory(t.category);
+                                  field.onChange(qid);
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm transition-colors hover:border-accent"
                               >
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
-                                  <Icon className="h-5 w-5" />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="truncate text-sm font-medium">{cat}</div>
-                                  <div className="text-xs text-muted-foreground">{list.length} {list.length === 1 ? "type" : "types"}</div>
-                                </div>
+                                <Icon className="h-4 w-4 text-accent" />
+                                {label}
                               </button>
                             );
                           })}
                         </div>
-                        )}
-                        {(!!assetTypes || assetTypesError) && (
-                        <div className="mt-4 pt-3 border-t border-border/60">
-                          <button
-                            type="button"
-                            data-testid="custom-asset-type"
-                            className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
-                            onClick={() => {
-                              if (selectedType) {
-                                selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
-                              }
-                              setSelectedCategory("Other");
-                              field.onChange(GENERAL_ITEM_ASSET_TYPE_ID);
-                            }}
-                          >
-                            Item not listed? Use a custom description instead
-                          </button>
-                        </div>
-                        )}
-                        </>
-                      )}
+                        <p className="mb-3 mt-3 text-xs text-muted-foreground">Or browse all categories below.</p>
+                        <p className="text-sm font-medium leading-snug text-foreground">
+                          {selectedCategory
+                            ? `Pick the specific item type in ${selectedCategory}`
+                            : "Pick a category"}
+                        </p>
 
-                      {/* Step 2: asset type grid within the chosen category */}
-                      {selectedCategory && (
-                        <div className="space-y-3 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (selectedType) {
-                                selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
-                              }
-                              field.onChange("");
-                              setSelectedCategory(null);
-                            }}
-                            data-testid="back-to-categories"
-                            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <ArrowLeft className="h-3.5 w-3.5" />
-                            Back to categories
-                          </button>
-                          {currentList.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {currentList.map((type) => {
-                              const active = field.value === type.id;
-                              return (
+                        {!selectedCategory && (
+                          <>
+                            {assetTypesLoading && (
+                              <div className="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-3" aria-busy="true">
+                                {Array.from({ length: 9 }).map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className="h-[4.25rem] animate-pulse rounded-lg border border-border/30 bg-muted/55"
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            {assetTypesError && (
+                              <Alert variant="destructive" className="mt-1">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Could not load asset categories</AlertTitle>
+                                <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <span className="text-balance">
+                                    {assetTypesErrMessage}
+                                    <AssetCategoriesLoadHint error={assetTypesErr} />
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="shrink-0 border-destructive/40"
+                                    onClick={() => void refetchAssetTypes()}
+                                  >
+                                    Retry
+                                  </Button>
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            {!assetTypesLoading && !assetTypesError && grouped.length === 0 && (
+                              <p className="pt-2 text-sm text-muted-foreground">
+                                The server returned no asset categories. Try again shortly or describe a custom item below.
+                              </p>
+                            )}
+                            {!assetTypesLoading && !assetTypesError && grouped.length > 0 && (
+                              <div className="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-3">
+                                {grouped.map(([cat, list]) => {
+                                  const Icon = iconForCategory(cat);
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={cat}
+                                      onClick={() => setSelectedCategory(cat)}
+                                      data-testid={`category-${cat.replace(/\s+/g, "-").toLowerCase()}`}
+                                      className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left transition-all hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                                    >
+                                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
+                                        <Icon className="h-5 w-5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="truncate text-sm font-medium">{cat}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {list.length} {list.length === 1 ? "type" : "types"}
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {(!!assetTypes || assetTypesError) && (
+                              <div className="mt-4 border-t border-border/60 pt-3">
                                 <button
                                   type="button"
-                                  key={type.id}
+                                  data-testid="custom-asset-type"
+                                  className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
                                   onClick={() => {
-                                    if (selectedType && selectedType.id !== type.id) {
+                                    if (selectedType) {
                                       selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
                                     }
-                                    field.onChange(type.id);
+                                    setSelectedCategory("Other");
+                                    field.onChange(GENERAL_ITEM_ASSET_TYPE_ID);
                                   }}
-                                  data-testid={`asset-type-${type.id}`}
-                                  className={`text-left rounded-lg border p-3 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                                    active
-                                      ? "border-accent bg-accent/10 ring-1 ring-accent"
-                                      : "border-border bg-background hover:border-accent/50 hover:bg-accent/5"
-                                  }`}
                                 >
-                                  <div className="text-sm font-medium">{type.name}</div>
-                                  {type.tagline && (
-                                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                      {type.tagline}
-                                    </div>
-                                  )}
+                                  Item not listed? Use a custom description instead
                                 </button>
-                              );
-                            })}
-                          </div>
-                          ) : field.value === GENERAL_ITEM_ASSET_TYPE_ID ? (
-                            <div className="rounded-lg border border-accent/40 bg-accent/5 px-4 py-3 text-sm text-muted-foreground">
-                              <span className="font-medium text-foreground">Anything Else</span> is selected. Fill in the asset
-                              details below. You can continue without picking a sub-type.
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No types in this category matched the server response. Go back and pick another category or use a
-                              custom description.
-                            </p>
-                          )}
-                        </div>
-                      )}
+                              </div>
+                            )}
+                          </>
+                        )}
 
+                        {selectedCategory && (
+                          <div className="space-y-3 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (selectedType) {
+                                  selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
+                                }
+                                field.onChange("");
+                                setSelectedCategory(null);
+                              }}
+                              data-testid="back-to-categories"
+                              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <ArrowLeft className="h-3.5 w-3.5" />
+                              Back to categories
+                            </button>
+                            {currentList.length > 0 ? (
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {currentList.map((type) => {
+                                  const active = field.value === type.id;
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={type.id}
+                                      onClick={() => {
+                                        if (selectedType && selectedType.id !== type.id) {
+                                          selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
+                                        }
+                                        field.onChange(type.id);
+                                      }}
+                                      data-testid={`asset-type-${type.id}`}
+                                      className={`rounded-lg border p-3 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                                        active
+                                          ? "border-accent bg-accent/10 ring-1 ring-accent"
+                                          : "border-border bg-background hover:border-accent/50 hover:bg-accent/5"
+                                      }`}
+                                    >
+                                      <div className="text-sm font-medium">{type.name}</div>
+                                      {type.tagline && (
+                                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                          {type.tagline}
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : field.value === GENERAL_ITEM_ASSET_TYPE_ID ? (
+                              <div className="rounded-lg border border-accent/40 bg-accent/5 px-4 py-3 text-sm text-muted-foreground">
+                                <span className="font-medium text-foreground">Anything Else</span> is selected. Continue to add
+                                details in the next steps.
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                No types in this category matched the server response. Go back or use a custom description.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              )}
+
+              {currentStepId === "title" && selectedType && (
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Listing headline</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={descriptorTitlePlaceholder(selectedType.category)}
+                          className="h-10 bg-background"
+                          {...field}
+                        />
+                      </FormControl>
+                      {selectedType.tagline ? (
+                        <FormDescription className="italic">{selectedType.tagline}</FormDescription>
+                      ) : null}
+                      {!selectedType.internationallyTradeable ? (
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Local-market asset · international arbitrage disabled
+                        </p>
+                      ) : null}
                       <FormMessage />
                     </FormItem>
-                  );
-                }}
-              />
+                  )}
+                />
+              )}
 
-              <AnimatePresence>
-                {selectedType && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="pt-2 text-sm text-muted-foreground italic border-l-2 border-accent/50 pl-4"
-                  >
-                    {selectedType.tagline}
-                    {!selectedType.internationallyTradeable && (
-                      <div className="mt-1 text-xs not-italic text-ui-meta uppercase tracking-wider text-muted-foreground/70">
-                        Local-market asset · international arbitrage disabled
-                      </div>
+              {currentStepId === "region" && (
+                <div className="grid gap-6">
+                  <FormField
+                    control={form.control}
+                    name="currentRegion"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Region</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-10 bg-background">
+                              <SelectValue placeholder="Select region" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {regions?.map((r) => (
+                              <SelectItem key={r.name} value={r.name}>
+                                {r.name}{" "}
+                                <span className="tabular-nums text-sm text-muted-foreground">({r.currencyCode})</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          We value the asset in your local currency
+                          {selectedRegion ? `: ${selectedRegion.currencyCode}` : ""}.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </CardContent>
-          </Card>}
+                  />
+                  {portfoliosList && portfoliosList.length > 0 ? (
+                    <FormItem>
+                      <FormLabel>Portfolio workspace</FormLabel>
+                      <Select value={portfolioChoice ?? ""} onValueChange={(v) => setPortfolioChoice(v)}>
+                        <FormControl>
+                          <SelectTrigger className="h-10 bg-background">
+                            <SelectValue placeholder="Select workspace" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {portfoliosList.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.label ?? p.id.slice(0, 8)}{" "}
+                              <span className="text-xs capitalize text-muted-foreground">
+                                ({p.purpose.replace("_", " ")})
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Matches the workspace picker in the app header when you are signed in.</FormDescription>
+                    </FormItem>
+                  ) : null}
+                </div>
+              )}
 
-          {selectedType && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              <Accordion type="multiple" defaultValue={["basics", "photos", "condition"]} className="space-y-3">
-                <AccordionItem value="basics" className="rounded-xl border border-border/50 bg-card/50 px-4 shadow-sm">
-                  <AccordionTrigger className="text-left text-base font-sans hover:no-underline">
-                    Basics &amp; structured fields
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-6 pt-2">
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="title"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>Descriptor / Title</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder={descriptorTitlePlaceholder(selectedType.category)}
-                                className="h-10 bg-background"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="currentRegion"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>Where are you selling from?</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-10 bg-background">
-                                  <SelectValue placeholder="Select region" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {regions?.map((r) => (
-                                  <SelectItem key={r.name} value={r.name}>
-                                    {r.name}{" "}
-                                    <span className="text-muted-foreground tabular-nums text-sm">({r.currencyCode})</span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormDescription>
-                              We&apos;ll value the asset in your local currency
-                              {selectedRegion ? `: ${selectedRegion.currencyCode}` : ""}.
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {portfoliosList && portfoliosList.length > 0 ? (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Portfolio workspace</FormLabel>
-                          <Select value={portfolioChoice ?? ""} onValueChange={(v) => setPortfolioChoice(v)}>
-                            <FormControl>
-                              <SelectTrigger className="h-10 bg-background">
-                                <SelectValue placeholder="Select workspace" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {portfoliosList.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.label ?? p.id.slice(0, 8)}{" "}
-                                  <span className="text-muted-foreground text-xs capitalize">({p.purpose.replace("_", " ")})</span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Matches the picker in the app header whenever you&apos;re signed in shell routes.
-                          </FormDescription>
-                        </FormItem>
-                      ) : null}
-
-                      {selectedType.fields
-                        .filter((rawF) => rawF.key !== "condition")
-                        .map((rawF) => {
-                          const f = localizeField(rawF, selectedRegionName);
-                          return (
-                            <FormField
-                              key={f.key}
-                              control={form.control}
-                              name={f.key as any}
-                              render={({ field: formField }) => {
-                                const isPrice = f.key === "purchasePrice";
-                                const labelSuffix =
-                                  isPrice && selectedRegion ? ` (${selectedRegion.currencyCode})` : "";
-                                return (
-                                  <FormItem className={f.type === "textarea" ? "md:col-span-2" : ""}>
-                                    <FormLabel>
-                                      {f.label}
-                                      {labelSuffix}
-                                      {f.required ? " *" : ""}
-                                    </FormLabel>
-                                    <FormControl>
-                                      {f.type === "textarea" ? (
-                                        <Textarea
-                                          placeholder={f.placeholder}
-                                          className="resize-y min-h-[100px] bg-background"
-                                          {...formField}
-                                          value={formField.value ?? ""}
-                                        />
-                                      ) : f.type === "select" ? (
-                                        <Select
-                                          onValueChange={formField.onChange}
-                                          value={(formField.value ?? "") as string}
-                                        >
-                                          <SelectTrigger className="h-10 bg-background">
-                                            <SelectValue placeholder={f.placeholder || "Select..."} />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {f.options?.map((opt) => (
-                                              <SelectItem key={opt} value={opt}>
-                                                {opt}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : isPrice && selectedRegion ? (
-                                        <div className="relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground tabular-nums">
-                                            {selectedRegion.currencySymbol}
-                                          </span>
-                                          <Input
-                                            type="number"
-                                            placeholder={f.placeholder}
-                                            className="h-10 bg-background pl-10"
-                                            {...formField}
-                                            value={formField.value ?? ""}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <Input
-                                          type={f.type === "number" ? "number" : "text"}
-                                          placeholder={f.placeholder}
-                                          className="h-10 bg-background"
-                                          {...formField}
-                                          value={formField.value ?? ""}
-                                        />
-                                      )}
-                                    </FormControl>
-                                    {f.help && <FormDescription>{f.help}</FormDescription>}
-                                    <FormMessage />
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                          );
-                        })}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="photos" className="rounded-xl border border-border/50 bg-card/50 px-4 shadow-sm">
-                  <AccordionTrigger className="text-left text-base font-sans hover:no-underline">
-                    Photos &amp; extraction
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-6 pt-2">
-                    <PhotoUploadCard
+              {currentStepId === "identity" && selectedType && identityFields.length > 0 && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {identityFields.map((rawF) => (
+                    <DynamicAssetFieldRow
+                      key={rawF.key}
+                      form={form}
+                      rawF={rawF}
+                      selectedRegion={selectedRegion}
+                      selectedRegionName={selectedRegionName}
                       assetTypeId={selectedType.id}
-                      assetTypeName={selectedType.name}
-                      assetCategory={selectedType.category}
-                      onAutoFill={(extracted, suggestedTitle) => {
-                        if (suggestedTitle && !form.getValues("title")) {
-                          form.setValue("title", suggestedTitle, { shouldValidate: true });
-                        }
-                        for (const [key, value] of Object.entries(extracted)) {
-                          const field = selectedType.fields.find((fd) => fd.key === key);
-                          if (!field) continue;
-                          if (field.type === "number") {
-                            const n = Number(value);
-                            if (!Number.isNaN(n)) {
-                              form.setValue(key as any, n, { shouldValidate: true });
-                            }
-                          } else {
-                            form.setValue(key as any, value, { shouldValidate: true });
-                          }
-                        }
-                      }}
                     />
-                  </AccordionContent>
-                </AccordionItem>
+                  ))}
+                </div>
+              )}
 
-                <AccordionItem value="condition" className="rounded-xl border border-border/50 bg-card/50 px-4 shadow-sm">
-                  <AccordionTrigger className="text-left text-base font-sans hover:no-underline">
-                    Condition, notes &amp; submit
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-2 pt-2">
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="condition"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2 pt-2">
-                            <div className="mb-2 flex items-center justify-between">
-                              <FormLabel>Overall Condition</FormLabel>
-                              <span className="text-sm font-semibold tabular-nums">{field.value} / 10</span>
-                            </div>
-                            <FormControl>
-                              <Slider
-                                min={1}
-                                max={10}
-                                step={1}
-                                value={[field.value]}
-                                onValueChange={(vals) => field.onChange(vals[0])}
-                                className="[&_[role=slider]]:border-accent [&_[role=slider]]:bg-accent"
-                              />
-                            </FormControl>
-                            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                              <span>Poor (1)</span>
-                              <span>Mint / As new (10)</span>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+              {currentStepId === "valueDrivers" && selectedType && driverFields.length > 0 && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {driverFields.map((rawF) => (
+                    <DynamicAssetFieldRow
+                      key={rawF.key}
+                      form={form}
+                      rawF={rawF}
+                      selectedRegion={selectedRegion}
+                      selectedRegionName={selectedRegionName}
+                      assetTypeId={selectedType.id}
+                    />
+                  ))}
+                </div>
+              )}
 
-                      <FormField
-                        control={form.control}
-                        name="attributes"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>Anything else worth mentioning?</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Box & papers, provenance, defects, urgent reason for sale..."
-                                className="min-h-[80px] resize-y bg-background"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+              {currentStepId === "photos" && selectedType && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Add a clear photo if you can. We may read model hints from it. You can skip if you prefer.
+                  </p>
+                  <PhotoUploadCard
+                    assetTypeId={selectedType.id}
+                    assetTypeName={selectedType.name}
+                    assetCategory={selectedType.category}
+                    onAutoFill={(extracted, suggestedTitle) => {
+                      if (suggestedTitle && !form.getValues("title")) {
+                        form.setValue("title", suggestedTitle, { shouldValidate: true });
+                      }
+                      for (const [key, value] of Object.entries(extracted)) {
+                        const fd = selectedType.fields.find((f) => f.key === key);
+                        if (!fd) continue;
+                        if (fd.type === "number") {
+                          const n = Number(value);
+                          if (!Number.isNaN(n)) {
+                            form.setValue(key as any, n, { shouldValidate: true });
+                          }
+                        } else {
+                          form.setValue(key as any, value, { shouldValidate: true });
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              )}
 
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  className="h-14 w-full text-lg font-semibold shadow-lg transition-transform hover:-translate-y-0.5"
-                >
-                  Generate Valuer Report <ArrowRight className="ml-2 h-5 w-5" />
+              {currentStepId === "condition" && (
+                <div className="space-y-3">
+                  {selectedType?.id === SAAS_MICRO_ID ? (
+                    <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <span>For software, this score is product maturity, not physical wear.</span>
+                      <GlossaryHelp entry={GLOSSARY.maturity_score} label="maturity" />
+                    </p>
+                  ) : (
+                    <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <span>Honest condition helps comps and listings.</span>
+                      <GlossaryHelp entry={GLOSSARY.condition_scale} label="condition scale" />
+                    </p>
+                  )}
+                  <FormField
+                    control={form.control}
+                    name="condition"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="mb-2 flex items-center justify-between">
+                          <FormLabel>Score</FormLabel>
+                          <span className="text-sm font-semibold tabular-nums">{field.value} / 10</span>
+                        </div>
+                        <FormControl>
+                          <Slider
+                            min={1}
+                            max={10}
+                            step={1}
+                            value={[field.value]}
+                            onValueChange={(vals) => field.onChange(vals[0])}
+                            className="[&_[role=slider]]:border-accent [&_[role=slider]]:bg-accent"
+                          />
+                        </FormControl>
+                        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                          <span>Poor (1)</span>
+                          <span>Mint / as new (10)</span>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {currentStepId === "purchasePrice" && purchaseFieldDef && selectedType && (
+                <div className="space-y-2">
+                  <DynamicAssetFieldRow
+                    form={form}
+                    rawF={purchaseFieldDef}
+                    selectedRegion={selectedRegion}
+                    selectedRegionName={selectedRegionName}
+                    assetTypeId={selectedType.id}
+                  />
+                  <p className="text-xs text-muted-foreground">Skip if you prefer not to share this.</p>
+                </div>
+              )}
+
+              {currentStepId === "additional" && (
+                <FormField
+                  control={form.control}
+                  name="attributes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Any other details?</FormLabel>
+                      <FormDescription>
+                        One optional box for anything we did not ask. Receipts, flaws, urgency, or provenance.
+                      </FormDescription>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Example: includes third-party case, small chip on back, original buyer receipt in bag..."
+                          className="min-h-[120px] resize-y bg-background"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button type="button" variant="outline" onClick={goBack} disabled={wizardStep === 0}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+            <div className="flex flex-wrap gap-2">
+              {currentStepId === "purchasePrice" ? (
+                <Button type="button" variant="ghost" onClick={goNext}>
+                  Skip
                 </Button>
-              </div>
-            </motion.div>
-          )}
+              ) : null}
+              {currentStepId !== "additional" ? (
+                <Button type="button" onClick={goNext}>
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button type="submit" className="shadow-lg">
+                  Generate Valuer Report
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          </div>
         </form>
       </Form>
     </div>
