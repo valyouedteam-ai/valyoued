@@ -21,8 +21,11 @@
 
 import { createProxyMiddleware } from "http-proxy-middleware";
 import type { RequestHandler } from "express";
+import { logger } from "../lib/logger";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
+
+/** Frontend `clerkProxyUrl()` in `artifacts/valuation-app/src/App.tsx` must use this exact path suffix. */
 export const CLERK_PROXY_PATH = "/api/__clerk";
 
 export function clerkProxyMiddleware(): RequestHandler {
@@ -33,6 +36,10 @@ export function clerkProxyMiddleware(): RequestHandler {
 
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) {
+    logger.warn(
+      `${CLERK_PROXY_PATH}: Clerk Frontend API proxy is disabled until CLERK_SECRET_KEY is set. ` +
+        "Without it, SPA requests expecting this proxy fall through.",
+    );
     return (_req, _res, next) => next();
   }
 

@@ -27,14 +27,81 @@ if (!AUTH_STUB_MODE && !PUBLISHABLE_KEY) {
     "Missing VITE_CLERK_PUBLISHABLE_KEY (or set VITE_AUTH_STUB_MODE=1 for local dev without real sign-in).",
   );
 }
+/** Must stay in sync with `CLERK_PROXY_PATH` in `artifacts/api-server/src/middlewares/clerkProxyMiddleware.ts`. */
+const CLERK_PROXY_PUBLIC_PATH = "/api/__clerk";
+
 /**
- * Clerk proxy is optional (Replit / custom setups). Only pass a real absolute URL;
- * an empty or garbage value makes Clerk try to load clerk-js from bogus hosts like `https://npm/...`.
+ * Clerk proxy is optional (Replit / Railway same-origin setups). Omit `VITE_CLERK_PROXY_URL` for normal
+ * setups (scripts load from your *.clerk.accounts.dev Frontend API). Wrong values break clerk.browser.js.
+ *
+ * Clerk builds `scriptUrl` as `https://{scriptHost}/npm/@clerk/...` where `{scriptHost}` is your proxy URL
+ * with the scheme removed. Origin-only proxies (`https://…railway`) therefore request `/npm/...` at the root
+ * of your app (404 + HTML MIME errors). The path suffix must match Express: `/api/__clerk`.
  */
+
+function clerkProxyEnvNormalized(): string {
+  let s = (import.meta.env.VITE_CLERK_PROXY_URL as string | undefined)?.trim() ?? "";
+  if (s.length >= 2 && ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 function clerkProxyUrl(): string | undefined {
-  const raw = (import.meta.env.VITE_CLERK_PROXY_URL as string | undefined)?.trim();
-  if (!raw || !/^https?:\/\//i.test(raw)) return undefined;
-  return raw;
+  const raw = clerkProxyEnvNormalized();
+  if (!raw) return undefined;
+
+  if (raw.startsWith("/")) {
+    const pathOnly = raw.replace(/\/$/, "") || "/";
+    if (pathOnly === CLERK_PROXY_PUBLIC_PATH) return CLERK_PROXY_PUBLIC_PATH;
+    clerkProxyUrlWarnOnce(
+      `[Clerk] Ignoring VITE_CLERK_PROXY_URL="${raw}": use "${CLERK_PROXY_PUBLIC_PATH}" or a full URL with that path.`,
+    );
+    return undefined;
+  }
+
+  let toParse = raw;
+  if (!/^https?:\/\//i.test(toParse)) {
+    toParse = `https://${toParse}`;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(toParse);
+  } catch {
+    clerkProxyUrlWarnOnce("[Clerk] VITE_CLERK_PROXY_URL is not a valid URL (after normalizing quotes or https).");
+    return undefined;
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+  if (!parsed.hostname) return undefined;
+
+  const path = parsed.pathname.replace(/\/$/, "") || "/";
+  const base = `${parsed.origin}${CLERK_PROXY_PUBLIC_PATH}`;
+
+  if (path === "/") {
+    if (import.meta.env.PROD) {
+      clerkProxyUrlWarnOnce(
+        `[Clerk] VITE_CLERK_PROXY_URL was origin-only (${parsed.origin}); Clerk now uses ${base}. Rebuild is required after env changes.`,
+      );
+    }
+    return base;
+  }
+
+  if (path === CLERK_PROXY_PUBLIC_PATH) return base;
+
+  clerkProxyUrlWarnOnce(
+    `[Clerk] Ignoring VITE_CLERK_PROXY_URL pathname "${parsed.pathname}": expected "" or "${CLERK_PROXY_PUBLIC_PATH}". `,
+  );
+  return undefined;
+}
+
+let clerkProxyWarned = false;
+
+function clerkProxyUrlWarnOnce(message: string): void {
+  if (clerkProxyWarned) return;
+  clerkProxyWarned = true;
+  console.warn(message);
 }
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");

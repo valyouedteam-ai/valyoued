@@ -1,4 +1,7 @@
 # Railway: connect this repo, add Postgres, set variables from .env.example, then deploy.
+# Clerk on same-origin: set CLERK_SECRET_KEY on this service so /api/__clerk can proxy Frontend API requests.
+# Build the SPA with VITE_* so VITE_API_ORIGIN matches this host if UI and API share one Railway URL.
+
 # https://docs.railway.com/deploy/dockerfiles
 
 [build]
