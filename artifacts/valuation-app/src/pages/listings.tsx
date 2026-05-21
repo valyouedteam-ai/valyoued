@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
@@ -10,6 +10,7 @@ import {
   Camera,
   Hash,
   Lightbulb,
+  Search,
 } from "lucide-react";
 import {
   useListListingDrafts,
@@ -21,6 +22,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatMoney } from "@/lib/format";
 import {
   Dialog,
@@ -44,6 +54,8 @@ import { ListingDraftView } from "@/components/ListingDraftView";
 import { useToast } from "@/hooks/use-toast";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 
+type SortKey = "newest" | "oldest" | "price_high" | "price_low" | "title_az";
+
 export default function ListingsPage() {
   const { data: drafts, isLoading } = useListListingDrafts();
   const queryClient = useQueryClient();
@@ -52,6 +64,70 @@ export default function ListingsPage() {
 
   const [selected, setSelected] = useState<ListingDraft | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ListingDraft | null>(null);
+  const [search, setSearch] = useState("");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
+
+  const platformsInUse = useMemo(() => {
+    const rows = drafts ?? [];
+    const set = new Set(rows.map((d) => d.platform));
+    return [...set].sort((a, b) => {
+      const la = PLATFORM_LABEL[a] ?? a;
+      const lb = PLATFORM_LABEL[b] ?? b;
+      return la.localeCompare(lb);
+    });
+  }, [drafts]);
+
+  const filteredDrafts = useMemo(() => {
+    const rows = drafts ?? [];
+    let out = [...rows];
+
+    if (platformFilter !== "all") {
+      out = out.filter((d) => d.platform === platformFilter);
+    }
+
+    const q = search.trim().toLowerCase();
+    if (q) {
+      out = out.filter((d) => {
+        const label = PLATFORM_LABEL[d.platform]?.toLowerCase() ?? "";
+        const blob = [
+          d.draftTitle,
+          d.assetTitle,
+          d.assetTypeName,
+          d.draftBody,
+          d.platform,
+          label,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return blob.includes(q);
+      });
+    }
+
+    const byTime = (a: ListingDraft, b: ListingDraft) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+    switch (sortKey) {
+      case "oldest":
+        out.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
+      case "price_high":
+        out.sort((a, b) => b.suggestedPrice - a.suggestedPrice);
+        break;
+      case "price_low":
+        out.sort((a, b) => a.suggestedPrice - b.suggestedPrice);
+        break;
+      case "title_az":
+        out.sort((a, b) => a.draftTitle.localeCompare(b.draftTitle));
+        break;
+      case "newest":
+      default:
+        out.sort(byTime);
+        break;
+    }
+
+    return out;
+  }, [drafts, platformFilter, search, sortKey]);
 
   const handleDelete = (draft: ListingDraft) => {
     deleteDraft.mutate(
@@ -70,18 +146,24 @@ export default function ListingsPage() {
     );
   };
 
+  const filtersActive = search.trim().length > 0 || platformFilter !== "all" || sortKey !== "newest";
+
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-6xl mx-auto">
         <Skeleton className="h-12 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 rounded-xl" />
+          ))}
         </div>
       </div>
     );
   }
 
-  if (!drafts || drafts.length === 0) {
+  const allDrafts = drafts ?? [];
+
+  if (allDrafts.length === 0) {
     return (
       <div className="max-w-3xl mx-auto pt-12">
         <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30">
@@ -104,6 +186,12 @@ export default function ListingsPage() {
     );
   }
 
+  const clearFilters = () => {
+    setSearch("");
+    setPlatformFilter("all");
+    setSortKey("newest");
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
       <div className="flex items-start justify-between flex-wrap gap-4">
@@ -113,7 +201,9 @@ export default function ListingsPage() {
           </div>
           <h1 className="text-3xl font-sans font-bold text-foreground">Ad Drafts</h1>
           <p className="text-muted-foreground mt-1">
-            {drafts.length} draft{drafts.length === 1 ? "" : "s"} ready to copy & paste into your chosen marketplace.
+            {filteredDrafts.length === allDrafts.length
+              ? `${allDrafts.length} draft${allDrafts.length === 1 ? "" : "s"} ready to copy and paste into your marketplace.`
+              : `Showing ${filteredDrafts.length} of ${allDrafts.length} draft${allDrafts.length === 1 ? "" : "s"}.`}
           </p>
         </div>
         <Link href="/portfolio">
@@ -124,80 +214,150 @@ export default function ListingsPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {drafts.map((draft) => (
-          <Card
-            key={draft.id}
-            className="hover:border-accent/50 transition-all cursor-pointer group"
-            onClick={() => setSelected(draft)}
-            data-testid="draft-card"
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between gap-2">
-                <Badge variant="outline" className="text-ui-caps tracking-normal">
-                  {PLATFORM_LABEL[draft.platform] || draft.platform}
-                </Badge>
-                <span className="text-sm font-semibold tabular-nums text-accent">
-                  {formatMoney(draft.suggestedPrice, draft.currency)}
-                </span>
-              </div>
-              <CardTitle className="font-sans text-base leading-tight pt-1.5 line-clamp-2 group-hover:text-accent transition-colors">
-                {draft.draftTitle}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                {draft.assetTypeName} · {draft.assetTitle}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                {draft.draftBody}
-              </p>
-              <div className="flex items-center gap-3 mt-3 text-ui-caps text-muted-foreground tracking-normal">
-                {draft.photoTips.length > 0 && (
-                  <span className="inline-flex items-center gap-1">
-                    <Camera className="h-3 w-3" /> {draft.photoTips.length}
-                  </span>
-                )}
-                {draft.hashtags.length > 0 && (
-                  <span className="inline-flex items-center gap-1">
-                    <Hash className="h-3 w-3" /> {draft.hashtags.length}
-                  </span>
-                )}
-                {draft.proTips.length > 0 && (
-                  <span className="inline-flex items-center gap-1">
-                    <Lightbulb className="h-3 w-3" /> {draft.proTips.length}
-                  </span>
-                )}
-                <span className="ml-auto text-muted-foreground/70 normal-case tracking-normal font-sans">
-                  {formatDistanceToNow(new Date(draft.createdAt), { addSuffix: true })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
-                <Button size="sm" variant="ghost" className="flex-1 h-8 text-xs justify-start text-foreground/80">
-                  Open & copy
-                  <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setConfirmDelete(draft);
-                  }}
-                  data-testid="draft-delete-btn"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/25 p-4 sm:p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="draft-search" className="text-xs text-muted-foreground">
+              Search
+            </Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="draft-search"
+                placeholder="Title, valuation, asset type, marketplace, body text…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+                data-testid="draft-search-input"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:w-auto md:flex md:gap-3">
+            <div className="w-full space-y-2 sm:min-w-[10.5rem]">
+              <Label className="text-xs text-muted-foreground">Marketplace</Label>
+              <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                <SelectTrigger aria-label="Filter by marketplace" data-testid="draft-filter-platform">
+                  <SelectValue placeholder="Marketplace" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All marketplaces</SelectItem>
+                  {platformsInUse.map((slug) => (
+                    <SelectItem key={slug} value={slug}>
+                      {PLATFORM_LABEL[slug] ?? slug}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full space-y-2 sm:min-w-[10.5rem]">
+              <Label className="text-xs text-muted-foreground">Sort</Label>
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                <SelectTrigger aria-label="Sort drafts" data-testid="draft-sort-select">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest first</SelectItem>
+                  <SelectItem value="oldest">Oldest first</SelectItem>
+                  <SelectItem value="price_high">Price high to low</SelectItem>
+                  <SelectItem value="price_low">Price low to high</SelectItem>
+                  <SelectItem value="title_az">Title A to Z</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        {filtersActive ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3">
+            <p className="text-xs text-muted-foreground">Filters and sort apply on this screen only.</p>
+            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}>
+              Reset filters
+            </Button>
+          </div>
+        ) : null}
       </div>
+
+      {filteredDrafts.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center">
+          <p className="font-medium text-foreground">No drafts match your filters</p>
+          <p className="mt-2 text-sm text-muted-foreground">Try a different search phrase or marketplace.</p>
+          <Button type="button" variant="outline" size="sm" className="mt-6" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredDrafts.map((draft) => (
+            <Card
+              key={draft.id}
+              className="group cursor-pointer transition-all hover:border-accent/50"
+              onClick={() => setSelected(draft)}
+              data-testid="draft-card"
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant="outline" className="text-ui-caps tracking-normal">
+                    {PLATFORM_LABEL[draft.platform] || draft.platform}
+                  </Badge>
+                  <span className="text-sm font-semibold tabular-nums text-accent">
+                    {formatMoney(draft.suggestedPrice, draft.currency)}
+                  </span>
+                </div>
+                <CardTitle className="line-clamp-2 pt-1.5 font-sans text-base leading-tight transition-colors group-hover:text-accent">
+                  {draft.draftTitle}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {draft.assetTypeName} · {draft.assetTitle}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">{draft.draftBody}</p>
+                <div className="mt-3 flex items-center gap-3 text-ui-caps tracking-normal text-muted-foreground">
+                  {draft.photoTips.length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <Camera className="h-3 w-3" /> {draft.photoTips.length}
+                    </span>
+                  )}
+                  {draft.hashtags.length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <Hash className="h-3 w-3" /> {draft.hashtags.length}
+                    </span>
+                  )}
+                  {draft.proTips.length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <Lightbulb className="h-3 w-3" /> {draft.proTips.length}
+                    </span>
+                  )}
+                  <span className="ml-auto font-sans normal-case tracking-normal text-muted-foreground/70">
+                    {formatDistanceToNow(new Date(draft.createdAt), { addSuffix: true })}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-3">
+                  <Button size="sm" variant="ghost" className="h-8 flex-1 justify-start text-xs text-foreground/80">
+                    Open & copy
+                    <ChevronRight className="ml-auto h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDelete(draft);
+                    }}
+                    data-testid="draft-delete-btn"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* View dialog */}
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           {selected && (
             <>
               <DialogHeader>

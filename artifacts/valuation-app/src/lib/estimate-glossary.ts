@@ -21,6 +21,7 @@ import {
   Stamp,
   Wine,
 } from "lucide-react";
+import { getLocale } from "@/lib/regional";
 
 export type GlossaryEntry = {
   title: string;
@@ -212,6 +213,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   mot_inspection_note: {
     title: "Inspection / MOT",
     body: "In the UK an MOT is a required roadworthiness test. Buyers care if it is fresh or if advisories need work. Other regions use different inspection names.",
+    icon: Car,
+  },
+  fuel_type_vehicle: {
+    title: "Fuel wording",
+    body: "Pick what you actually fill up with. Naming trim lines (for example TDI) can hint at diesel, but you should still confirm.",
     icon: Car,
   },
   service_history_vehicle: {
@@ -516,7 +522,7 @@ export const FIELD_GLOSSARY_KEYS: Record<string, string> = {
   polishHistory: "watch_polish_dial",
   matchingNumbers: "matching_numbers_car",
   accidents: "cat_insurance_categories",
-  motOrInspectionNote: "mot_inspection_note",
+  fuelType: "fuel_type_vehicle",
   serviceHistory: "service_history_vehicle",
   titleStatus: "bike_title_status",
   surveyWithinTwoYears: "hull_survey_boat",
@@ -614,7 +620,11 @@ export const FIELD_GLOSSARY_KEYS: Record<string, string> = {
   ringSizeOrLength: "gem_certificate",
 };
 
-export function getGlossaryForField(fieldKey: string, assetTypeId?: string): GlossaryEntry | undefined {
+export function getGlossaryForField(
+  fieldKey: string,
+  assetTypeId?: string,
+  regionName?: string | null,
+): GlossaryEntry | undefined {
   if (fieldKey === "model" && assetTypeId === "bicycle") {
     return GLOSSARY.frame_size;
   }
@@ -634,5 +644,26 @@ export function getGlossaryForField(fieldKey: string, assetTypeId?: string): Glo
     return GLOSSARY.auth_sports_mem;
   }
   const id = FIELD_GLOSSARY_KEYS[fieldKey];
-  return id ? GLOSSARY[id] : undefined;
+  if (!id) return undefined;
+  const base = GLOSSARY[id];
+  if (!base) return undefined;
+
+  if (id === "mot_inspection_note" && regionName) {
+    const loc = getLocale(regionName);
+    return {
+      ...base,
+      title: regionName === "United Kingdom" ? base.title : "Inspection notes",
+      body: `${base.body} Sellers in ${regionName} often cite "${loc.inspection}" in ads. When you talk about cargo space, "${loc.cargoAreaWord}" matches local buyers better than the US equivalent, and for long trips "${loc.highwayWordPair}" reads more natural than a random mix of US and UK words.`,
+    };
+  }
+
+  if (id === "fuel_type_vehicle" && regionName) {
+    const loc = getLocale(regionName);
+    return {
+      ...base,
+      body: `${base.body} In ${regionName} the fuel list uses local labels such as ${loc.fuelOptions.slice(0, 3).join(", ")}.`,
+    };
+  }
+
+  return base;
 }

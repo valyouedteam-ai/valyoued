@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGenerateListingDraft,
@@ -25,6 +25,7 @@ import {
 import { Megaphone, Loader2, PenLine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ListingDraftView } from "./ListingDraftView";
+import { allowedPlatformsForRegion } from "@workspace/marketplace-regions";
 
 export const PLATFORMS = [
   { id: "facebook-marketplace", name: "Facebook Marketplace" },
@@ -49,6 +50,8 @@ interface Props {
   estimateId: string;
   estimateTitle: string;
   assetTypeName: string;
+  /** Seller region from the valuation input; narrows plausible marketplaces for posting. */
+  sellerRegion?: string | null;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -58,14 +61,30 @@ export function GenerateListingDialog({
   estimateId,
   estimateTitle,
   assetTypeName,
+  sellerRegion,
   open: openProp,
   onOpenChange,
 }: Props) {
+  const platformsForDlg = useMemo(() => {
+    const allow = new Set<string>(allowedPlatformsForRegion(sellerRegion ?? undefined));
+    return PLATFORMS.filter((p) => allow.has(p.id));
+  }, [sellerRegion]);
+
   const [internalOpen, setInternalOpen] = useState(false);
   const open = openProp ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
 
-  const [platform, setPlatform] = useState<string>(suggestPlatform(assetTypeName));
+  const [platform, setPlatform] = useState<string>(() =>
+    pickDefaultPlatform(assetTypeName, sellerRegion ?? undefined),
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const allow = new Set<string>(allowedPlatformsForRegion(sellerRegion ?? undefined));
+    const fallback = pickDefaultPlatform(assetTypeName, sellerRegion ?? undefined);
+    setPlatform((curr) => (allow.has(curr) ? curr : fallback));
+  }, [open, sellerRegion, assetTypeName]);
+
   const [strategy, setStrategy] = useState<string>("market");
   const [draft, setDraft] = useState<ListingDraft | null>(null);
 
@@ -129,7 +148,7 @@ export function GenerateListingDialog({
               <Select value={platform} onValueChange={setPlatform}>
                 <SelectTrigger data-testid="listing-platform-select"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {PLATFORMS.map((p) => (
+                  {platformsForDlg.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
                     </SelectItem>
@@ -138,6 +157,7 @@ export function GenerateListingDialog({
               </Select>
               <p className="text-xs text-muted-foreground">
                 Each platform has its own tone, length and audience; we match it.
+                {sellerRegion ? ` Options shown reflect typical posting URLs for sellers in ${sellerRegion}.` : null}
               </p>
             </div>
 
@@ -190,10 +210,21 @@ export function GenerateListingDialog({
   );
 }
 
-function suggestPlatform(assetTypeName: string): string {
+function pickDefaultPlatform(assetTypeName: string, sellerRegion?: string): string {
+  const allow = new Set<string>(allowedPlatformsForRegion(sellerRegion));
+  const sug = suggestPlatform(assetTypeName, sellerRegion);
+  if (allow.has(sug)) return sug;
+  const first = PLATFORMS.find((p) => allow.has(p.id));
+  return first?.id ?? "facebook-marketplace";
+}
+
+function suggestPlatform(assetTypeName: string, sellerRegion?: string): string {
   const n = assetTypeName.toLowerCase();
+  const uk = sellerRegion === "United Kingdom";
   if (n.includes("watch")) return "chrono24";
-  if (n.includes("car") || n.includes("vehicle") || n.includes("motor")) return "autotrader";
+  if (n.includes("motorcycle"))
+    return uk ? "autotrader" : "ebay";
+  if (n.includes("car") || n.includes("vehicle")) return uk ? "autotrader" : "ebay";
   if (n.includes("real estate") || n.includes("property") || n.includes("house") || n.includes("flat") || n.includes("apartment")) return "rightmove";
   if (n.includes("handbag") || n.includes("designer")) return "vestiaire-collective";
   if (n.includes("clothing") || n.includes("sneaker") || n.includes("fashion")) return "depop";

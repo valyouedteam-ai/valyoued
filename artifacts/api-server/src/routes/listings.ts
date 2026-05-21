@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-zod";
 import type { EstimateResult } from "@workspace/api-zod";
 import { generateListingDraft, type Platform, type PriceStrategy } from "../lib/listing";
+import { allowedPlatformsForRegion } from "@workspace/marketplace-regions";
 import { resolveUserEntitlements } from "../lib/entitlements";
 import { logger } from "../lib/logger";
 import { rateLimit } from "../lib/rateLimit";
@@ -65,6 +66,15 @@ router.post("/listings", requireAuth, generateLimit, async (req, res): Promise<v
     id: estRow.id,
     createdAt: estRow.createdAt.toISOString(),
   } as unknown as EstimateResult;
+
+  const sellerRegion = estimate.input?.currentRegion ?? "";
+  const allowed = new Set(allowedPlatformsForRegion(sellerRegion));
+  if (!allowed.has(body.data.platform)) {
+    res.status(400).json({
+      error: `That marketplace is not suggested for sellers in ${sellerRegion || "this region"}. Choose another.`,
+    });
+    return;
+  }
 
   try {
     const entitlements = await resolveUserEntitlements(userId);

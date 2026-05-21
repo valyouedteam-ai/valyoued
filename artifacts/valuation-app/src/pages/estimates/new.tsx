@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
-import { useForm, type UseFormReturn } from "react-hook-form";
+import { useForm, type UseFormReturn, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
   AlertCircle,
@@ -65,6 +65,7 @@ import {
 } from "@workspace/api-client-react";
 import type { EstimateInput, AssetType, AssetField } from "@workspace/api-client-react";
 import { assetTypeAllowedForSellerTier } from "@workspace/asset-shelf-tier";
+import { inferVehicleFuelHint, matchFuelDropdownOption } from "@workspace/marketplace-regions";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -306,8 +307,20 @@ function DynamicAssetFieldRow({
   assetTypeId: string;
 }) {
   const f = localizeField(rawF, selectedRegionName);
-  const gloss = getGlossaryForField(f.key, assetTypeId);
+  const gloss = getGlossaryForField(f.key, assetTypeId, selectedRegionName);
+  const brandWatch = String(useWatch({ control: form.control, name: "brand" as any }) ?? "").trim();
+  const modelWatch = String(useWatch({ control: form.control, name: "model" as any }) ?? "").trim();
+  const fuelHint =
+    f.key === "fuelType" && (assetTypeId === "everyday-car" || assetTypeId === "classic-car")
+      ? inferVehicleFuelHint({ brand: brandWatch, model: modelWatch })
+      : null;
+  const inferredFuelOption = useMemo(() => {
+    if (!fuelHint || !f.options?.length) return undefined;
+    return matchFuelDropdownOption(fuelHint.canonical, f.options);
+  }, [fuelHint, f.options]);
+
   const isPrice = f.key === "purchasePrice";
+
   const labelSuffix = isPrice && selectedRegion ? ` (${selectedRegion.currencyCode})` : "";
 
   return (
@@ -369,6 +382,25 @@ function DynamicAssetFieldRow({
               />
             )}
           </FormControl>
+          {fuelHint &&
+          inferredFuelOption &&
+          f.key === "fuelType" &&
+          !String(formField.value ?? "").trim() ? (
+            <div className="space-y-1.5 rounded-md border border-dashed border-border/70 bg-muted/30 px-3 py-2">
+              <FormDescription className="text-xs leading-relaxed">
+                Suggested from model (please confirm): {fuelHint.reason}
+              </FormDescription>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => formField.onChange(inferredFuelOption)}
+              >
+                Use {inferredFuelOption}
+              </Button>
+            </div>
+          ) : null}
           {f.help ? <FormDescription>{f.help}</FormDescription> : null}
           <FormMessage />
         </FormItem>

@@ -186,6 +186,15 @@ function mergeEstimateResultFromRow(row: Estimate, storedUnknown: unknown): Esti
   } as unknown as EstimateResult;
 }
 
+function readSellerRegionFromStoredResult(storedUnknown: unknown, fallback: string): string {
+  const raw =
+    storedUnknown && typeof storedUnknown === "object" ? (storedUnknown as Record<string, unknown>) : {};
+  const inp =
+    raw.input && typeof raw.input === "object" ? (raw.input as Record<string, unknown>) : undefined;
+  const cr = inp?.currentRegion;
+  return typeof cr === "string" && cr.trim().length > 0 ? cr.trim() : fallback;
+}
+
 router.get("/asset-types", async (_req, res): Promise<void> => {
   res.json(ListAssetTypesResponse.parse(ASSET_TYPES));
 });
@@ -218,6 +227,7 @@ router.get("/estimates", async (req, res): Promise<void> => {
       adjustedMid: r.adjustedMid,
       currency: r.currency,
       bestArbitrageRegion: r.bestArbitrageRegion,
+      currentRegion: readSellerRegionFromStoredResult(r.result, r.bestArbitrageRegion),
       portfolioShelf,
       createdAt: r.createdAt.toISOString(),
       portfolioId: r.portfolioId ?? null,

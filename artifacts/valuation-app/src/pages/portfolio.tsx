@@ -433,6 +433,7 @@ export default function PortfolioPage() {
           estimateId={listingFor.id}
           estimateTitle={listingFor.title}
           assetTypeName={listingFor.assetTypeName}
+          sellerRegion={listingFor.currentRegion ?? listingFor.bestArbitrageRegion}
           open={true}
           onOpenChange={(open) => !open && setListingFor(null)}
         />

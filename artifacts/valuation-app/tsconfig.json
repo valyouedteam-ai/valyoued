@@ -20,6 +20,9 @@
     },
     {
       "path": "../../lib/asset-shelf-tier"
+    },
+    {
+      "path": "../../lib/marketplace-regions"
     }
   ]
 }

@@ -282,6 +282,8 @@ export interface EstimateSummary {
   adjustedMid: number;
   currency: string;
   bestArbitrageRegion: string;
+  /** Seller region from stored valuation input when available. */
+  currentRegion?: string;
   /** Shelf for portfolio grouping: from the seller tier captured on the estimate plus asset-class hints. */
   portfolioShelf: EstimateSummaryPortfolioShelf;
   createdAt: string;

@@ -104,6 +104,9 @@ importers:
       '@workspace/llm':
         specifier: workspace:*
         version: link:../../lib/llm
+      '@workspace/marketplace-regions':
+        specifier: workspace:*
+        version: link:../../lib/marketplace-regions
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -354,6 +357,9 @@ importers:
       '@clerk/themes':
         specifier: ^2.4.57
         version: 2.4.57(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@workspace/marketplace-regions':
+        specifier: workspace:*
+        version: link:../../lib/marketplace-regions
       react-globe.gl:
         specifier: ^2.37.1
         version: 2.37.1(react@19.1.0)
@@ -619,6 +625,15 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
+
+  lib/marketplace-regions:
+    devDependencies:
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
+      typescript:
+        specifier: ~5.9.2
+        version: 5.9.3
 
   scripts:
     devDependencies:

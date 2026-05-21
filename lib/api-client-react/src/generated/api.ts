@@ -926,7 +926,7 @@ export function useGetEstimateStats<
 }
 
 /**
- * @summary Extract asset attributes from an uploaded photo using Claude Vision
+ * @summary Extract asset attributes from an uploaded photo
  */
 export const getExtractFromPhotoUrl = () => {
   return `/api/vision/extract`;
@@ -989,7 +989,7 @@ export type ExtractFromPhotoMutationBody = BodyType<VisionExtractInput>;
 export type ExtractFromPhotoMutationError = ErrorType<unknown>;
 
 /**
- * @summary Extract asset attributes from an uploaded photo using Claude Vision
+ * @summary Extract asset attributes from an uploaded photo
  */
 export const useExtractFromPhoto = <
   TError = ErrorType<unknown>,

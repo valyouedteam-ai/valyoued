@@ -682,6 +682,9 @@ components:
           type: string
         bestArbitrageRegion:
           type: string
+        currentRegion:
+          type: string
+          description: Seller region from stored valuation input when available.
         portfolioShelf:
           type: string
           enum: [luxury, everyday, other]

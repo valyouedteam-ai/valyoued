@@ -93,6 +93,10 @@ export const ListEstimatesResponseItem = zod.object({
   adjustedMid: zod.number(),
   currency: zod.string(),
   bestArbitrageRegion: zod.string(),
+  currentRegion: zod
+    .string()
+    .optional()
+    .describe("Seller region from stored valuation input when available."),
   portfolioShelf: zod
     .enum(["luxury", "everyday", "other"])
     .describe(
@@ -671,7 +675,7 @@ export const GetEstimateStatsResponse = zod.object({
 });
 
 /**
- * @summary Extract asset attributes from an uploaded photo using Claude Vision
+ * @summary Extract asset attributes from an uploaded photo
  */
 export const ExtractFromPhotoBody = zod.object({
   assetTypeId: zod.string(),

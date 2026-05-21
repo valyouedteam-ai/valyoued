@@ -298,6 +298,7 @@ export default function EstimateReportPage() {
         estimateId={estimateIdResolved}
         estimateTitle={estimateTitle}
         assetTypeName={assetTypeName}
+        sellerRegion={estimate.input?.currentRegion ?? estimate.bestArbitrageRegion ?? null}
         open={listingOpen}
         onOpenChange={setListingOpen}
       />

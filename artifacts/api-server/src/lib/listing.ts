@@ -1,6 +1,10 @@
 import { defaultModel, getLlm } from "@workspace/llm";
 import type { EstimateResult, PhotoTip } from "@workspace/api-zod";
 import { logger } from "./logger";
+import {
+  prerequisitesBlockForPlatform,
+  sellerTerminologyPromptLine,
+} from "@workspace/marketplace-regions";
 
 export type Platform =
   | "facebook-marketplace"
@@ -164,6 +168,9 @@ CONVERSATIONAL draftBody (required for all platforms; still follow platform prof
 - Then cover what's included, your asking price (the TARGET LIST PRICE), and how you'd like pickup, shipping, or contact to work for the seller region.
 `.trim();
 
+  const platformChecklist = prerequisitesBlockForPlatform(args.platform);
+  const localeTerms = sellerTerminologyPromptLine(i.currentRegion);
+
   const prompt = `You are a senior copywriter for ${profile.name}. Write a high-converting listing for the item below.
 
 ITEM
@@ -185,6 +192,14 @@ VALUATION CONTEXT (do NOT include in the listing; for your context only)
 - TARGET LIST PRICE for this draft: ${ccy} ${Math.round(targetPrice).toLocaleString()}
 - Pricing strategy: ${STRATEGY_LABEL[args.priceStrategy]}
 ${qualityBlock}
+
+${localeTerms}
+
+PLATFORM PREREQUISITES (mention truthfully using ITEM data only; never invent specifics)
+Cover these buyer expectations naturally in prose or bullets: ${platformChecklist}
+If ITEM data misses something important below, append a boldly labeled separate block at the VERY END:
+Still need from seller:
+- ...
 
 ${conversationalVoice}
 
