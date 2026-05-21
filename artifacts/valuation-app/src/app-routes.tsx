@@ -21,6 +21,7 @@ import ProfilePage from "@/pages/profile";
 import AdminDashboardPage from "@/pages/admin";
 import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
+import WelcomeContinuePage from "@/pages/welcome-continue";
 
 function HomeOrLanding() {
   const { isSignedIn } = useAuth();
@@ -70,6 +71,7 @@ function AppShellSwitch() {
   return (
     <Switch>
       <Route path="/recent" component={LatestEstimateRedirect} />
+      <Route path="/welcome/continue" component={WelcomeContinuePage} />
       <Route path="/dashboard" component={HomePage} />
       <Route path="/estimate/new" component={NewEstimatePage} />
       <Route path="/estimates" component={EstimatesPage} />
@@ -93,7 +95,7 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
     location === "/" ||
     location.startsWith("/sign-in") ||
     location.startsWith("/sign-up") ||
-    location.startsWith("/welcome") ||
+    location === "/welcome" ||
     location.startsWith("/start") ||
     location.startsWith("/pricing") ||
     location.startsWith("/about") ||

@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ShieldAlert } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,6 +23,18 @@ import {
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useAuth } from "@clerk/react";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
+
+const CHART_AXIS = {
+  stroke: "hsl(var(--muted-foreground))",
+  tick: { fill: "hsl(var(--muted-foreground))", fontSize: 11 },
+} as const;
+
+const tooltipStyle = {
+  borderRadius: 8,
+  border: "1px solid hsl(var(--border))",
+  background: "hsl(var(--card))",
+  color: "hsl(var(--foreground))",
+} as const;
 
 type Overview = {
   totals: { estimates: number; distinctUsersWithEstimates: number; listings: number };
@@ -60,6 +81,47 @@ function AdminDashboardInner({
     };
   }, [getToken]);
 
+  const assetBarData = useMemo(
+    () =>
+      (data?.estimatesByAssetType ?? []).map((row) => ({
+        label:
+          row.assetTypeName.length > 42 ? `${row.assetTypeName.slice(0, 39).trim()}…` : row.assetTypeName,
+        fullLabel: row.assetTypeName,
+        count: row.count,
+      })),
+    [data],
+  );
+
+  const totalsBarData = useMemo(
+    () =>
+      data
+        ? [
+            { label: "Valuations saved", short: "Valuations", count: data.totals.estimates },
+            { label: "Users (1+ valuation)", short: "Users", count: data.totals.distinctUsersWithEstimates },
+            { label: "Ad drafts", short: "Ad drafts", count: data.totals.listings },
+          ]
+        : [],
+    [data],
+  );
+
+  const eventsByType = useMemo(() => {
+    if (!data?.recentEvents.length) return [];
+    const tally = new Map<string, number>();
+    for (const e of data.recentEvents) {
+      tally.set(e.eventType, (tally.get(e.eventType) ?? 0) + 1);
+    }
+    return [...tally.entries()]
+      .map(([eventType, count]) => ({
+        label: eventType.length > 48 ? `${eventType.slice(0, 45)}…` : eventType,
+        fullLabel: eventType,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [data]);
+
+  const assetChartHeight = Math.min(520, Math.max(260, assetBarData.length * 32));
+  const eventsChartHeight = Math.min(400, Math.max(220, eventsByType.length * 28));
+
   return (
     <div className="space-y-8 pb-16">
       <div className="flex items-center gap-4">
@@ -75,8 +137,8 @@ function AdminDashboardInner({
             <ShieldAlert className="h-7 w-7 text-amber-400" />
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Aggregated usage only, subject to GDPR minimisation and your{" "}
-            <code className="font-sans text-[11px]">ADMIN_USER_IDS</code> allow-list.
+            Rollups only. Access is restricted by your <code className="font-sans text-[11px]">ADMIN_USER_IDS</code>{" "}
+            allow-list (Clerk user ids).
           </p>
         </div>
       </div>
@@ -101,7 +163,7 @@ function AdminDashboardInner({
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="border-border/80 bg-card/50">
               <CardHeader className="pb-2">
-                <CardDescription>Estimates saved</CardDescription>
+                <CardDescription>Valuations saved</CardDescription>
                 <CardTitle className="text-3xl font-sans tabular-nums tracking-tight">{data.totals.estimates}</CardTitle>
               </CardHeader>
             </Card>
@@ -115,7 +177,7 @@ function AdminDashboardInner({
             </Card>
             <Card className="border-border/80 bg-card/50">
               <CardHeader className="pb-2">
-                <CardDescription>Listings generated</CardDescription>
+                <CardDescription>Ad drafts saved</CardDescription>
                 <CardTitle className="text-3xl font-sans tabular-nums tracking-tight">{data.totals.listings}</CardTitle>
               </CardHeader>
             </Card>
@@ -123,8 +185,122 @@ function AdminDashboardInner({
 
           <Card className="border-border/80 bg-card/40">
             <CardHeader>
-              <CardTitle>Valuations by asset class</CardTitle>
-              <CardDescription>Feeds methodology tuning for the proprietary model.</CardDescription>
+              <CardTitle>Volume overview</CardTitle>
+              <CardDescription>Quick comparison of the three headline totals.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={totalsBarData}
+                    margin={{ top: 12, right: 16, left: 4, bottom: 8 }}
+                    barCategoryGap="18%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="short" stroke={CHART_AXIS.stroke} tick={CHART_AXIS.tick} />
+                    <YAxis stroke={CHART_AXIS.stroke} tick={CHART_AXIS.tick} allowDecimals={false} />
+                    <RechartsTooltip
+                      formatter={(value: number) => [value, "Count"]}
+                      labelFormatter={(_, payload) =>
+                        payload?.[0]?.payload ? (payload[0].payload as { label: string }).label : ""
+                      }
+                      contentStyle={tooltipStyle}
+                    />
+                    <Bar dataKey="count" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={72} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="border-border/80 bg-card/40">
+              <CardHeader>
+                <CardTitle>Valuations by asset class</CardTitle>
+                <CardDescription>Where demand clusters in saved valuations.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {assetBarData.length === 0 ? (
+                  <p className="py-12 text-center text-sm text-muted-foreground">No valuations yet.</p>
+                ) : (
+                  <div style={{ height: assetChartHeight }} className="w-full min-h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={assetBarData}
+                        margin={{ top: 4, right: 28, left: 8, bottom: 4 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                        <XAxis type="number" stroke={CHART_AXIS.stroke} tick={CHART_AXIS.tick} allowDecimals={false} />
+                        <YAxis
+                          type="category"
+                          dataKey="label"
+                          width={132}
+                          stroke={CHART_AXIS.stroke}
+                          tick={{ ...CHART_AXIS.tick, fontSize: 10 }}
+                        />
+                        <RechartsTooltip
+                          formatter={(value: number) => [`${value} valuations`, "Count"]}
+                          labelFormatter={(_, payload) =>
+                            payload?.[0]?.payload
+                              ? (payload[0].payload as { fullLabel: string }).fullLabel
+                              : ""
+                          }
+                          contentStyle={tooltipStyle}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} maxBarSize={22} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/80 bg-card/40">
+              <CardHeader>
+                <CardTitle>Recent events by type</CardTitle>
+                <CardDescription>Counts from the latest {data.recentEvents.length} telemetry rows.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {eventsByType.length === 0 ? (
+                  <p className="py-12 text-center text-sm text-muted-foreground">No events in the sample.</p>
+                ) : (
+                  <div style={{ height: eventsChartHeight }} className="w-full min-h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={eventsByType}
+                        margin={{ top: 4, right: 28, left: 8, bottom: 4 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                        <XAxis type="number" stroke={CHART_AXIS.stroke} tick={CHART_AXIS.tick} allowDecimals={false} />
+                        <YAxis
+                          type="category"
+                          dataKey="label"
+                          width={148}
+                          stroke={CHART_AXIS.stroke}
+                          tick={{ ...CHART_AXIS.tick, fontSize: 10 }}
+                        />
+                        <RechartsTooltip
+                          formatter={(value: number) => [`${value} events`, "In sample"]}
+                          labelFormatter={(_, payload) =>
+                            payload?.[0]?.payload ? (payload[0].payload as { fullLabel: string }).fullLabel : ""
+                          }
+                          contentStyle={tooltipStyle}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-4))" radius={[0, 4, 4, 0]} maxBarSize={22} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-border/80 bg-card/40">
+            <CardHeader>
+              <CardTitle>Valuations by asset class (table)</CardTitle>
+              <CardDescription>Exact counts for spreadsheets or audits.</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -149,10 +325,7 @@ function AdminDashboardInner({
           <Card className="border-border/80 bg-card/40">
             <CardHeader>
               <CardTitle>Recent platform events</CardTitle>
-              <CardDescription>
-                Structured telemetry for arbitrage, listings, and photo-derived form fields, exportable for offline
-                analysis pipelines.
-              </CardDescription>
+              <CardDescription>Latest rows with raw payloads. Use the chart above for type mix.</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto max-h-[420px] overflow-y-auto">
               <Table>

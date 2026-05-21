@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { useProTier } from "@/hooks/use-pro-tier";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -46,7 +47,7 @@ const navWorkspace: NavItem[] = [
 
 const navInsights: NavItem[] = [
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-  { href: "/listings", label: "Listings", icon: Megaphone },
+  { href: "/listings", label: "Ad Drafts", icon: Megaphone },
 ];
 
 function NavLink({
@@ -169,31 +170,36 @@ function UserMenu({ compact }: { compact?: boolean }) {
 
 function PlanBrief({ className, block }: { className?: string; block?: boolean }) {
   const { data } = useBillingSummary();
-  const paid = data?.hasPaidValuationTier;
-  const slug = data?.planSlug ?? "none";
-  let label = "Free tier";
-  if (paid) {
-    label = slug === "professional" ? "Professional" : "Everyday+";
-  }
-  const remaining = !paid ? data?.valuationsRemainingFree : null;
+  const paidApi = Boolean(data?.hasPaidValuationTier);
+  const { devProPreview } = useProTier();
+  const uiLabel = devProPreview ? "Pro tier UI" : "Free tier UI";
+  const remaining = !paidApi ? data?.valuationsRemainingFree : null;
 
   return (
     <Link
       href="/settings"
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition-colors hover:bg-muted/35",
-        paid ? "border-accent/35 bg-accent/10" : "border-border/80 bg-card",
+        devProPreview ? "border-accent/35 bg-accent/10" : "border-border/80 bg-card",
         block && "w-full justify-between",
         className,
       )}
-      title="Open subscription settings"
+      title={
+        paidApi
+          ? "Stripe shows an active plan. Toggle in the header still switches layout between Free-tier and Pro-tier views."
+          : "Open billing and limits (API free cap). Toggle in the header switches layout previews."
+      }
     >
-      <Sparkles className={cn("h-4 w-4 shrink-0", paid ? "text-accent" : "text-muted-foreground")} />
+      <Sparkles className={cn("h-4 w-4 shrink-0", devProPreview ? "text-accent" : "text-muted-foreground")} />
       <div className="flex min-w-0 flex-col text-left leading-tight">
-        <span className="text-xs font-medium text-foreground">{label}</span>
-        {!paid && remaining != null ? (
+        <span className="text-xs font-medium text-foreground">{uiLabel}</span>
+        {!paidApi && remaining != null ? (
           <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
             {remaining} valuations left · upgrade
+          </span>
+        ) : paidApi ? (
+          <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
+            Paid on Stripe · see Settings for details
           </span>
         ) : null}
       </div>

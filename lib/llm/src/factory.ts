@@ -23,13 +23,13 @@ export function getConfiguredProviderId(): LlmProviderId {
 }
 
 /**
- * Model id passed to the vendor API. Override with `LLM_MODEL` (typical values: `gpt-4o`, `claude-sonnet-4-5`).
+ * Model id passed to the vendor API. Override with `LLM_MODEL` (typical values: `gpt-5.5`, `claude-sonnet-4-5`).
  */
 export function defaultModel(): string {
   const override = process.env.LLM_MODEL?.trim();
   if (override) return override;
   return getConfiguredProviderId() === "openai"
-    ? "gpt-4o"
+    ? "gpt-5.5"
     : "claude-sonnet-4-5";
 }
 

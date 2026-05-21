@@ -36,8 +36,8 @@ export default function WelcomePersonaPage() {
             Choose how you use your portfolio. You can mix both anytime.
           </h1>
           <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            We remember this lightly to tune copy on your dashboard. It stays on-device until you finish sign-up or first
-            sign-in, then maps to your account profile.
+            We remember this lightly to tune copy on your dashboard. It stays on-device until registration,
+            then maps to your account profile during the brief welcome step after sign-up or on first sign-in.
           </p>
         </motion.div>
 
@@ -62,7 +62,7 @@ export default function WelcomePersonaPage() {
                   className="w-full rounded-2xl"
                   onClick={() => persistPersona("everyday")}
                 >
-                  Create account · Everyday track
+                  Continue to sign-up · Everyday track
                   <ArrowRight className="ml-2 h-5 w-5" aria-hidden />
                 </Button>
               </Link>
@@ -100,7 +100,7 @@ export default function WelcomePersonaPage() {
                   className="w-full rounded-2xl shadow-md"
                   onClick={() => persistPersona("professional")}
                 >
-                  Create account · Professional track
+                  Continue to sign-up · Professional track
                   <ArrowRight className="ml-2 h-5 w-5" aria-hidden />
                 </Button>
               </Link>

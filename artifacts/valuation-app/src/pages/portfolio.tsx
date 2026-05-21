@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  TrendingUp,
-  TrendingDown,
   ArrowRight,
   Briefcase,
   Plus,
   Activity,
-  Zap,
   Megaphone,
   PieChart as PieIcon,
 } from "lucide-react";
@@ -41,7 +38,6 @@ import {
 type PortfolioItem = EstimateSummary & {
   liveValue: number;
   changeFromBaseline: number;
-  tickDir: "up" | "down" | "flat";
 };
 
 type ClassAlbum = {
@@ -103,7 +99,6 @@ const SHELF_SECTION_META: Record<
   },
 };
 
-const TICK_INTERVAL_MS = 2500;
 const POLL_INTERVAL_MS = 60_000;
 
 const PALETTE = [
@@ -111,21 +106,11 @@ const PALETTE = [
   "#06b6d4", "#ef4444", "#84cc16", "#f97316", "#6366f1",
 ];
 
-type Tick = { mult: number; dir: "up" | "down" | "flat" };
-
-function makeTick(prev: number, seed: number): Tick {
-  const drift = (Math.sin(seed * 1.7) + Math.cos(seed * 0.9)) * 0.0008;
-  const noise = (Math.random() - 0.5) * 0.0025;
-  const next = Math.max(0.985, Math.min(1.015, prev + drift + noise));
-  const dir: Tick["dir"] = next > prev + 0.0001 ? "up" : next < prev - 0.0001 ? "down" : "flat";
-  return { mult: next, dir };
-}
-
 export default function PortfolioPage() {
   const { code: displayCcy } = useDisplayCurrency();
   const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
 
-  const { data: estimates, isLoading, dataUpdatedAt } = useListEstimates({
+  const { data: estimates, isLoading } = useListEstimates({
     query: {
       refetchInterval: POLL_INTERVAL_MS,
     } as unknown as UseQueryOptions<Awaited<ReturnType<typeof listEstimates>>, Error>,
@@ -151,37 +136,16 @@ export default function PortfolioPage() {
     return estimateRows.filter((e) => inPortfolioWorkspaceRow(e, act, prim));
   }, [estimateRows, activePortfolio?.id, primaryPortfolio?.id]);
 
-  const [ticks, setTicks] = useState<Record<string, Tick>>({});
   const [listingFor, setListingFor] = useState<EstimateSummary | null>(null);
-
-  useEffect(() => {
-    if (scopedRows.length === 0) return;
-    const interval = setInterval(() => {
-      setTicks((prev) => {
-        const next: Record<string, Tick> = {};
-        for (const e of scopedRows) {
-          const cur = prev[e.id]?.mult ?? 1;
-          next[e.id] = makeTick(cur, Date.now() / 1000);
-        }
-        return next;
-      });
-    }, TICK_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [scopedRows]);
-
-  useEffect(() => {
-    setTicks({});
-  }, [dataUpdatedAt]);
 
   const portfolio = useMemo(() => {
     if (scopedRows.length === 0) return [];
     return scopedRows.map((e) => {
-      const tick = ticks[e.id];
-      const liveValue = e.adjustedMid * (tick?.mult ?? 1);
+      const liveValue = e.adjustedMid;
       const changeFromBaseline = e.baselineMid > 0 ? (liveValue - e.baselineMid) / e.baselineMid : 0;
-      return { ...e, liveValue, changeFromBaseline, tickDir: tick?.dir ?? "flat" };
+      return { ...e, liveValue, changeFromBaseline };
     });
-  }, [scopedRows, ticks]);
+  }, [scopedRows]);
 
   const classAlbums = useMemo(
     () => buildClassAlbums(portfolio, fxSnap?.rates),
@@ -314,13 +278,16 @@ export default function PortfolioPage() {
             </p>
           </CardHeader>
           <CardContent className="relative">
-            <div className={cn(
-              "flex items-center gap-2 text-sm font-medium",
-              totalChange >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-            )}>
-              {totalChange >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              <span className="font-sans">{formatPercent(totalChange, true)}</span>
-              <span className="text-muted-foreground font-sans">vs. baseline valuations</span>
+            <div
+              className={cn(
+                "flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm tabular-nums",
+                totalChange >= 0
+                  ? "text-emerald-800/85 dark:text-emerald-400/90"
+                  : "text-rose-800/85 dark:text-rose-400/90",
+              )}
+            >
+              <span>{formatPercent(totalChange, true)}</span>
+              <span className="text-muted-foreground font-normal">vs. baseline valuations</span>
             </div>
           </CardContent>
         </Card>
@@ -428,23 +395,21 @@ export default function PortfolioPage() {
             const count = items.length;
             return (
               <div key={section.shelf} className="space-y-4" data-testid={`shelf-${section.shelf}`}>
-                <div className="flex flex-col gap-3 border-b border-border/50 pb-4 sm:flex-row sm:items-end sm:justify-between">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight">{section.title}</h3>
-                      <Badge variant="secondary" className="font-normal">
+                <div className="flex flex-col gap-3 border-b border-border/40 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="min-w-0 space-y-1.5">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <h3 className="text-lg font-semibold tracking-tight text-foreground">{section.title}</h3>
+                      <span className="text-xs tabular-nums text-muted-foreground">
                         {count} {count === 1 ? "item" : "items"}
-                      </Badge>
+                      </span>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed max-w-prose">
                       {section.description}
                     </p>
                   </div>
                   <div className="shrink-0 sm:text-right">
-                    <p className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground">
-                      Approx. group total
-                    </p>
-                    <p className="text-lg font-semibold tabular-nums">{formatRollup(section.sectionTotalUsd)}</p>
+                    <p className="text-[11px] text-muted-foreground">Group total (approx.)</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{formatRollup(section.sectionTotalUsd)}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -503,72 +468,50 @@ function AssetBox({
           goToEstimate();
         }
       }}
-      className="group relative rounded-xl border border-border bg-card/60 hover:bg-card hover:border-accent/40 transition-all overflow-hidden p-4 flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/40"
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border/70 bg-card/75 p-4 transition-colors hover:bg-card hover:border-border focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       data-testid="asset-box"
     >
-      <div className="flex-1 min-h-0">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="min-w-0 flex-1 flex items-start gap-2">
-            <div className="h-9 w-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
+      <div className="min-h-0 flex-1">
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-foreground/80">
               {(() => {
                 const Icon = iconForAssetType(item.assetTypeName);
                 return <Icon className="h-4 w-4" />;
               })()}
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="font-sans text-sm font-semibold leading-tight line-clamp-2 group-hover:text-accent transition-colors">
+              <h4 className="line-clamp-2 font-sans text-sm font-semibold leading-snug text-foreground group-hover:underline group-hover:decoration-muted-foreground/50 group-hover:underline-offset-2">
                 {item.title}
               </h4>
-              <p className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground mt-1">
-                {item.assetTypeName}
-              </p>
+              <p className="mt-1 font-sans text-[11px] text-muted-foreground">{item.assetTypeName}</p>
             </div>
           </div>
-          <div
-            className={cn(
-              "h-2 w-2 rounded-full mt-1 shrink-0",
-              item.tickDir === "up" && "bg-green-500 animate-pulse",
-              item.tickDir === "down" && "bg-red-500 animate-pulse",
-              item.tickDir === "flat" && "bg-muted-foreground/40",
-            )}
-          />
         </div>
 
         <div className="space-y-1">
-          <div
-            className={cn(
-              "font-sans text-xl font-semibold tabular-nums leading-none",
-              item.tickDir === "up" && "text-green-600 dark:text-green-400",
-              item.tickDir === "down" && "text-red-600 dark:text-red-400",
-              item.tickDir === "flat" && "text-foreground",
-            )}
-          >
+          <div className="font-sans text-xl font-semibold tabular-nums leading-none text-foreground">
             {formatMoney(item.liveValue, item.currency)}
           </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            {isUp ? (
-              <TrendingUp className="h-3 w-3 text-green-600 dark:text-green-400" />
-            ) : (
-              <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />
-            )}
-            <span className={cn(
-              "font-sans tabular-nums",
-              isUp ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400",
-            )}>
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs">
+            <span
+              className={cn(
+                "font-sans tabular-nums font-medium",
+                isUp ? "text-emerald-800/80 dark:text-emerald-400/85" : "text-rose-800/85 dark:text-rose-400/85",
+              )}
+            >
               {formatPercent(item.changeFromBaseline, true)}
             </span>
-            <span className="text-muted-foreground">
-              · cost {formatMoney(item.baselineMid, item.currency)}
-            </span>
+            <span className="text-muted-foreground">· cost {formatMoney(item.baselineMid, item.currency)}</span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
+      <div className="mt-3 flex items-center gap-2 border-t border-border/35 pt-3">
         <Button
           size="sm"
           variant="outline"
-          className="flex-1 h-8 text-xs"
+          className="h-8 flex-1 text-xs"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -576,7 +519,7 @@ function AssetBox({
           }}
           data-testid="box-listing-btn"
         >
-          <Megaphone className="h-3 w-3 mr-1.5" />
+          <Megaphone className="mr-1.5 h-3 w-3" />
           List for sale
         </Button>
         <Button
@@ -592,15 +535,6 @@ function AssetBox({
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>
-
-      {item.tickDir !== "flat" && (
-        <Zap
-          className={cn(
-            "absolute top-2 right-2 h-3 w-3 opacity-50",
-            item.tickDir === "up" ? "text-green-500" : "text-red-500",
-          )}
-        />
-      )}
     </div>
   );
 }

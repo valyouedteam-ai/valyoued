@@ -10,10 +10,16 @@ export default function SignUpPage() {
   // If the user came from /start mid-onboarding, they'll have ?redirect_url=/start
   // appended. Send them back so we can finish the valuation they started.
   const rawRedirect = params.get("redirect_url");
+  const postSignupLanding = `${basePath}/welcome/continue`;
   const redirect =
     rawRedirect && rawRedirect.startsWith("/")
       ? `${basePath}${rawRedirect}`
-      : `${basePath}/dashboard`;
+      : postSignupLanding;
+  const resumedGuestFlow = Boolean(rawRedirect && rawRedirect.startsWith("/"));
+  const heading = resumedGuestFlow ? "Your valuation is ready" : "Create your free account";
+  const blurb = resumedGuestFlow
+    ? "Create a free account to unlock your full valuation report, save it to your portfolio, and get listing drafts for marketplaces worldwide."
+    : "Use email or a social login to secure your valuations. Right after signup we confirm how you steward assets, then you land on Home.";
 
   return (
     <div className="mesh-bg relative flex min-h-[100dvh] flex-col overflow-hidden">
@@ -25,12 +31,9 @@ export default function SignUpPage() {
           <div className="relative flex w-full max-w-md flex-col items-center gap-6">
             <div className="text-center">
               <div className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Your valuation is ready
+                {heading}
               </div>
-              <div className="mt-3 max-w-sm text-sm text-muted-foreground">
-                Create a free account to unlock your full valuation report, save it to your portfolio,
-                and get listing drafts for marketplaces worldwide.
-              </div>
+              <div className="mt-3 max-w-sm text-sm text-muted-foreground">{blurb}</div>
             </div>
             <SignUp
               routing="path"

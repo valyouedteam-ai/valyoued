@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -77,29 +77,15 @@ export function MarketingTopNav({ variant }: { variant: MarketingTopNavVariant }
             Sign in
           </Button>
         </Link>
-        <Link href="/sign-up">
-          <Button
-            variant="outline"
-            className={
-              isDark
-                ? "border-white/25 text-white hover:bg-white/10"
-                : "border-border/80 px-4 shadow-sm"
-            }
-            data-testid="nav-sign-up"
-          >
-            Sign up
-          </Button>
-        </Link>
         <Link href="/welcome">
           <Button
             className={cn(
-              "rounded-full shadow-sm gap-2",
+              "rounded-full px-5 shadow-sm",
               isDark && "bg-accent text-accent-foreground hover:bg-accent/90",
             )}
-            data-testid="nav-create-account"
+            data-testid="nav-sign-up"
           >
             Create account
-            <Sparkles className="h-4 w-4" />
           </Button>
         </Link>
         <Link href="/start">

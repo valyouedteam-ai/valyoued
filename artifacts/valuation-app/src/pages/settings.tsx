@@ -343,128 +343,12 @@ function SettingsPageInner({
             Settings & privacy
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Account data controls, exports, subscription billing, and email alerts.
+            Email alerts, account, portfolio currency, then data export and subscription billing.
           </p>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 md:[&>*]:min-w-0">
-        <Card className="border-border/80 bg-card/40 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="h-5 w-5 text-accent" />
-              Data & privacy
-            </CardTitle>
-            <CardDescription>
-              Download everything ValYoued stores about your valuations and listing drafts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button
-              variant="default"
-              className="w-full gap-2"
-              onClick={() => void exportData()}
-              disabled={busy !== null}
-              data-testid="btn-export-data"
-            >
-              <Download className="h-4 w-4" />
-              {busy === "export" ? "Preparing…" : "Download data export (JSON)"}
-            </Button>
-            <Link href="/privacy" className="block">
-              <Button variant="outline" className="w-full gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Privacy & lawful basis
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/80 bg-card/40 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-accent" />
-              Subscription &amp; valuations
-            </CardTitle>
-            <CardDescription className="leading-relaxed text-pretty">
-              {billing ? (
-                <>
-                  API tier{" "}
-                  <span className="font-medium text-foreground tabular-nums">{billing.tier}</span>
-                  {billing.status ? (
-                    <>
-                      {" "}
-                      · <span className="tabular-nums font-medium">{billing.status}</span>
-                    </>
-                  ) : null}
-                  {billing.planSlug ? (
-                    <>
-                      {" "}
-                      · plan <span className="tabular-nums font-medium">{billing.planSlug}</span>
-                    </>
-                  ) : null}
-                  {!billing.hasPaidValuationTier && billing.valuationsRemainingFree != null ? (
-                    <>
-                      {" "}
-                      ·{" "}
-                      <span className="font-medium text-foreground">{billing.valuationsRemainingFree}</span> free
-                      valuations left this month (Everyday tier cap is{" "}
-                      {billing.valuationsMonthLimit ?? 5}
-                      ).
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                <>Fetching billing snapshot from the API…</>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!billing?.hasPaidValuationTier ? (
-              <>
-                <div className="space-y-2">
-                  <Label>Plan</Label>
-                  <Select value={checkoutPlan} onValueChange={(v) => setCheckoutPlan(v as typeof checkoutPlan)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pick a plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="everyday_plus">Everyday+: unlimited valuations (£7.99/mo suggested)</SelectItem>
-                      <SelectItem value="professional">
-                        Professional: full seller voice (£14.99/mo suggested; trial configured in billing)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                You already have paid valuation tier access. Manage billing to change seats, cards, or add-ons via the
-                customer portal.
-              </p>
-            )}
-            <Button
-              variant="default"
-              className="w-full gap-2"
-              onClick={() => void checkout()}
-              disabled={busy !== null || billing?.hasPaidValuationTier}
-            >
-              <CreditCard className="h-4 w-4" />
-              {busy === "checkout" ? "Redirecting…" : "Go to checkout"}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => void portal()}
-              disabled={
-                busy !== null ||
-                (!billing?.stripeCustomerId && !billing?.stripeStub)
-              }
-            >
-              Manage subscription / invoices
-            </Button>
-          </CardContent>
-        </Card>
-
         <Card className="border-border/80 bg-card/40 backdrop-blur-sm md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -608,6 +492,120 @@ function SettingsPageInner({
                 stub).
               </p>
             ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-card/40 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Shield className="h-5 w-5 text-accent" />
+              Data & privacy
+            </CardTitle>
+            <CardDescription>
+              Download everything ValYoued stores about your valuations and listing drafts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="default"
+              className="w-full gap-2"
+              onClick={() => void exportData()}
+              disabled={busy !== null}
+              data-testid="btn-export-data"
+            >
+              <Download className="h-4 w-4" />
+              {busy === "export" ? "Preparing…" : "Download data export (JSON)"}
+            </Button>
+            <Link href="/privacy" className="block">
+              <Button variant="outline" className="w-full gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Privacy & lawful basis
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-card/40 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-accent" />
+              Subscription &amp; valuations
+            </CardTitle>
+            <CardDescription className="leading-relaxed text-pretty">
+              {billing ? (
+                <>
+                  API tier{" "}
+                  <span className="font-medium text-foreground tabular-nums">{billing.tier}</span>
+                  {billing.status ? (
+                    <>
+                      {" "}
+                      · <span className="tabular-nums font-medium">{billing.status}</span>
+                    </>
+                  ) : null}
+                  {billing.planSlug ? (
+                    <>
+                      {" "}
+                      · plan <span className="tabular-nums font-medium">{billing.planSlug}</span>
+                    </>
+                  ) : null}
+                  {!billing.hasPaidValuationTier && billing.valuationsRemainingFree != null ? (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <span className="font-medium text-foreground">{billing.valuationsRemainingFree}</span> free
+                      valuations left this month (Everyday tier cap is{" "}
+                      {billing.valuationsMonthLimit ?? 5}
+                      ).
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <>Fetching billing snapshot from the API…</>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!billing?.hasPaidValuationTier ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Plan</Label>
+                  <Select value={checkoutPlan} onValueChange={(v) => setCheckoutPlan(v as typeof checkoutPlan)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pick a plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="everyday_plus">Everyday+ · £7.99/mo</SelectItem>
+                      <SelectItem value="professional">Professional · £14.99/mo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You already have paid valuation tier access. Manage billing to change seats, cards, or add-ons via the
+                customer portal.
+              </p>
+            )}
+            <Button
+              variant="default"
+              className="w-full gap-2"
+              onClick={() => void checkout()}
+              disabled={busy !== null || billing?.hasPaidValuationTier}
+            >
+              <CreditCard className="h-4 w-4" />
+              {busy === "checkout" ? "Redirecting…" : "Go to checkout"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => void portal()}
+              disabled={
+                busy !== null ||
+                (!billing?.stripeCustomerId && !billing?.stripeStub)
+              }
+            >
+              Manage subscription / invoices
+            </Button>
           </CardContent>
         </Card>
       </div>

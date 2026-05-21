@@ -37,9 +37,10 @@ const PROFILES: Record<Platform, PlatformProfile> = {
     name: "eBay",
     audience: "Bargain hunters, collectors, international buyers",
     toneRules:
-      "Search-optimized, keyword-rich, professional. Include condition grade, dimensions, completeness (box, papers, accessories). Mention returns policy.",
+      "Search-friendly keywords woven into natural first-person sentences (not a cold spec dump). Include condition grade, dimensions, completeness (box, papers, accessories). Mention returns policy.",
     titleHint: "80 chars max, keyword-stuffed (brand, model, key spec, condition). All caps for key acronyms is fine.",
-    bodyHint: "Use clear sections: Item description, Condition, What's included, Shipping, Returns. Bullet-style is OK.",
+    bodyHint:
+      "Open with a short friendly seller line, then cover item, condition and defects, what's included, shipping, returns. Bullets are fine where they help.",
   },
   gumtree: {
     name: "Gumtree",
@@ -72,32 +73,34 @@ const PROFILES: Record<Platform, PlatformProfile> = {
   "vestiaire-collective": {
     name: "Vestiaire Collective",
     audience: "Luxury resale buyers, authentication-aware",
-    toneRules: "Polished, luxury tone. Stress provenance, authenticity, completeness, original price.",
+    toneRules:
+      "Polished luxury tone with a brief personal seller line. Stress provenance, authenticity, completeness, original price.",
     titleHint: "Brand, model name, material, color. Title-case.",
-    bodyHint: "Premium prose, mention purchase year if known, original retail, condition grade, included items.",
+    bodyHint: "Short human intro, then purchase year if known, original retail, honest condition, included items.",
   },
   autotrader: {
     name: "AutoTrader",
     audience: "Serious car buyers",
     toneRules:
-      "Professional, spec-led. Service history, MOT, key features, mileage, owner count. No emojis.",
+      "Spec-led and credible. One short first-person intro is fine, then service history, MOT, key features, mileage, owner count. No emojis.",
     titleHint: "Year Make Model Trim, such as '2019 BMW M2 Competition DCT'.",
-    bodyHint: "Spec sheet style: history, condition, mods, included paperwork, viewing arrangements.",
+    bodyHint: "Personal intro if natural, then history, condition and any known issues, mods, paperwork, viewing.",
   },
   chrono24: {
     name: "Chrono24",
     audience: "Watch collectors worldwide, authentication-aware",
     toneRules:
-      "Connoisseur tone. Reference number, year, movement, case material, completeness (box, papers, warranty card), service history.",
+      "Knowledgeable collector-to-collector voice in first person. Reference number, year, movement, case material, completeness (box, papers, warranty card), service history.",
     titleHint: "Brand Model Reference (such as 'Rolex Submariner 116610LN').",
-    bodyHint: "Detailed spec block, full service history, photos-on-request line, escrow-friendly note.",
+    bodyHint: "Friendly opener, then detailed honest condition, specs, history, photos-on-request, escrow-friendly note.",
   },
   rightmove: {
     name: "Rightmove",
     audience: "Property buyers and renters",
-    toneRules: "Estate-agent prose: lifestyle, neighborhood, key features, EPC. No price flexibility implied.",
+    toneRules:
+      "Warm, readable estate-style prose. You may start with a short seller line (for example why you're moving) if it fits, then lifestyle, neighborhood, key features, EPC. No price flexibility implied.",
     titleHint: "Bedroom count + property type + neighborhood, such as '3-bed terrace, Hampstead'.",
-    bodyHint: "Lifestyle hook, room-by-room highlights, transport links, EPC/tenure, viewing instructions.",
+    bodyHint: "Hook, room highlights, transport, EPC/tenure, viewing. Clear on condition and any known issues.",
   },
 };
 
@@ -149,8 +152,18 @@ export async function generateListingDraft(
   const plan = args.stripePlanSlug ?? "none";
   const qualityBlock =
     quality === "basic"
-      ? `\nSTYLE: BASIC (free-tier). Conversational seller voice: plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype; one short negotiation note in proTips only (no hourly posting analytics). Keep proTips array to exactly 3 short bullets.`
+      ? `\nSTYLE: BASIC (free-tier). Plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype; one short negotiation note in proTips only (no hourly posting analytics). Keep proTips array to exactly 3 short bullets.`
       : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller: persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, completeness callouts${plan === "professional" ? ", and resale/stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips and 5 proTips unless the platform clearly doesn't suit them.`;
+
+  const conversationalVoice = `
+CONVERSATIONAL draftBody (required for all platforms; still follow platform profile for keywords and length):
+- Open with a short friendly human line (for example "Hi" or "Hello" plus who you are as the seller, such as "Hi, I'm [name or 'the owner'] and I'm selling..."). Do not invent a real name if none was given: use "the owner", "I'm selling", or similar.
+- Write the whole body in first person ("I'm asking...", "I've had it for...", "I'm happy to...") so it reads like a message to buyers, not a catalogue block.
+- After the opener, say what the item is in plain words (brand, model, year if known).
+- Include an explicit honesty section on physical condition and defects. Use a clear heading line such as "Condition and flaws:" or "Worth knowing:" then short sentences or bullets. If ITEM data lacks defect detail, summarise condition honestly from condition score and notes, and invite questions instead of guessing damage.
+- Then cover what's included, your asking price (the TARGET LIST PRICE), and how you'd like pickup, shipping, or contact to work for the seller region.
+`.trim();
+
   const prompt = `You are a senior copywriter for ${profile.name}. Write a high-converting listing for the item below.
 
 ITEM
@@ -173,6 +186,8 @@ VALUATION CONTEXT (do NOT include in the listing; for your context only)
 - Pricing strategy: ${STRATEGY_LABEL[args.priceStrategy]}
 ${qualityBlock}
 
+${conversationalVoice}
+
 PLATFORM PROFILE
 - Audience: ${profile.audience}
 - Tone rules: ${profile.toneRules}
@@ -182,7 +197,7 @@ PLATFORM PROFILE
 OUTPUT: STRICT JSON ONLY (no prose, no markdown fences):
 {
   "draftTitle": string,    // ready to copy/paste into the platform's title field
-  "draftBody": string,     // ready to copy/paste into the description box. Use \\n for line breaks. NO markdown.
+  "draftBody": string,     // ready to copy/paste into the description box. Conversational first person with a clear condition/flaws section. Use \\n for line breaks. NO markdown.
   "photoTips": [           // 4-7 ordered shots the seller should upload, optimised for THIS asset class & platform
     {
       "angle": string,     // such as "Front 3/4 hero", "Serial number close-up", "Box and papers flat-lay"
@@ -193,7 +208,7 @@ OUTPUT: STRICT JSON ONLY (no prose, no markdown fences):
   "proTips": [string]      // 3-5 short tactical tips for the seller (best time to post, response speed, negotiation guardrails). Specific to this item & platform.
 }
 
-CRITICAL: include the target price in the body as the asking price. Never invent serial numbers, model years, or specs that weren't given. Use only what's in the ITEM block above. Use realistic shipping/collection wording for the seller's region.`;
+CRITICAL: include the target price in the body as the asking price. Never invent serial numbers, model years, or specs that weren't given. Use only what's in the ITEM block above. Use realistic shipping/collection wording for the seller's region. Do not sound like a corporate template: keep the voice human and direct.`;
 
   let raw: string;
   try {

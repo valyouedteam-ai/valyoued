@@ -1,33 +1,34 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import type { UseQueryOptions } from "@tanstack/react-query";
-import type { EstimateSummary } from "@workspace/api-client-react";
+import type { EstimateSummary, PatchEstimateBodyIntent } from "@workspace/api-client-react";
 import {
+  getGetEstimateStatsQueryKey,
+  getListEstimatesQueryKey,
   listEstimates,
   useGetEstimateStats,
   useListEstimates,
+  usePatchEstimate,
 } from "@workspace/api-client-react";
-import { useBillingSummary } from "@/hooks/use-billing-summary";
-import { useSellerPersonaClerkSync } from "@/hooks/use-persona-sync";
 import {
   mergePortfolioHref,
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
-import { formatPercent } from "@/lib/format";
+import { formatPercent, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Briefcase,
   Calculator,
   ChevronRight,
   FileText,
   Globe2,
-  Lock,
   Megaphone,
   Sparkles,
   TrendingUp,
@@ -43,15 +44,54 @@ function inActiveWorkspace(
   return e.portfolioId === activeId;
 }
 
+type IntentFilterKey = "all" | PatchEstimateBodyIntent | "unset";
+type ShelfFilterKey = "all" | EstimateSummary["portfolioShelf"];
+
+function StatPulse({
+  label,
+  value,
+  active,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  value: string | number;
+  active?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  const clickable = typeof onClick === "function";
+  const Comp = clickable ? "button" : "div";
+  return (
+    <Comp
+      type={clickable ? "button" : undefined}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "rounded-2xl border px-4 py-3 text-left shadow-sm outline-none transition-all",
+        "border-border/60 bg-card/80 backdrop-blur-sm",
+        clickable && "cursor-pointer hover:border-accent/35 hover:bg-card focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50",
+        active && "border-accent/50 bg-accent/10 ring-1 ring-accent/25",
+      )}
+    >
+      <div className="text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{value}</div>
+      <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</div>
+    </Comp>
+  );
+}
+
 export default function HomePage() {
-  useSellerPersonaClerkSync();
+  const queryClient = useQueryClient();
 
-  const { data: billing } = useBillingSummary();
-  const paid = billing?.hasPaidValuationTier;
-  const slug = billing?.planSlug ?? "none";
-  const isProfessionalFlavor = slug === "professional";
+  const {
+    portfolios,
+    isLoading: portfoliosLoading,
+    portfolioQuerySuffix,
+    activePortfolio,
+    primaryPortfolio,
+    selectPortfolioById,
+  } = usePortfolioWorkspace();
 
-  const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
   const { data: estimates, isLoading: estLoading } = useListEstimates({
     query: {
       staleTime: 30_000,
@@ -67,15 +107,49 @@ export default function HomePage() {
     return rows.filter((e) => inActiveWorkspace(e, act, prim));
   }, [estimates, activePortfolio?.id, primaryPortfolio?.id]);
 
-  const recentValuations = useMemo(() => {
-    return [...filtered]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 6);
+  const intentCounts = useMemo(() => {
+    let sell = 0,
+      monitor = 0,
+      hold = 0,
+      unset = 0;
+    for (const e of filtered) {
+      if (!e.intent) unset++;
+      else if (e.intent === "sell") sell++;
+      else if (e.intent === "monitor") monitor++;
+      else if (e.intent === "hold") hold++;
+    }
+    return { sell, monitor, hold, unset };
   }, [filtered]);
 
   const workspaceLabel =
     activePortfolio?.label ??
     (activePortfolio?.purpose === "pro_board" ? "Professional desk" : null);
+
+  const [intentFilter, setIntentFilter] = useState<IntentFilterKey>("all");
+  const [shelfFilter, setShelfFilter] = useState<ShelfFilterKey>("all");
+  const [pickedRegionIdx, setPickedRegionIdx] = useState<number | null>(null);
+
+  const sortedRecent = useMemo(() => {
+    return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [filtered]);
+
+  const displayedRecent = useMemo(() => {
+    return sortedRecent.filter((e) => {
+      if (shelfFilter !== "all" && e.portfolioShelf !== shelfFilter) return false;
+      if (intentFilter === "all") return true;
+      if (intentFilter === "unset") return !e.intent;
+      return e.intent === intentFilter;
+    });
+  }, [sortedRecent, shelfFilter, intentFilter]);
+
+  const patchIntent = usePatchEstimate({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
+      },
+    },
+  });
 
   const quickLinks: Array<{
     href: string;
@@ -86,64 +160,191 @@ export default function HomePage() {
     {
       href: mergePortfolioHref("/portfolio", portfolioQuerySuffix),
       title: "Portfolio",
-      description: "Holdings, totals, shelf layout, and listing shortcuts.",
+      description: "Holdings and shelf totals",
       icon: Briefcase,
     },
     {
       href: mergePortfolioHref("/estimates", portfolioQuerySuffix),
-      title: "Estimate archive",
-      description: "Full history with filters and search.",
+      title: "History",
+      description: "Search and filters",
       icon: FileText,
     },
     {
       href: mergePortfolioHref("/markets", portfolioQuerySuffix),
       title: "Markets",
-      description: "Regional arbitrage and FX-backed previews.",
+      description: "Regional mixes",
       icon: Globe2,
     },
     {
       href: mergePortfolioHref("/listings", portfolioQuerySuffix),
-      title: "Listings",
-      description: "Drafts and marketplace wording.",
+      title: "Ad Drafts",
+      description: "Draft copy",
       icon: Megaphone,
     },
   ];
 
+  function resetFilters() {
+    setIntentFilter("all");
+    setShelfFilter("all");
+  }
+
+  function toggleIntentFilter(next: PatchEstimateBodyIntent) {
+    setIntentFilter((curr) => (curr === next ? "all" : next));
+  }
+
+  const primaryLabel = portfolios?.find((p) => p.purpose === "primary")?.label ?? null;
+
   return (
     <div className="space-y-10 pb-16">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-3 max-w-2xl">
-          {workspaceLabel ? (
-            <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-              <Badge variant="outline" className="rounded-full px-3 py-0.5">
-                Workspace
-              </Badge>
-              <span className="text-foreground/80">{workspaceLabel}</span>
+      <header className="space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Home</h1>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent/15 text-accent" aria-hidden>
+                <Sparkles className="h-4 w-4" />
+              </div>
             </div>
-          ) : null}
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            Home
-          </h1>
-          <p className="text-pretty leading-relaxed text-muted-foreground">
-            {isProfessionalFlavor
-              ? "Jump into desks and tools from here. Portfolio keeps the live ledger, folders, and shelf breakdown for each workspace."
-              : "Quick links and a short list of recent valuations. For live totals, mix charts, and the full holdings list, use Portfolio."}
-          </p>
+
+            {!portfoliosLoading && portfolios != null && portfolios.length > 1 ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {portfolios.map((p) => {
+                  const focused = activePortfolio?.id === p.id;
+                  return (
+                    <Button
+                      key={p.id}
+                      size="sm"
+                      type="button"
+                      variant={focused ? "default" : "outline"}
+                      className="rounded-full"
+                      aria-pressed={focused}
+                      onClick={() => selectPortfolioById(p.id)}
+                    >
+                      {p.label ||
+                        (p.purpose === "primary" ? primaryLabel ?? "Primary" : p.purpose === "pro_board" ? "Desk" : "Workspace")}
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : portfoliosLoading ? (
+              <Skeleton className="h-9 w-56 rounded-full" />
+            ) : workspaceLabel ? (
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{workspaceLabel}</span>
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Showing your primary holdings view.</p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <ProPreviewToggle />
+            <Button size="lg" className="rounded-full shadow-lg" asChild>
+              <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
+                <Calculator className="mr-2 h-5 w-5" />
+                New valuation
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="rounded-full" asChild>
+              <Link href={mergePortfolioHref("/portfolio", portfolioQuerySuffix)}>
+                <Briefcase className="mr-2 h-5 w-5" />
+                Portfolio
+              </Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ProPreviewToggle label="Pro mode" />
-          <Button size="lg" className="rounded-full shadow-lg" asChild>
-            <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
-              <Calculator className="mr-2 h-5 w-5" />
-              New valuation
-            </Link>
-          </Button>
-          <Button size="lg" variant="outline" className="rounded-full" asChild>
-            <Link href={mergePortfolioHref("/portfolio", portfolioQuerySuffix)}>
-              <Briefcase className="mr-2 h-5 w-5" />
-              Open portfolio
-            </Link>
-          </Button>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
+          <StatPulse label="Saved here" value={filtered.length} onClick={() => resetFilters()} active={intentFilter === "all" && shelfFilter === "all"} />
+          <StatPulse
+            label="Prep to sell"
+            value={intentCounts.sell}
+            onClick={() => toggleIntentFilter("sell")}
+            active={intentFilter === "sell"}
+          />
+          <StatPulse
+            label="Watching"
+            value={intentCounts.monitor}
+            onClick={() => toggleIntentFilter("monitor")}
+            active={intentFilter === "monitor"}
+          />
+          <StatPulse
+            label="Holding"
+            value={intentCounts.hold}
+            onClick={() => toggleIntentFilter("hold")}
+            active={intentFilter === "hold"}
+          />
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Shelf</span>
+            <ToggleGroup
+              type="single"
+              value={shelfFilter}
+              variant="outline"
+              size="sm"
+              className="flex-wrap justify-start"
+              onValueChange={(v) => {
+                if (!v || v === "all") {
+                  setShelfFilter("all");
+                  return;
+                }
+                if (v === "everyday" || v === "luxury" || v === "other") setShelfFilter(v);
+              }}
+            >
+              <ToggleGroupItem value="all" className="rounded-full px-3 text-xs">
+                All shelves
+              </ToggleGroupItem>
+              <ToggleGroupItem value="everyday" className="rounded-full px-3 text-xs">
+                Everyday
+              </ToggleGroupItem>
+              <ToggleGroupItem value="luxury" className="rounded-full px-3 text-xs">
+                Luxury
+              </ToggleGroupItem>
+              <ToggleGroupItem value="other" className="rounded-full px-3 text-xs">
+                Other
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Intent</span>
+            <ToggleGroup
+              type="single"
+              value={intentFilter}
+              variant="outline"
+              size="sm"
+              className="flex-wrap justify-start"
+              onValueChange={(v) => {
+                if (
+                  v === "" ||
+                  v === "all" ||
+                  v === "sell" ||
+                  v === "monitor" ||
+                  v === "hold" ||
+                  v === "unset"
+                ) {
+                  setIntentFilter(v === "" ? "all" : (v as IntentFilterKey));
+                }
+              }}
+            >
+              <ToggleGroupItem value="all" className="rounded-full px-3 text-xs">
+                All
+              </ToggleGroupItem>
+              <ToggleGroupItem value="hold" className="rounded-full px-3 text-xs">
+                Hold
+              </ToggleGroupItem>
+              <ToggleGroupItem value="monitor" className="rounded-full px-3 text-xs">
+                Monitor
+              </ToggleGroupItem>
+              <ToggleGroupItem value="sell" className="rounded-full px-3 text-xs">
+                Prep sell
+              </ToggleGroupItem>
+              <ToggleGroupItem value="unset" className="rounded-full px-3 text-xs">
+                No intent
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </div>
       </header>
 
@@ -175,64 +376,107 @@ export default function HomePage() {
 
       <section>
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Recent valuations</CardTitle>
-            <CardDescription>
-              Newest saves in{" "}
-              <span className="text-foreground/90">{workspaceLabel ?? "this workspace"}</span>.
-              Portfolio lists everything with live ticks and folders.
-            </CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-2">
+            <div>
+              <CardTitle className="text-lg">
+                Recent valuations ({displayedRecent.length}
+                {(intentFilter !== "all" || shelfFilter !== "all") &&
+                sortedRecent.length !== displayedRecent.length ? (
+                  <span className="text-muted-foreground"> of {sortedRecent.length}</span>
+                ) : null}
+                )
+              </CardTitle>
+            </div>
+            {(intentFilter !== "all" || shelfFilter !== "all") ? (
+              <Button type="button" variant="ghost" size="sm" className="rounded-full text-xs" onClick={() => resetFilters()}>
+                Clear filters
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent>
             {estLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
                 ))}
               </div>
-            ) : recentValuations.length === 0 ? (
+            ) : displayedRecent.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-                No valuations in this workspace yet.{" "}
-                <Link
-                  href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}
-                  className="font-medium text-accent underline-offset-4 hover:underline"
-                >
-                  Run your first
-                </Link>{" "}
-                or open{" "}
-                <Link
-                  href={mergePortfolioHref("/portfolio", portfolioQuerySuffix)}
-                  className="font-medium text-accent underline-offset-4 hover:underline"
-                >
-                  Portfolio
-                </Link>
-                .
+                Nothing matches those filters yet.{" "}
+                {(intentFilter !== "all" || shelfFilter !== "all") && (
+                  <button type="button" className="font-medium text-accent underline-offset-4 hover:underline" onClick={resetFilters}>
+                    Reset filters
+                  </button>
+                )}
+                {intentFilter === "all" && shelfFilter === "all" && (
+                  <>
+                    {" "}
+                    <Link
+                      href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}
+                      className="font-medium text-accent underline-offset-4 hover:underline"
+                    >
+                      Run a valuation
+                    </Link>
+                    .
+                  </>
+                )}
               </div>
             ) : (
               <ul className="divide-y divide-border/50 rounded-xl border border-border/60">
-                {recentValuations.map((e) => (
-                  <li key={e.id}>
-                    <Link
-                      href={mergePortfolioHref(`/estimates/${e.id}`, portfolioQuerySuffix)}
-                      className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-muted/40"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-foreground">{e.title}</div>
-                        <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {e.assetTypeName}
-                          {e.intent ? (
-                            <span className="ml-2 rounded-full bg-muted px-2 py-px text-[10px] uppercase tracking-wide">
-                              {e.intent}
+                {displayedRecent.map((e) => {
+                  const busyRow = patchIntent.isPending && patchIntent.variables?.id === e.id;
+                  return (
+                    <li key={e.id}>
+                      <div className="flex flex-col gap-3 px-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <Link
+                          href={mergePortfolioHref(`/estimates/${e.id}`, portfolioQuerySuffix)}
+                          className="min-w-0 flex-1 px-1 text-sm outline-none ring-offset-background transition-colors hover:text-accent focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-accent/40 sm:py-1"
+                        >
+                          <div className="truncate font-medium text-foreground">{e.title}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 truncate text-xs text-muted-foreground">
+                            <span className="capitalize">{e.assetTypeName}</span>
+                            <span className="rounded-full bg-muted px-2 py-px text-[10px] uppercase tracking-wide">{e.portfolioShelf}</span>
+                            <span className="tabular-nums text-muted-foreground">
+                              Adj. {formatMoney(e.adjustedMid, e.currency, true)}
                             </span>
-                          ) : null}
+                          </div>
+                        </Link>
+
+                        <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
+                          <ToggleGroup
+                            type="single"
+                            variant="outline"
+                            size="sm"
+                            disabled={busyRow}
+                            value={e.intent ?? ""}
+                            onValueChange={(v) => {
+                              if (!v || (v !== "hold" && v !== "monitor" && v !== "sell")) return;
+                              patchIntent.mutate({
+                                id: e.id,
+                                data: { intent: v as PatchEstimateBodyIntent },
+                              });
+                            }}
+                            className="rounded-full bg-muted/30 p-0.5"
+                            aria-label={`Intent for ${e.title}`}
+                          >
+                            <ToggleGroupItem value="hold" className="h-8 rounded-full px-2.5 text-[11px]" aria-label="Hold">
+                              Hold
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="monitor" className="h-8 rounded-full px-2.5 text-[11px]" aria-label="Monitor">
+                              Monitor
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="sell" className="h-8 rounded-full px-2.5 text-[11px]" aria-label="Prep to sell">
+                              Sell
+                            </ToggleGroupItem>
+                          </ToggleGroup>
+                          <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                            {formatDistanceToNow(new Date(e.createdAt), { addSuffix: true })}
+                          </span>
                         </div>
                       </div>
-                      <div className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {formatDistanceToNow(new Date(e.createdAt), { addSuffix: true })}
-                      </div>
-                    </Link>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>
@@ -240,87 +484,95 @@ export default function HomePage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <Card className={cn(!paid && "relative overflow-hidden")}>
-          {!paid ? (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-md">
-              <Lock className="h-8 w-8 text-accent" aria-hidden />
-              <p className="max-w-[18rem] text-center text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                International arbitrage previews require Everyday+ or Professional
-              </p>
-              <Button asChild size="sm">
-                <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)}>See billing</Link>
-              </Button>
-            </div>
-          ) : null}
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Globe2 className="h-5 w-5 text-muted-foreground" />
-              <CardTitle className="text-lg">Regional markets cockpit</CardTitle>
+              <CardTitle className="text-lg">Regional mix</CardTitle>
             </div>
-            <CardDescription>Weighted by your valuation mix. Open Markets for fuller tables.</CardDescription>
+            <p className="text-sm text-muted-foreground">
+              {statsLoading || !stats || !Number.isFinite(stats.averageUplift)
+                ? "Tap a highlighted share bar. Typical uplift versus baseline fills in once you have enough saved runs."
+                : (
+                  <>
+                    Tap a highlighted share bar. Average adjustment vs baseline is running about{" "}
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {formatPercent(stats.averageUplift, true)}
+                    </span>{" "}
+                    across this workspace snapshot right now.
+                  </>
+                )}
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             {statsLoading ? (
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full rounded-xl" />
             ) : stats?.topArbitrageRegions?.length ? (
               (() => {
                 const rows = stats.topArbitrageRegions;
                 const total = rows.reduce((s, r) => s + (r.count ?? 0), 0) || 1;
                 return (
-                  <div className="space-y-2 text-sm">
-                    {rows.slice(0, 4).map((r) => (
-                      <div key={r.region} className="flex items-center justify-between gap-4">
-                        <span className="truncate text-muted-foreground">{r.region}</span>
-                        <span className="tabular-nums font-medium">
-                          {formatPercent((r.count ?? 0) / total)}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="space-y-3 text-sm">
+                    {rows.slice(0, 4).map((r, idx) => {
+                      const pct = (r.count ?? 0) / total;
+                      const focused = pickedRegionIdx === idx;
+                      return (
+                        <button
+                          key={`${r.region}-${idx}`}
+                          type="button"
+                          onClick={() => setPickedRegionIdx((i) => (i === idx ? null : idx))}
+                          aria-pressed={focused}
+                          className={cn(
+                            "relative w-full overflow-hidden rounded-xl border px-4 py-2.5 text-left transition-colors",
+                            "border-border/60 bg-muted/10 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                            focused && "border-accent/50 bg-accent/10",
+                          )}
+                        >
+                          <div
+                            className="pointer-events-none absolute inset-y-0 left-0 bg-accent/20 transition-[width] duration-300"
+                            style={{ width: `${Math.round(pct * 100)}%` }}
+                          />
+                          <span className="relative z-10 flex items-center justify-between gap-4">
+                            <span className="truncate font-medium">{r.region}</span>
+                            <span className="shrink-0 tabular-nums text-muted-foreground">{formatPercent(pct)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 );
               })()
             ) : (
-              <p className="text-sm text-muted-foreground">Regional spread appears once you have more valuations.</p>
+              <p className="text-sm text-muted-foreground">Regional spread fills in after you collect more valuations.</p>
             )}
             <Button variant="outline" className="w-full justify-between rounded-xl" asChild>
               <Link href={mergePortfolioHref("/markets", portfolioQuerySuffix)}>
-                Dive into markets
+                Open markets cockpit
                 <TrendingUp className="h-4 w-4" />
               </Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card className={cn(!paid && "relative overflow-hidden")}>
-          {!paid ? (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-md">
-              <Sparkles className="h-8 w-8 text-accent" aria-hidden />
-              <p className="max-w-[18rem] text-center text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Monitor intents + paid-tier listing tone unlock with Everyday+
-              </p>
-              <Button asChild size="sm">
-                <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)}>Enable perks</Link>
-              </Button>
-            </div>
-          ) : null}
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Megaphone className="h-5 w-5 text-muted-foreground" />
-              <CardTitle className="text-lg">Monitor & monetize rails</CardTitle>
+              <CardTitle className="text-lg">Ad Drafts &amp; monitors</CardTitle>
             </div>
-            <CardDescription>Listing drafts · monitor intents · email knobs.</CardDescription>
+            <p className="text-sm text-muted-foreground">Shortcuts for drafts you already surfaced in reports.</p>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" className="h-auto flex-col items-start rounded-2xl py-4 text-left" asChild>
               <Link href={mergePortfolioHref("/listings", portfolioQuerySuffix)}>
-                <span className="text-sm font-semibold">Listing drafts</span>
-                <span className="text-xs text-muted-foreground">Marketplace wording</span>
+                <span className="text-sm font-semibold">Ad Drafts</span>
+                <span className="text-xs text-muted-foreground">Copy blocks</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto flex-col items-start rounded-2xl py-4 text-left" asChild>
               <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)}>
                 <span className="text-sm font-semibold">Email alerts</span>
-                <span className="text-xs text-muted-foreground">Tune monitor emails</span>
+                <span className="text-xs text-muted-foreground">Monitor pings</span>
               </Link>
             </Button>
           </CardContent>

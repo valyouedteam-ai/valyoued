@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import type { ArbitrageOption, Comparable } from "@workspace/api-client-react";
 import { useGetEstimate, getGetEstimateQueryKey, usePatchEstimate } from "@workspace/api-client-react";
 import {
   formatMoney,
@@ -12,24 +13,28 @@ import {
   ArrowLeft,
   Scale,
   Globe2,
-  Zap,
   Target,
   AlertTriangle,
+  Handshake,
   Lightbulb,
   ChevronRight,
+  ChevronDown,
   Newspaper,
   CircleDot,
   Sparkles,
   Clock,
   Megaphone,
+  ExternalLink,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useProTier } from "@/hooks/use-pro-tier";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
 import {
   PLATFORM_LABEL,
   PLATFORM_URL,
@@ -38,14 +43,133 @@ import {
   platformsForAssetType,
 } from "@/lib/platforms";
 import { safeHttpUrl } from "@/lib/safe-url";
-import { ExternalLink } from "lucide-react";
+
+/** Cost breakdown under each marketplace row. */
+function ArbitrageVenueFeeBreakdown({
+  option,
+  comparablesAnchors,
+  adjustedMidLabel,
+  sellerRegionLabel,
+}: {
+  option: ArbitrageOption;
+  comparablesAnchors: Comparable[];
+  adjustedMidLabel: string;
+  sellerRegionLabel: string;
+}) {
+  const cur = option.currency || "USD";
+  const fm = (n: number) => formatMoney(n, cur);
+  const gross = option.estimatedSalePrice;
+  const modeledNet = gross - (option.estimatedFees + option.estimatedShipping + option.estimatedDuties);
+  const netDelta = modeledNet - option.netToSeller;
+  const tallyOk =
+    Number.isFinite(netDelta) &&
+    gross > 0 &&
+    (Math.abs(netDelta) <= Math.max(2, gross * 0.02) ||
+      Math.abs(netDelta / Math.max(option.netToSeller, 1)) <= 0.03);
+
+  return (
+    <div className="no-print space-y-4 rounded-2xl border border-border/50 bg-muted/20 p-4 text-sm md:p-5">
+      <p className="font-medium text-foreground">Rough costs for this marketplace</p>
+      <p className="text-muted-foreground leading-relaxed">
+        This row uses your main estimate (<span className="tabular-nums font-medium text-foreground">{adjustedMidLabel}</span>) as a
+        starting point, then guesses what listing in <span className="font-medium text-foreground">{option.marketplace}</span> in{" "}
+        <span className="font-medium text-foreground">{option.region}</span> might look like after typical fees.
+      </p>
+
+      {comparablesAnchors.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Sales we linked to your estimate</p>
+          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            {comparablesAnchors.map((c, i) => (
+              <li key={i}>
+                <span className="font-medium capitalize text-foreground">{c.source}</span>, {c.year}: {c.description} at{" "}
+                <span className="tabular-nums font-medium text-foreground">{fm(c.price)}</span>.
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="rounded-xl border border-dashed border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+          We could not attach specific sale links here. The numbers still follow from your estimate above and the short note on the row.
+        </p>
+      )}
+
+      <div className="grid gap-3 rounded-xl bg-background/80 p-3 text-xs sm:grid-cols-2">
+        <div>
+          <p className="font-medium text-foreground">Site fees</p>
+          <p className="mt-1 text-muted-foreground">
+            About <span className="tabular-nums font-medium text-foreground">{fm(option.estimatedFees)}</span> to{" "}
+            {option.marketplace}. Real fees depend on your seller plan and promos.
+          </p>
+        </div>
+        <div>
+          <p className="font-medium text-foreground">Shipping (insured)</p>
+          <p className="mt-1 text-muted-foreground">
+            About <span className="tabular-nums font-medium text-foreground">{fm(option.estimatedShipping)}</span> from{" "}
+            <span className="font-medium text-foreground">{sellerRegionLabel || "your area"}</span> to the buyer in{" "}
+            <span className="font-medium text-foreground">{option.region}</span>.
+          </p>
+        </div>
+        <div className="sm:col-span-2">
+          <p className="font-medium text-foreground">Import tax or duty</p>
+          <p className="mt-1 text-muted-foreground">
+            {option.estimatedDuties <= 0
+              ? "None estimated for this case (often same-country sales)."
+              : (
+                <>
+                  About <span className="tabular-nums font-medium text-foreground">{fm(option.estimatedDuties)}</span> when the
+                  buyer receives the item in <span className="font-medium text-foreground">{option.region}</span>.
+                </>
+              )}
+          </p>
+        </div>
+      </div>
+
+      <blockquote className="rounded-xl border border-border/50 bg-card px-3 py-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Demand note:</span> {option.demandNote}
+      </blockquote>
+
+      <dl className="grid gap-2 rounded-xl border border-border/50 bg-card/90 p-3 text-xs tabular-nums md:text-sm">
+        <div className="flex justify-between gap-4">
+          <dt className="text-muted-foreground">Typical listing price</dt>
+          <dd className="font-medium">{fm(gross)}</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-muted-foreground">
+          <dt>Site fees</dt>
+          <dd>-{fm(option.estimatedFees)}</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-muted-foreground">
+          <dt>Shipping</dt>
+          <dd>-{fm(option.estimatedShipping)}</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-muted-foreground">
+          <dt>Tax or duty</dt>
+          <dd>-{fm(option.estimatedDuties)}</dd>
+        </div>
+        <div className="flex justify-between gap-4 border-t border-border/60 pt-2 font-semibold text-foreground">
+          <dt>About what you keep</dt>
+          <dd>{fm(option.netToSeller)}</dd>
+        </div>
+      </dl>
+
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        Figures are rounded and can drift slightly when the model stacks fees in a different order.
+        {!tallyOk ? " A small gap here is usually rounding." : " This line adds up within a small tolerance."} Check final quotes on
+        the marketplace and with a courier before you commit.
+      </p>
+    </div>
+  );
+}
 
 export default function EstimateReportPage() {
   const params = useParams();
   const id = params.id as string;
   const { isPro: globalPro } = useProTier();
+  const { data: billing } = useBillingSummary();
+  const billingPaid = Boolean(billing?.hasPaidValuationTier);
   const queryClient = useQueryClient();
   const [listingOpen, setListingOpen] = useState(false);
+  const [openedBreakdownIdx, setOpenedBreakdownIdx] = useState<number | null>(null);
 
   const patchIntent = usePatchEstimate({
     mutation: {
@@ -57,6 +181,20 @@ export default function EstimateReportPage() {
   const { data: estimate, isLoading } = useGetEstimate(id, {
     query: { enabled: !!id, queryKey: getGetEstimateQueryKey(id) },
   });
+
+  useEffect(() => {
+    setOpenedBreakdownIdx(null);
+  }, [id]);
+
+  useEffect(() => {
+    const rows = estimate?.arbitrage;
+    if (!rows?.length) return;
+    setOpenedBreakdownIdx((curr) => {
+      if (curr !== null) return curr;
+      const rec = rows.findIndex((r) => r.recommended);
+      return rec >= 0 ? rec : null;
+    });
+  }, [estimate?.arbitrage]);
 
   const proInsightsSanitized = useMemo(() => {
     if (!estimate?.proInsights) return null;
@@ -77,33 +215,35 @@ export default function EstimateReportPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto space-y-8 animate-pulse">
-        <div className="h-8 w-32 bg-muted rounded"></div>
-        <div className="h-16 w-3/4 bg-muted rounded mt-4"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          <div className="h-48 bg-muted rounded"></div>
-          <div className="h-48 bg-muted rounded"></div>
-        </div>
-        <div className="h-64 bg-muted rounded mt-8"></div>
+      <div className="mx-auto max-w-4xl animate-pulse space-y-10 px-4 pt-8 sm:px-6">
+        <div className="h-9 w-28 rounded-full bg-muted" />
+        <div className="h-12 max-w-xl rounded-xl bg-muted" />
+        <div className="h-40 rounded-3xl bg-muted" />
+        <div className="h-52 rounded-3xl bg-muted" />
       </div>
     );
   }
 
   if (!estimate) {
     return (
-      <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30 max-w-3xl mx-auto mt-12">
-        <h3 className="text-xl font-sans mb-2">Report Not Found</h3>
-        <p className="text-muted-foreground mb-6">This estimate does not exist or you do not have access.</p>
+      <div className="mx-auto mt-16 flex max-w-md flex-col items-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center">
+        <h2 className="text-lg font-semibold text-foreground">We couldn&apos;t open this report</h2>
+        <p className="mt-2 text-sm text-muted-foreground">It may have been removed or you may not have access.</p>
         <Link href="/estimates">
-          <Button variant="outline">Back to Estimates</Button>
+          <Button className="mt-6" variant="outline">
+            Back to reports
+          </Button>
         </Link>
       </div>
     );
   }
 
-  // What was saved with this estimate (API / billing). Expanded Pro follows saved tier or current subscription.
+  // Pro detail: browser toggle, paid subscription snapshot, or estimates generated on the Pro tier unlock most sections.
+  // International marketplace table and arbitrage narrative additionally require Pro-generate or an active paid valuation plan.
   const savedTierPro = estimate.tier === "pro";
-  const showExpandedPro = savedTierPro || globalPro;
+  const arbitrageVenuesUnlocked = savedTierPro || billingPaid;
+  const reportBadgePro = savedTierPro || globalPro || billingPaid;
+  const showExpandedPro = savedTierPro || globalPro || billingPaid;
 
   const uplift = (estimate.netMarketFactor ?? 1) - 1;
   const ccy = estimate.currency ?? "USD";
@@ -133,25 +273,25 @@ export default function EstimateReportPage() {
   const currentYear = new Date().getFullYear();
   const staleSaleBeforeYear = currentYear - 3;
   const fmt = (v: number, compact = false) => formatMoney(v, ccy, compact);
+  const compAnchorsTop = comparables.slice(0, 4);
+  const adjustedMidLabel = fmt(estimate.adjustedMid);
 
   return (
-    <div className="max-w-5xl mx-auto pb-24 print:pb-0">
-      <div className="no-print flex items-center justify-between mb-8 gap-2 flex-wrap">
+    <div className="mx-auto max-w-4xl px-4 pb-24 pt-2 print:max-w-none print:px-0 print:pb-0 sm:px-6">
+      <div className="no-print mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/estimates">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="mr-2 h-4 w-4" /> All reports
           </Button>
         </Link>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => setListingOpen(true)}
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-            data-testid="report-list-btn"
-          >
-            <Megaphone className="h-4 w-4 mr-2" /> Generate listing ad
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          onClick={() => setListingOpen(true)}
+          className="bg-accent text-accent-foreground hover:bg-accent/90 sm:shrink-0"
+          data-testid="report-list-btn"
+        >
+          <Megaphone className="mr-2 h-4 w-4" /> Draft an ad
+        </Button>
       </div>
 
       <GenerateListingDialog
@@ -162,22 +302,51 @@ export default function EstimateReportPage() {
         onOpenChange={setListingOpen}
       />
 
-      <section className="no-print mb-8">
-        <Card className="border-border/60 bg-card/60 shadow-sm backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-sans">Plans for this asset</CardTitle>
-            <CardDescription>
-              Tell us whether you&apos;re holding, watching value changes, or ready to draft a listing. We steer reminders and
-              tools from this intent.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+      <header className="mb-14 space-y-8 print:break-inside-avoid">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="text-foreground/90">{assetTypeName}</span>
+            {sellerRegion ? (
+              <>
+                <span className="text-border" aria-hidden>
+                  ·
+                </span>
+                <span>{sellerRegion}</span>
+              </>
+            ) : null}
+            <span className="text-border" aria-hidden>
+              ·
+            </span>
+            <span className="tabular-nums">{ccy}</span>
+            <span className="text-border" aria-hidden>
+              ·
+            </span>
+            <time dateTime={estimate.createdAt}>{formatDate(estimate.createdAt)}</time>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!reportBadgePro ? (
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Summary report</span>
+            ) : (
+              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-medium text-accent">Full report</span>
+            )}
+          </div>
+          <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-[2.5rem] md:leading-[1.15]">
+            {report.headline}
+          </h1>
+          {report.summary ? (
+            <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">{report.summary}</p>
+          ) : null}
+        </div>
+
+        <section className="no-print rounded-2xl border border-border/50 bg-muted/25 p-1 sm:inline-flex">
+          <div className="flex flex-col gap-1 sm:flex-row">
             {(["hold", "monitor", "sell"] as const).map((intent) => (
               <Button
                 key={intent}
                 type="button"
                 size="sm"
-                variant={estimate.intent === intent ? "default" : "outline"}
+                variant={estimate.intent === intent ? "default" : "ghost"}
+                className={estimate.intent === intent ? "" : "text-muted-foreground"}
                 disabled={patchIntent.isPending}
                 onClick={() => {
                   patchIntent.mutate(
@@ -190,352 +359,328 @@ export default function EstimateReportPage() {
                   );
                 }}
               >
-                {intent === "hold" ? "Hold" : intent === "monitor" ? "Monitor value" : "Prep to sell"}
+                {intent === "hold" ? "Keeping it" : intent === "monitor" ? "Watching price" : "Getting ready to sell"}
               </Button>
             ))}
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </section>
 
-      <header className="space-y-6 mb-12">
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge variant="outline" className="font-sans bg-background px-3 py-1 text-xs tracking-widest uppercase border-border/50 shadow-sm">
-            {assetTypeName}
-          </Badge>
-          <Badge
-            variant={savedTierPro ? "default" : "secondary"}
-            className={`font-sans px-3 py-1 text-xs tracking-widest uppercase shadow-sm ${
-              savedTierPro ? "bg-accent hover:bg-accent text-accent-foreground" : ""
-            }`}
-          >
-            {savedTierPro ? "PRO REPORT" : "FREE REPORT"}
-          </Badge>
-          <Badge variant="outline" className="font-sans px-3 py-1 text-xs tracking-widest border-border/50">
-            {sellerRegion ? `${sellerRegion} · ${ccy}` : ccy}
-          </Badge>
-          <span className="text-xs text-muted-foreground font-sans">{formatDate(estimate.createdAt)}</span>
-        </div>
-
-        <div>
-          <h1 className="text-4xl md:text-5xl font-sans font-bold text-foreground leading-tight">
-            {report.headline}
-          </h1>
-          <p className="text-xl text-muted-foreground mt-4 max-w-3xl font-sans italic">{report.summary}</p>
+        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm print:border-border print:shadow-none">
+          <div className="border-b border-border/50 bg-gradient-to-br from-accent/[0.07] via-transparent to-transparent p-6 sm:p-8 md:p-10">
+            <p className="text-sm font-medium text-muted-foreground">Estimate today</p>
+            <p className="mt-2 text-5xl font-semibold tabular-nums tracking-tight text-foreground sm:text-6xl">{fmt(estimate.adjustedMid)}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Likely band {fmt(estimate.adjustedLow, true)} to {fmt(estimate.adjustedHigh, true)}
+            </p>
+            {uplift !== 0 ? (
+              <p
+                className={cn(
+                  "mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
+                  uplift > 0
+                    ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                    : "bg-red-500/10 text-red-700 dark:text-red-400",
+                )}
+              >
+                {uplift > 0 ? "Up" : "Down"} about {formatPercent(Math.abs(uplift))} vs sales-only view
+              </p>
+            ) : null}
+            {report.marketNarrative ? (
+              <p className="mt-6 max-w-2xl text-sm leading-relaxed text-foreground/85 sm:text-base">{report.marketNarrative}</p>
+            ) : null}
+          </div>
+          <div className="grid gap-0 sm:grid-cols-2 sm:divide-x sm:divide-border/50">
+            <div className="p-6 sm:p-8">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">From similar sales</p>
+              <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{fmt(estimate.baselineMid)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Range {fmt(estimate.baselineLow, true)} to {fmt(estimate.baselineHigh, true)}
+              </p>
+              {report.baselineNarrative ? (
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{report.baselineNarrative}</p>
+              ) : null}
+            </div>
+            <div className="border-t border-border/50 p-6 sm:border-t-0 sm:p-8">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                The larger number layers news, seasonality, and demand on top of what similar items have sold for. Use the range,
+                not a single figure, when you talk to buyers.
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="space-y-12">
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="border-border/50 shadow-sm bg-card/50 overflow-hidden print-break-inside-avoid">
-            <div className="h-1.5 w-full bg-border"></div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-sans flex items-center gap-2">
-                <Scale className="h-5 w-5 text-muted-foreground" />
-                Baseline Valuation
-              </CardTitle>
-              <CardDescription>Based on comparable sales</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-sans font-bold tracking-tight text-foreground">{fmt(estimate.baselineMid)}</div>
-              <div className="text-sm text-muted-foreground mt-2 font-sans">
-                Range: {fmt(estimate.baselineLow, true)} – {fmt(estimate.baselineHigh, true)}
-              </div>
-              <p className="text-sm mt-4 text-foreground/80 leading-relaxed border-t border-border/50 pt-4">
-                {report.baselineNarrative}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-accent/30 shadow-md bg-card overflow-hidden print-break-inside-avoid">
-            <div className="h-1.5 w-full bg-accent"></div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-sans flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-accent" />
-                  Market Adjusted
-                </div>
-                <Badge
-                  variant="outline"
-                  className={`font-sans text-xs ${
-                    uplift > 0
-                      ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900"
-                      : uplift < 0
-                      ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900"
-                      : "bg-muted"
-                  }`}
-                >
-                  {uplift > 0 ? "+" : ""}
-                  {formatPercent(uplift)} from signals
-                </Badge>
-              </CardTitle>
-              <CardDescription>Current real-time pricing power</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-sans font-bold tracking-tight text-foreground">{fmt(estimate.adjustedMid)}</div>
-              <div className="text-sm text-muted-foreground mt-2 font-sans">
-                Range: {fmt(estimate.adjustedLow, true)} – {fmt(estimate.adjustedHigh, true)}
-              </div>
-              <p className="text-sm mt-4 text-foreground/80 leading-relaxed border-t border-border/50 pt-4">
-                {report.marketNarrative}
-              </p>
-            </CardContent>
-          </Card>
-        </section>
-
+      <div className="space-y-16 md:space-y-20">
         {!showExpandedPro && (
-          <section className="print-break-inside-avoid">
-            <Card className="relative overflow-hidden border-accent/40 bg-gradient-to-br from-card via-card to-accent/5 shadow-lg">
-              <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-chart-2/10 blur-3xl pointer-events-none" />
-              <CardHeader className="relative">
-                <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-accent text-accent-foreground flex items-center justify-center shadow-md glow-accent shrink-0">
-                    <Sparkles className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-2xl font-sans font-semibold">
-                      {savedTierPro ? (
-                        <>
-                          Pro detail hidden. Turn on <span className="brand-gradient">Pro preview</span>
-                        </>
-                      ) : (
-                        <>
-                          Unlock the full <span className="brand-gradient">Pro Report</span>
-                        </>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="text-base mt-1">
-                      {savedTierPro
-                        ? "The header Pro toggle is off. Switch it on to show world events, comparables, and execution strategy for this report."
-                        : "You're seeing the headline price. Pro adds everything you need to actually sell well."}
-                    </CardDescription>
-                  </div>
+          <section className="print-break-inside-avoid rounded-3xl border border-border/60 bg-muted/15 p-6 sm:p-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+              <div className="flex gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+                  <Sparkles className="h-5 w-5" />
                 </div>
-              </CardHeader>
+                <div className="min-w-0 space-y-2">
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                    {savedTierPro ? "Turn on Pro preview to see the rest" : "See the full picture"}
+                  </h2>
+                  <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    {savedTierPro
+                      ? "This report was run with full detail. Flip the Pro switch in the header to show news, similar sales, and seller tips."
+                      : "Add news, where to list, similar sales, and step-by-step selling help."}
+                  </p>
+                </div>
+              </div>
               {!savedTierPro ? (
-              <CardContent className="relative">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                  {[
-                    { icon: Clock, label: "When to sell", desc: "Optimal timing window for your market" },
-                    { icon: Newspaper, label: "World events impact", desc: "Live news + how each story moves your price" },
-                    { icon: Globe2, label: isMobile ? "International arbitrage" : "Local market analysis", desc: isMobile ? "Best country & marketplace to net the most" : "Best local marketplace, fees & buyer pool" },
-                    { icon: Scale, label: "Verified comparables", desc: "Recent sold prices that ground the estimate" },
-                    { icon: Target, label: "Anchor & walk-away prices", desc: "Negotiation tactics, red flags, listing tips" },
-                  ].map((f) => (
-                    <div key={f.label} className="flex items-start gap-3 p-3 rounded-lg bg-background/60 border border-border/40">
-                      <f.icon className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-foreground">{f.label}</div>
-                        <div className="text-xs text-muted-foreground leading-snug">{f.desc}</div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex shrink-0 flex-col gap-3 md:items-end">
+                  <Link href="/settings">
+                    <Button className="bg-accent text-accent-foreground hover:bg-accent/90">Upgrade in settings</Button>
+                  </Link>
+                  <p className="text-xs text-muted-foreground md:text-right">Everyday+ or Professional</p>
                 </div>
-                <Link href="/settings">
-                  <Button
-                    size="lg"
-                    className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg glow-accent w-full sm:w-auto"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Unlock with Everyday+ or Professional
-                  </Button>
-                </Link>
-                <p className="text-[11px] text-muted-foreground font-sans mt-3 uppercase tracking-wider">
-                  Subscription-backed · upgrade in billing settings
-                </p>
-              </CardContent>
               ) : null}
-            </Card>
+            </div>
+            {!savedTierPro ? (
+              <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+                {[
+                  { icon: Clock, text: "Good times to list" },
+                  { icon: Newspaper, text: "How headlines might change your price" },
+                  { icon: Globe2, text: isMobile ? "Where abroad might pay more" : "Where local buyers shop most" },
+                  { icon: Scale, text: "Similar sales you can point to" },
+                  { icon: Target, text: "Prices to open with and walk away from" },
+                ].map((f) => (
+                  <li key={f.text} className="flex items-center gap-3 rounded-xl border border-border/40 bg-background/60 px-3 py-2.5 text-sm">
+                    <f.icon className="h-4 w-4 shrink-0 text-accent" />
+                    <span className="text-foreground/90">{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </section>
         )}
 
         {/* World Events – PRO ONLY */}
         {showExpandedPro && estimate.worldEvents && estimate.worldEvents.length > 0 && (
-          <section className="space-y-4 print-break-inside-avoid">
-            <div>
-              <h3 className="text-xl font-sans flex items-center gap-2">
-                <Newspaper className="h-5 w-5 text-muted-foreground" /> World Events Impact
-              </h3>
+          <section className="space-y-6 print:break-inside-avoid">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">News that may tilt the price</h2>
+              {report.worldEventsNarrative ? (
+                <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{report.worldEventsNarrative}</p>
+              ) : null}
             </div>
-            <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">{report.worldEventsNarrative}</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {estimate.worldEvents.map((ev, i) => {
                 const tone =
                   ev.sentiment === "positive"
-                    ? "border-green-500/40 bg-green-500/5"
+                    ? "border-green-500/35 bg-green-500/[0.04]"
                     : ev.sentiment === "negative"
-                    ? "border-red-500/40 bg-red-500/5"
-                    : "border-border bg-card/50";
+                      ? "border-red-500/35 bg-red-500/[0.04]"
+                      : "border-border/60 bg-muted/15";
                 const dot =
                   ev.sentiment === "positive"
                     ? "text-green-600 dark:text-green-400"
                     : ev.sentiment === "negative"
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-muted-foreground";
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-muted-foreground";
                 return (
-                  <Card key={i} className={`shadow-sm ${tone}`}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base font-sans leading-snug flex items-start gap-2">
-                          <CircleDot className={`h-4 w-4 mt-1 shrink-0 ${dot}`} />
-                          {stripQ(ev.title)}
-                        </CardTitle>
-                        <Badge variant="outline" className="font-sans text-[10px] uppercase shrink-0">
-                          {ev.scope}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-foreground/80 leading-relaxed">{stripQ(ev.summary)}</p>
-                      {(ev.source || ev.url || ev.publishedAt) && (
-                        <div className="text-xs text-muted-foreground mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-                          {ev.source && <span className="font-sans uppercase tracking-wider">{ev.source}</span>}
-                          {ev.publishedAt && (
-                            <>
-                              {ev.source && <span className="opacity-50">·</span>}
-                              <span className="font-sans">
+                  <article key={i} className={`rounded-2xl border p-5 ${tone}`}>
+                    <div className="flex items-start gap-3">
+                      <CircleDot className={`mt-0.5 h-4 w-4 shrink-0 ${dot}`} aria-hidden />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <h3 className="text-sm font-semibold leading-snug text-foreground">{stripQ(ev.title)}</h3>
+                          {ev.scope ? (
+                            <span className="shrink-0 text-[11px] text-muted-foreground">{ev.scope}</span>
+                          ) : null}
+                        </div>
+                        <p className="text-sm leading-relaxed text-muted-foreground">{stripQ(ev.summary)}</p>
+                        {(ev.source || ev.url || ev.publishedAt) && (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                            {ev.source ? <span>{ev.source}</span> : null}
+                            {ev.publishedAt ? (
+                              <span className="tabular-nums">
                                 {(() => {
                                   const d = new Date(ev.publishedAt);
-                                  return isNaN(d.getTime())
-                                    ? ev.publishedAt
-                                    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+                                  return Number.isNaN(d.getTime()) ? ev.publishedAt : d.toLocaleDateString(undefined, {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  });
                                 })()}
                               </span>
-                            </>
-                          )}
-                          {ev.url && (
-                            <a href={ev.url} target="_blank" rel="noreferrer" className="text-accent hover:underline inline-flex items-center ml-auto">
-                              Read <ChevronRight className="h-3 w-3 ml-0.5" />
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                            ) : null}
+                            {ev.url ? (
+                              <a href={ev.url} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center font-medium text-accent hover:underline">
+                                Read article
+                                <ChevronRight className="ml-0.5 h-3 w-3" />
+                              </a>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
                 );
               })}
             </div>
           </section>
         )}
 
-        {/* Arbitrage – PRO ONLY */}
-        {showExpandedPro && (
-        <section className="space-y-4 print-break-inside-avoid">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-sans flex items-center gap-2">
-              <Globe2 className="h-5 w-5 text-muted-foreground" />
-              {isMobile ? "International Arbitrage" : "Local Market"}
-            </h3>
-            {!isMobile && (
-              <Badge variant="outline" className="font-sans text-[10px] uppercase tracking-widest">
-                Local-only asset
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mb-2 max-w-3xl">{report.arbitrageNarrative}</p>
-          <p className="text-xs text-muted-foreground mb-4 max-w-3xl italic">
-            Friction includes marketplace fees, insured cross-border shipping, and import duties / VAT, so "Net to Seller" is what actually lands in your account.
-          </p>
+        {/* Where to sell estimates: Pro-tier generation or paid plan */}
+        {showExpandedPro && arbitrageVenuesUnlocked && arbitrageRows.length > 0 && (
+          <section className="space-y-6 print:break-inside-avoid">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                {isMobile ? "Where listing might pay best" : "Local sites and payouts"}
+              </h2>
+              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                Rough guesses for listing price minus typical fees so you can compare destinations. Open a row for plain-English notes.
+              </p>
+            </div>
 
-          <div className="border border-border/50 rounded-lg overflow-hidden bg-card/30">
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead className="w-[140px]">Region</TableHead>
-                  <TableHead>Marketplace</TableHead>
-                  <TableHead className="text-right">Sale Price</TableHead>
-                  <TableHead className="text-right text-muted-foreground">
-                    Friction
-                    <div className="text-[9px] font-normal normal-case tracking-normal text-muted-foreground/70">
-                      Fees · Ship+Insurance · Duty
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right font-bold text-foreground">Net to Seller</TableHead>
-                  <TableHead className="w-[120px] text-right">List here</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {arbitrageRows.map((option, i) => {
-                  const friction = option.estimatedFees + option.estimatedShipping + option.estimatedDuties;
-                  const slug = matchPlatformSlug(option.marketplace);
-                  const postUrl = slug ? PLATFORM_URL[slug] : null;
-                  return (
-                    <TableRow key={i} className={option.recommended ? "bg-accent/5 hover:bg-accent/10" : ""}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {option.region}
-                          {option.recommended && (
-                            <Badge variant="default" className="bg-accent hover:bg-accent text-accent-foreground text-[10px] px-1.5 py-0 uppercase tracking-wider">
-                              Best
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{option.marketplace}</div>
-                        <div className="text-xs text-muted-foreground line-clamp-1">{option.demandNote}</div>
-                      </TableCell>
-                      <TableCell className="text-right font-sans">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
-                      <TableCell className="text-right font-sans text-muted-foreground text-xs">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-help underline decoration-dotted underline-offset-2">
-                              -{formatMoney(friction, option.currency)}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" className="text-xs space-y-1 font-sans">
-                            <div className="flex justify-between gap-4">
-                              <span className="text-muted-foreground">Marketplace fees</span>
-                              <span>-{formatMoney(option.estimatedFees, option.currency)}</span>
+            {compAnchorsTop.length > 0 ? (
+              <div className="rounded-2xl border border-border/50 bg-muted/20 px-4 py-4">
+                <p className="text-xs font-medium text-muted-foreground">Sales shaping this estimate</p>
+                <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+                  {compAnchorsTop.map((c, idx) => (
+                    <li key={idx}>
+                      <span className="font-medium text-foreground">{c.source}</span>, {c.year}: {c.description} at{" "}
+                      <span className="tabular-nums font-medium text-foreground">{fmt(c.price)}</span>.
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
+                We could not attach specific sold listings to this estimate. Numbers below still follow from your headline estimate; open any row for more detail.
+              </p>
+            )}
+
+            {report.arbitrageNarrative ? (
+              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{report.arbitrageNarrative}</p>
+            ) : null}
+
+            <div className="overflow-x-auto rounded-2xl border border-border/50 bg-card shadow-sm">
+              <Table>
+                <TableHeader className="border-b border-border/50 bg-muted/30">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="whitespace-nowrap font-medium text-foreground">Place</TableHead>
+                    <TableHead className="min-w-[120px] font-medium text-foreground">Site</TableHead>
+                    <TableHead className="text-right font-medium whitespace-nowrap text-foreground">List price*</TableHead>
+                    <TableHead className="text-right text-muted-foreground">
+                      Costs*
+                      <div className="text-[11px] font-normal normal-case text-muted-foreground/80">Fees, ship, duty</div>
+                    </TableHead>
+                    <TableHead className="text-right font-semibold text-foreground">You'd keep*</TableHead>
+                    <TableHead className="w-[120px] text-right whitespace-nowrap">Post listing</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {arbitrageRows.map((option, i) => {
+                    const friction = option.estimatedFees + option.estimatedShipping + option.estimatedDuties;
+                    const slug = matchPlatformSlug(option.marketplace);
+                    const postUrl = slug ? PLATFORM_URL[slug] : null;
+                    return (
+                      <Fragment key={`${option.region}-${option.marketplace}-${i}`}>
+                        <TableRow className={cn("border-border/40", option.recommended ? "bg-accent/[0.06]" : "")}>
+                          <TableCell className="align-top font-medium">
+                            <div className="flex flex-col gap-1.5">
+                              <span>{option.region}</span>
+                              {option.recommended ? (
+                                <span className="inline-flex w-fit rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
+                                  Best payout
+                                </span>
+                              ) : null}
+                              <p className="text-[11px] font-normal leading-snug text-muted-foreground">{option.demandNote}</p>
                             </div>
-                            <div className="flex justify-between gap-4">
-                              <span className="text-muted-foreground">Shipping + insurance</span>
-                              <span>-{formatMoney(option.estimatedShipping, option.currency)}</span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                              <span className="text-muted-foreground">Import duties / VAT</span>
-                              <span>-{formatMoney(option.estimatedDuties, option.currency)}</span>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell className="text-right font-sans font-bold text-base">{formatMoney(option.netToSeller, option.currency)}</TableCell>
-                      <TableCell className="text-right">
-                        {postUrl ? (
-                          <a
-                            href={postUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-accent/10 text-accent hover:bg-accent/20 border border-accent/30 transition-colors"
-                            data-testid={`arb-${i}-post-link`}
-                          >
-                            List on {PLATFORM_LABEL[slug!] ?? option.marketplace}
-                            <ExternalLink className="h-2.5 w-2.5" />
-                          </a>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground/60 italic">Manual listing</span>
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <div className="text-sm font-medium">{option.marketplace}</div>
+                            <button
+                              type="button"
+                              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                              onClick={() => setOpenedBreakdownIdx((prev) => (prev === i ? null : i))}
+                              aria-expanded={openedBreakdownIdx === i}
+                            >
+                              {openedBreakdownIdx === i ? "Hide details" : "How we got these numbers"}
+                              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", openedBreakdownIdx === i && "rotate-180")} />
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-right align-top tabular-nums text-sm">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
+                          <TableCell className="text-right align-top text-muted-foreground text-sm tabular-nums">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted underline-offset-2">
+                                  −{formatMoney(friction, option.currency)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="space-y-1 text-xs font-sans">
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Site fees</span>
+                                  <span>−{formatMoney(option.estimatedFees, option.currency)}</span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Shipping</span>
+                                  <span>−{formatMoney(option.estimatedShipping, option.currency)}</span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Tax or duty</span>
+                                  <span>−{formatMoney(option.estimatedDuties, option.currency)}</span>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell className="text-right align-top text-base font-semibold tabular-nums">
+                            {formatMoney(option.netToSeller, option.currency)}
+                          </TableCell>
+                          <TableCell className="align-top text-right">
+                            {postUrl ? (
+                              <a
+                                href={postUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 rounded-lg border border-accent/35 bg-accent/10 px-2 py-1.5 text-[11px] font-medium text-accent transition-colors hover:bg-accent/18"
+                                data-testid={`arb-${i}-post-link`}
+                              >
+                                {PLATFORM_LABEL[slug!] ?? option.marketplace}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">Add listing manually</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        {openedBreakdownIdx === i && (
+                          <TableRow className="border-t-0 bg-muted/20 hover:bg-muted/25">
+                            <TableCell className="p-4 sm:p-6" colSpan={6}>
+                              <ArbitrageVenueFeeBreakdown
+                                option={option}
+                                comparablesAnchors={compAnchorsTop}
+                                adjustedMidLabel={adjustedMidLabel}
+                                sellerRegionLabel={sellerRegion}
+                              />
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
+                      </Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-[11px] text-muted-foreground">* Estimated. Confirm on the marketplace before you rely on these figures.</p>
+          </section>
         )}
 
-        {/* Comparables – PRO ONLY */}
+
+        {/* Similar sales */}
         {showExpandedPro && comparables.length > 0 && (
-        <section className="space-y-4 print-break-inside-avoid">
-          <h3 className="text-xl font-sans">Recent Sales &amp; Live Listings</h3>
-          <p className="text-sm text-muted-foreground max-w-3xl -mt-2">
-            Comparable sales aim at the last year or two. When the model supplies a real web address, we show an
-            &quot;Open verified source&quot; link (unsafe or made-up URLs are removed). Use the marketplace buttons
-            to run a fresh search, including Facebook Marketplace, for what is listed today.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <section className="space-y-6 print:break-inside-avoid">
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">Similar past sales</h2>
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Use these as reference points. We only show links we could verify. Buttons open a fresh search so you see what buyers are seeing now.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {comparables.map((comp, i) => {
               const livePlatforms = [...new Set(platformsForAssetType(assetTypeName))];
               const searchQuery = `${estimateTitle} ${comp.description}`.slice(0, 90);
@@ -543,45 +688,37 @@ export default function EstimateReportPage() {
               const saleYear = typeof comp.year === "number" && Number.isFinite(comp.year) ? comp.year : null;
               const isStaleSale = saleYear != null && saleYear < staleSaleBeforeYear;
               return (
-                <Card key={i} className="bg-card/50 border-border/50 shadow-sm flex flex-col">
+                <Card key={i} className="flex flex-col overflow-hidden rounded-2xl border-border/50 bg-card shadow-sm">
                   <CardHeader className="p-4 pb-2">
-                    <div className="flex justify-between items-start gap-2">
-                      <Badge variant="outline" className="text-[10px] uppercase font-sans shrink-0">
-                        {comp.source}
-                      </Badge>
-                      <span className="font-sans font-bold tabular-nums">{fmt(comp.price)}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">{comp.source}</span>
+                      <span className="text-lg font-semibold tabular-nums">{fmt(comp.price)}</span>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 pt-2 flex-1 flex flex-col">
-                    <p className="text-sm font-medium line-clamp-3 mb-2">{comp.description}</p>
-                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
-                      <span className="inline-flex items-center gap-1.5">
-                        Sale year {saleYear ?? "-"}
-                        {isStaleSale ? (
-                          <Badge variant="secondary" className="text-[9px] font-normal uppercase tracking-wide">
-                            Older sale
-                          </Badge>
-                        ) : null}
-                      </span>
+                  <CardContent className="flex flex-1 flex-col p-4 pt-2">
+                    <p className="line-clamp-3 text-sm leading-snug text-foreground">{comp.description}</p>
+                    <div className="mb-3 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span className="tabular-nums">{saleYear != null ? `Sold ${saleYear}` : "Year unknown"}</span>
+                      {isStaleSale ? (
+                        <span className="rounded bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground">Older sale</span>
+                      ) : null}
                       {verifiedUrl ? (
                         <a
                           href={verifiedUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-accent hover:underline font-medium"
+                          className="inline-flex items-center gap-1 font-medium text-accent hover:underline"
                           data-testid={`comp-${i}-source-link`}
                         >
-                          Open verified source
+                          Open source link
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       ) : (
-                        <span className="text-[11px] italic">No direct link for this row</span>
+                        <span className="text-muted-foreground/80">No link for this row</span>
                       )}
                     </div>
-                    <div className="mt-auto pt-3 border-t border-border/40">
-                      <div className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground mb-2">
-                        Search live listings
-                      </div>
+                    <div className="mt-auto border-t border-border/40 pt-3">
+                      <p className="mb-2 text-[11px] font-medium text-muted-foreground">Search what&apos;s listed now</p>
                       <div className="flex flex-wrap gap-1.5">
                         {livePlatforms.map((slug) => {
                           const url = platformSearchUrl(slug, searchQuery);
@@ -592,7 +729,7 @@ export default function EstimateReportPage() {
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-accent/10 text-accent hover:bg-accent/20 border border-accent/30 transition-colors"
+                              className="inline-flex items-center gap-1 rounded-lg border border-accent/35 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/18"
                               data-testid={`comp-${i}-platform-${slug}`}
                             >
                               {PLATFORM_LABEL[slug] ?? slug}
@@ -610,145 +747,171 @@ export default function EstimateReportPage() {
         </section>
         )}
 
-        {/* Pro Execution Strategy – PRO ONLY (estimate must have been generated as pro) */}
+        {/* Seller playbook – PRO ONLY (estimate must have been generated as pro) */}
         {showExpandedPro && proInsightsSanitized && (
-        <section className="mt-16 print-break-inside-avoid relative">
-            <div className="rounded-xl border border-accent/30 bg-accent/5 p-6 md:p-8 space-y-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 border-b border-accent/20 pb-4">
-                <div className="p-2 bg-accent text-accent-foreground rounded-md shadow-sm">
-                  <Lightbulb className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-sans font-bold text-foreground">Pro Execution Strategy</h3>
-                  <p className="text-sm text-muted-foreground font-sans mt-1">TACTICAL DIRECTIVES FOR MAXIMUM YIELD</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-2 space-y-8">
-                  <div>
-                    <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                      <Target className="h-4 w-4 text-accent" /> Negotiation Tactics
-                    </h4>
-                    <div className="space-y-4">
-                      {proInsightsSanitized.negotiationTactics.map((tactic, i) => (
-                        <div key={i} className="bg-card border border-border/50 rounded-lg p-4 shadow-sm">
-                          <h5 className="font-bold text-foreground mb-1">{tactic.title}</h5>
-                          <p className="text-sm text-foreground/80 leading-relaxed">{tactic.detail}</p>
-                        </div>
-                      ))}
+        <section className="print:break-inside-avoid relative rounded-3xl border border-border/50 bg-card shadow-sm">
+              <div className="border-b border-border/50 px-5 py-6 md:px-8 md:py-7">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent" aria-hidden>
+                      <Lightbulb className="h-5 w-5" strokeWidth={2} />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-destructive" /> Red Flags
-                      </h4>
-                      <ul className="space-y-2">
-                        {proInsightsSanitized.redFlags.map((flag, i) => (
-                          <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
-                            <span className="text-destructive mt-0.5">•</span> {flag}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-accent" /> Listing Tips
-                      </h4>
-                      <ul className="space-y-2">
-                        {proInsightsSanitized.listingTips.map((tip, i) => (
-                          <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
-                            <span className="text-accent mt-0.5">•</span> {tip}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <Card className="border-accent/40 bg-card shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Anchor Price</CardTitle>
-                      <CardDescription>Initial listing or ask</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-sans font-bold text-accent">{fmt(proInsightsSanitized.anchorPrice)}</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-destructive/40 bg-card shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Walk-Away Price</CardTitle>
-                      <CardDescription>Absolute minimum acceptable</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-sans font-bold text-destructive">{fmt(proInsightsSanitized.walkAwayPrice)}</div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="bg-card border border-border/50 rounded-lg p-4 shadow-sm space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5 text-accent" /> When to Sell
-                    </h4>
-                    <p className="text-sm font-medium">{proInsightsSanitized.optimalTiming}</p>
-                    <div className="pt-3 border-t border-border/40">
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Ready to list it now? Generate a marketplace-ready ad in seconds.
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">If you&apos;re selling</p>
+                      <h2 id="seller-playbook-heading" className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+                        Tips for price, chats, and your listing
+                      </h2>
+                      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                        Starter ask, floor amount, bargaining steps, pitfalls, listing ideas, and timing in one place.
                       </p>
-                      <Button
-                        size="sm"
-                        onClick={() => setListingOpen(true)}
-                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm"
-                        data-testid="when-to-sell-list-btn"
-                      >
-                        <Megaphone className="h-4 w-4 mr-2" /> Generate listing ad
-                      </Button>
                     </div>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0 self-start border-border/60 font-normal">
+                    Full report only
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-10 p-5 md:p-8">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border/70 bg-muted/15 p-5">
+                    <p className="text-xs font-medium text-muted-foreground">Strong first price</p>
+                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground">{fmt(proInsightsSanitized.anchorPrice)}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                      A reasonable opening number for your listing or first verbal ask. Buyers often expect some back and forth from here.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-destructive/25 bg-destructive/[0.04] p-5 dark:bg-destructive/[0.07]">
+                    <p className="text-xs font-medium text-muted-foreground">Lowest worth accepting</p>
+                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-destructive">{fmt(proInsightsSanitized.walkAwayPrice)}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                      Below this payout, pause or decline. Helps you avoid saying yes in the moment and regretting it later.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-foreground">
+                    <Handshake className="h-4 w-4 text-accent shrink-0" aria-hidden />
+                    <h4 className="text-base font-semibold">When someone bargains</h4>
+                  </div>
+                  <ol className="space-y-3">
+                    {proInsightsSanitized.negotiationTactics.map((tactic, i) => (
+                      <li
+                        key={i}
+                        className="flex gap-4 rounded-xl border border-border/50 bg-background/60 px-4 py-3.5 md:px-5 md:py-4"
+                      >
+                        <span
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums text-foreground ring-1 ring-border/70"
+                          aria-hidden
+                        >
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0 space-y-1">
+                          <p className="font-medium leading-snug text-foreground">{tactic.title}</p>
+                          <p className="text-sm leading-relaxed text-muted-foreground">{tactic.detail}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="rounded-xl border border-border/60 bg-muted/10 p-5 md:p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />
+                      <h4 className="text-base font-semibold text-foreground">Watch out for</h4>
+                    </div>
+                    <ul className="space-y-3">
+                      {proInsightsSanitized.redFlags.map((flag, i) => (
+                        <li key={i} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive/70" aria-hidden />
+                          <span>{flag}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-muted/10 p-5 md:p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-accent shrink-0" aria-hidden />
+                      <h4 className="text-base font-semibold text-foreground">Make the listing clearer</h4>
+                    </div>
+                    <ul className="space-y-3">
+                      {proInsightsSanitized.listingTips.map((tip, i) => (
+                        <li key={i} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent/70" aria-hidden />
+                          <span>{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-5 rounded-xl border border-border/60 bg-gradient-to-br from-muted/40 via-background to-background p-5 md:flex-row md:items-center md:justify-between md:gap-8 md:p-6">
+                  <div className="flex gap-4 min-w-0">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/12 text-accent"
+                      aria-hidden
+                    >
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                      <h4 className="text-base font-semibold text-foreground">Best window to list</h4>
+                      <p className="text-sm leading-relaxed text-muted-foreground">{proInsightsSanitized.optimalTiming}</p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 space-y-2 md:max-w-xs md:text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => setListingOpen(true)}
+                      className="w-full bg-accent text-accent-foreground hover:bg-accent/90 md:w-auto"
+                      data-testid="when-to-sell-list-btn"
+                    >
+                      <Megaphone className="h-4 w-4 mr-2" aria-hidden /> Draft listing copy
+                    </Button>
+                    <p className="text-xs leading-snug text-muted-foreground md:text-right">
+                      Uses this valuation to suggest wording you can paste into a marketplace.
+                    </p>
                   </div>
                 </div>
               </div>
-            </div>
         </section>
         )}
 
         {/* If user has Pro mode on but the estimate was generated as Free, prompt re-run */}
         {globalPro && estimate.tier === "free" && !estimate.proInsights && (
-          <section className="mt-8 print-break-inside-avoid">
-            <Card className="border-accent/40 bg-accent/5">
-              <CardContent className="py-5 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="h-5 w-5 text-accent shrink-0" />
-                  <div>
-                    <div className="text-sm font-semibold">Pro Mode is on, but this report was generated on Free</div>
-                    <div className="text-xs text-muted-foreground">Run a new valuation to get negotiation tactics, anchor & walk-away prices.</div>
-                  </div>
-                </div>
-                <Link href="/estimate/new">
-                  <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                    Run new Pro valuation
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+          <section className="mt-12 rounded-2xl border border-accent/35 bg-accent/10 px-4 py-5 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
+            <div className="flex gap-3">
+              <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Pro preview is on, but this run was saved as a summary-only report.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Run a fresh valuation while Pro is active to unlock seller tips and the extra sections.
+                </p>
+              </div>
+            </div>
+            <Link href="/estimate/new">
+              <Button size="sm" className="mt-4 bg-accent hover:bg-accent/90 text-accent-foreground sm:mt-0">
+                New full report
+              </Button>
+            </Link>
           </section>
         )}
 
-        <div className="pt-12 border-t border-border mt-16 text-center pb-8">
-          <p className="font-sans italic text-xl text-foreground mb-4 max-w-3xl mx-auto leading-relaxed">
-            {report.finalNarrative}
-          </p>
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground/80">Generated by ValYoued</p>
-            <p className="opacity-80">{formatDate(estimate.createdAt)}</p>
-            <p className="opacity-50 mt-4 max-w-xl mx-auto leading-relaxed">
-              This report is an estimate based on aggregated market data and statistical modeling. It does not
-              constitute formal financial or legal advice.
+        <footer className="mt-20 border-t border-border/60 pt-10 pb-12 text-center">
+          {report.finalNarrative ? (
+            <blockquote className="mx-auto mb-8 max-w-2xl text-pretty text-lg font-normal leading-relaxed text-foreground sm:text-xl">
+              {report.finalNarrative}
+            </blockquote>
+          ) : null}
+          <div className="mx-auto flex max-w-md flex-col gap-2 text-xs text-muted-foreground">
+            <span className="text-sm font-medium text-foreground">ValYoued</span>
+            <time dateTime={estimate.createdAt}>{formatDate(estimate.createdAt)}</time>
+            <p className="mt-4 leading-relaxed">
+              Estimate only, not formal advice. Pricing changes with the market.
             </p>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );

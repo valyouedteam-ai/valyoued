@@ -1,9 +1,8 @@
 import { lazy, Suspense } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Globe2, ShieldCheck, Zap } from "lucide-react";
+import { Globe2, ShieldCheck, Zap } from "lucide-react";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const Globe = lazy(() => import("@/components/Globe").then((m) => ({ default: m.Globe })));
@@ -60,19 +59,6 @@ export default function LandingPage() {
               Compare plans and pricing.
             </Link>
           </motion.p>
-          <motion.div variants={reduceMotion ? undefined : item} className="flex flex-wrap gap-3">
-            <Link href="/welcome">
-              <Button size="lg" className="h-12 rounded-full px-7 shadow-lg" data-testid="hero-create-account">
-                Create account: pick Everyday or Pro
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/start">
-              <Button size="lg" variant="outline" className="h-12 rounded-full border-border/80 px-7 shadow-md" data-testid="hero-start-cta">
-                Start free valuation
-              </Button>
-            </Link>
-          </motion.div>
           <motion.div
             variants={reduceMotion ? undefined : item}
             className="flex flex-wrap gap-6 border-t border-border/60 pt-8 text-sm text-muted-foreground"

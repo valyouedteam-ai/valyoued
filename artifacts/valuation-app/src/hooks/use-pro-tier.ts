@@ -9,7 +9,6 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { useBillingSummary } from "@/hooks/use-billing-summary";
 
 const STORAGE_KEY = "valyoued-dev-pro-preview";
 
@@ -22,9 +21,9 @@ function readStoredPreview(): boolean {
 }
 
 export type ProTierContextValue = {
-  /** Paid subscription or dev preview toggle (see `devProPreview`). */
+  /** True while the UI "Pro tier" preview switch is on (front-end only until billing gates return). */
   isPro: boolean;
-  /** Persisted local flag to unlock Pro UI without a subscription (cleared when toggled off). */
+  /** Persisted local flag between Free-tier and Pro-tier UI (billing does not enforce this currently). */
   devProPreview: boolean;
   setDevProPreview: Dispatch<SetStateAction<boolean>>;
   /** @deprecated Prefer `setDevProPreview`. */
@@ -56,9 +55,7 @@ export function ProTierProvider({ children }: { children: ReactNode }) {
     [persist],
   );
 
-  const { data } = useBillingSummary();
-  const paid = Boolean(data?.hasPaidValuationTier);
-  const isPro = paid || devProPreview;
+  const isPro = devProPreview;
 
   const value = useMemo(
     (): ProTierContextValue => ({
@@ -75,13 +72,12 @@ export function ProTierProvider({ children }: { children: ReactNode }) {
 
 export function useProTier(): ProTierContextValue {
   const ctx = useContext(ProTierContext);
-  const { data } = useBillingSummary();
-  const paid = Boolean(data?.hasPaidValuationTier);
 
   if (!ctx) {
+    const p = readStoredPreview();
     return {
-      isPro: paid,
-      devProPreview: false,
+      isPro: p,
+      devProPreview: p,
       setDevProPreview: () => {},
       setIsPro: () => {},
     };

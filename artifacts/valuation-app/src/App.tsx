@@ -10,6 +10,7 @@ import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { AppRoutes } from "@/app-routes";
 import { ProTierProvider } from "@/hooks/use-pro-tier";
 import { GeoCurrencyBootstrap } from "@/components/GeoCurrencyBootstrap";
+import { useSellerPersonaClerkSync } from "@/hooks/use-persona-sync";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -130,6 +131,12 @@ function ClerkApiAuthBridge() {
   return null;
 }
 
+/** Applies session persona to Clerk everywhere the user is logged in (not only Home). */
+function ClerkPersonaSync() {
+  useSellerPersonaClerkSync();
+  return null;
+}
+
 /** Avoid mounting any route until Clerk has finished loading, to prevent blank shells in production. */
 function ClerkBootstrapGate({ children }: { children: ReactNode }) {
   const { isLoaded } = useAuth();
@@ -150,7 +157,7 @@ function ClerkProviderWithRouter() {
       publishableKey={PUBLISHABLE_KEY!}
       proxyUrl={clerkProxyUrl()}
       signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
+      signUpUrl={`${basePath}/welcome`}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
       appearance={{
@@ -184,6 +191,7 @@ function ClerkProviderWithRouter() {
       }}
     >
       <ClerkApiAuthBridge />
+      <ClerkPersonaSync />
       <ClerkBootstrapGate>
         <AppRoutes authStub={false} />
       </ClerkBootstrapGate>

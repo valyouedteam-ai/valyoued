@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { TrendingUp, Eye, Tag, Inbox } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { TrendingUp, Eye, Tag, LayoutGrid } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { iconForAssetType } from "@/lib/asset-icons";
@@ -44,36 +42,40 @@ function saveFolders(map: FolderMap) {
 }
 
 const FOLDER_DEFS: Array<{
-  id: FolderId;
+  id: Exclude<FolderId, "uncategorized">;
   title: string;
   blurb: string;
   Icon: typeof TrendingUp;
-  tone: string;
-  ring: string;
+  stripe: string;
+  iconMuted: string;
+  dropActive: string;
 }> = [
   {
     id: "hold",
     title: "Hold",
     blurb: "Long-term keepers; let them appreciate.",
     Icon: TrendingUp,
-    tone: "from-emerald-500/15 to-emerald-500/0 border-emerald-500/30",
-    ring: "ring-emerald-400/60",
+    stripe: "border-l-emerald-500/80",
+    iconMuted: "text-emerald-600/85 dark:text-emerald-400/90",
+    dropActive: "ring-2 ring-emerald-500/35 bg-emerald-500/[0.04]",
   },
   {
     id: "monitor",
     title: "Monitor",
     blurb: "Watching the market; could go either way.",
     Icon: Eye,
-    tone: "from-amber-500/15 to-amber-500/0 border-amber-500/30",
-    ring: "ring-amber-400/60",
+    stripe: "border-l-amber-500/80",
+    iconMuted: "text-amber-600/85 dark:text-amber-400/90",
+    dropActive: "ring-2 ring-amber-500/35 bg-amber-500/[0.04]",
   },
   {
     id: "sell",
     title: "Sell",
     blurb: "Time to list; capture today's price.",
     Icon: Tag,
-    tone: "from-rose-500/15 to-rose-500/0 border-rose-500/30",
-    ring: "ring-rose-400/60",
+    stripe: "border-l-rose-500/80",
+    iconMuted: "text-rose-600/85 dark:text-rose-400/90",
+    dropActive: "ring-2 ring-rose-500/35 bg-rose-500/[0.04]",
   },
 ];
 
@@ -118,30 +120,34 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
     e.dataTransfer.setData("text/plain", estimateId);
   };
 
-  const totalIn = (folderId: FolderId) =>
-    grouped[folderId].reduce((s, i) => s + i.liveValue, 0);
+  const totalIn = (folderId: FolderId) => grouped[folderId].reduce((s, i) => s + i.liveValue, 0);
 
   return (
-    <Card className="bg-card/40 border-border/40">
-      <CardHeader className="pb-3 border-b border-border/40">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <CardTitle className="font-sans text-lg flex items-center gap-2">
-              <Inbox className="h-4 w-4 text-accent" />
-              Smart folders
-            </CardTitle>
-            <CardDescription className="text-xs mt-1">
-              Drag icons between folders; hover an icon for the name, type, and value. We remember your sorting on this
-              device.
-            </CardDescription>
+    <section className="rounded-2xl border border-border/50 bg-card/40">
+      <div className="border-b border-border/40 px-5 py-4 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex gap-3 min-w-0">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+              <LayoutGrid className="h-4 w-4" aria-hidden />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">Smart folders</h2>
+              <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                Drag tiles between folders. Pause on a tile for title, type, and value. Layout is saved on this device
+                only.
+              </p>
+            </div>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="pt-4 space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      </div>
+
+      <div className="space-y-4 p-5 sm:p-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {FOLDER_DEFS.map((def) => {
             const list = grouped[def.id];
             const isOver = dragOver === def.id;
+            const sumLabel = list.length > 0 ? formatMoney(totalIn(def.id), list[0].currency) : null;
+
             return (
               <div
                 key={def.id}
@@ -151,7 +157,6 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
                   setDragOver(def.id);
                 }}
                 onDragLeave={(e) => {
-                  // Only clear if leaving the drop zone (not entering a child)
                   if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
                     setDragOver((cur) => (cur === def.id ? null : cur));
                   }
@@ -163,31 +168,34 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
                 }}
                 data-testid={`folder-${def.id}`}
                 className={cn(
-                  "rounded-xl border bg-gradient-to-br transition-all min-h-[180px] p-3 flex flex-col",
-                  def.tone,
-                  isOver && `ring-2 ${def.ring} scale-[1.01]`,
+                  "flex min-h-[168px] flex-col rounded-xl border border-border/50 bg-background/40",
+                  "border-l-[3px] shadow-sm transition-colors",
+                  def.stripe,
+                  isOver && def.dropActive,
                 )}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <def.Icon className="h-4 w-4" />
-                    <span className="font-semibold text-sm">{def.title}</span>
-                    <Badge variant="secondary" className="font-sans text-[10px]">
-                      {list.length}
-                    </Badge>
+                <header className="flex flex-col gap-1 px-4 pt-3.5 pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <def.Icon className={cn("h-4 w-4 shrink-0", def.iconMuted)} aria-hidden />
+                      <span className="truncate text-sm font-semibold">{def.title}</span>
+                      <span className="shrink-0 rounded-md bg-muted/80 px-1.5 py-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+                        {list.length}
+                      </span>
+                    </div>
+                    {sumLabel ? (
+                      <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+                        {sumLabel}
+                      </span>
+                    ) : null}
                   </div>
-                  {list.length > 0 && (
-                    <span className="text-[10px] font-sans text-muted-foreground">
-                      ≈ {formatMoney(totalIn(def.id), list[0].currency)}
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground mb-3">{def.blurb}</p>
+                  <p className="text-[11px] leading-snug text-muted-foreground">{def.blurb}</p>
+                </header>
 
-                <div className="flex flex-wrap gap-2 flex-1 content-start items-start">
+                <div className="flex flex-1 flex-wrap content-start gap-2 px-4 pb-3.5 pt-1">
                   {list.length === 0 ? (
-                    <div className="w-full min-h-[120px] flex items-center justify-center rounded-md border border-dashed border-border/50 text-[11px] text-muted-foreground italic">
-                      Drop assets here
+                    <div className="flex min-h-[88px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-border/55 bg-muted/25 px-3 py-6 text-center">
+                      <span className="text-[11px] text-muted-foreground">Drop valuation tiles here</span>
                     </div>
                   ) : (
                     list.map((item) => (
@@ -205,8 +213,7 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
           })}
         </div>
 
-        {/* Uncategorized tray */}
-        {grouped.uncategorized.length > 0 && (
+        {grouped.uncategorized.length > 0 ? (
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -224,13 +231,14 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
             }}
             data-testid="folder-uncategorized"
             className={cn(
-              "rounded-lg border border-dashed border-border bg-background/40 p-3 transition-all",
-              dragOver === "uncategorized" && "ring-2 ring-accent/40",
+              "rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-3 transition-colors",
+              dragOver === "uncategorized" && "bg-muted/35 ring-2 ring-accent/25",
             )}
           >
-            <div className="text-[11px] text-muted-foreground mb-2">
-              Unsorted ({grouped.uncategorized.length}): drag icons into a folder above
-            </div>
+            <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">{grouped.uncategorized.length}</span> not in a folder yet.
+              Drag into Hold, Monitor, or Sell.
+            </p>
             <div className="flex flex-wrap gap-2">
               {grouped.uncategorized.map((item) => (
                 <FolderIconChip
@@ -242,9 +250,9 @@ export function PortfolioFolders({ items }: { items: FolderItem[] }) {
               ))}
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -260,7 +268,7 @@ function FolderIconChip({
   const AssetIcon = iconForAssetType(item.assetTypeName);
 
   return (
-    <HoverCard openDelay={160} closeDelay={80}>
+    <HoverCard openDelay={120} closeDelay={60}>
       <HoverCardTrigger asChild>
         <div
           draggable
@@ -277,24 +285,21 @@ function FolderIconChip({
           data-testid={`folder-chip-${item.id}`}
           aria-label={`${item.title}. Hover for details. Click to open or drag to a folder.`}
           className={cn(
-            "h-10 w-10 shrink-0 cursor-grab active:cursor-grabbing select-none rounded-lg border border-border/70 bg-background/90",
-            "flex items-center justify-center shadow-sm transition-colors",
-            "hover:border-accent/50 hover:bg-background hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+            "flex h-11 w-11 shrink-0 cursor-grab select-none items-center justify-center rounded-xl",
+            "border border-border/60 bg-background/95 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all",
+            "active:cursor-grabbing hover:-translate-y-px hover:border-border hover:shadow-sm",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           )}
         >
-          <AssetIcon className="h-[1.15rem] w-[1.15rem] text-accent pointer-events-none" aria-hidden />
+          <AssetIcon className="h-[1.2rem] w-[1.2rem] text-accent pointer-events-none" aria-hidden />
         </div>
       </HoverCardTrigger>
-      <HoverCardContent side="top" align="center" className="w-72 p-3 space-y-2 z-50">
-        <div>
-          <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">{item.title}</p>
-          <Badge variant="secondary" className="mt-2 font-normal text-[10px]">
-            {item.assetTypeName}
-          </Badge>
-        </div>
-        <div className="text-sm tabular-nums font-medium">{formatMoney(item.liveValue, item.currency)}</div>
-        <p className="text-[11px] text-muted-foreground leading-snug border-t border-border/60 pt-2">
-          Drag to move between folders. Click the icon to open the full valuation.
+      <HoverCardContent side="top" align="center" className="z-50 w-64 space-y-2.5 p-3">
+        <p className="text-sm font-medium leading-snug text-foreground line-clamp-2">{item.title}</p>
+        <p className="text-[11px] text-muted-foreground">{item.assetTypeName}</p>
+        <p className="text-sm font-semibold tabular-nums text-foreground">{formatMoney(item.liveValue, item.currency)}</p>
+        <p className="border-t border-border/50 pt-2 text-[10px] leading-snug text-muted-foreground">
+          Click to open the report. Drag to another folder.
         </p>
       </HoverCardContent>
     </HoverCard>

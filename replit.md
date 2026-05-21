@@ -61,7 +61,7 @@ Valuation outputs and user flows append structured rows to `platform_events` (`e
 - API: orval generates `Get*Response`/`Create*Body` zod schemas (api-zod) and `use*` hooks (api-client-react). Re-run codegen with `pnpm --filter @workspace/api-spec run codegen` after editing `openapi.yaml`.
 - DB push: `pnpm --filter @workspace/db run push-force`
 - Frontend imports hooks ONLY from `@workspace/api-client-react`.
-- LLM calls: `import { getLlm, defaultModel } from "@workspace/llm"`. Configure with `LLM_PROVIDER` and `LLM_API_KEY`, or vendor keys (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`); optional `LLM_BASE_URL`. Defaults: Anthropic `claude-sonnet-4-5`, OpenAI `gpt-4o`; override with `LLM_MODEL`.
+- LLM calls: `import { getLlm, defaultModel } from "@workspace/llm"`. Configure with `LLM_PROVIDER` and `LLM_API_KEY`, or vendor keys (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`); optional `LLM_BASE_URL`. Defaults: Anthropic `claude-sonnet-4-5`, OpenAI `gpt-5.5`; override with `LLM_MODEL`.
 
 ## Authentication & Onboarding
 
