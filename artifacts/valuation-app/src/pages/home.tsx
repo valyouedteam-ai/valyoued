@@ -22,17 +22,14 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Briefcase,
-  Calculator,
   ChevronRight,
   FileText,
   Globe2,
   Megaphone,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 
@@ -76,10 +73,6 @@ export default function HomePage() {
     const prim = primaryPortfolio?.id ?? null;
     return rows.filter((e) => inActiveWorkspace(e, act, prim));
   }, [estimates, activePortfolio?.id, primaryPortfolio?.id]);
-
-  const workspaceLabel =
-    activePortfolio?.label ??
-    (activePortfolio?.purpose === "pro_board" ? "Professional desk" : null);
 
   const [intentFilter, setIntentFilter] = useState<IntentFilterKey>("all");
   const [shelfFilter, setShelfFilter] = useState<ShelfFilterKey>("all");
@@ -157,61 +150,31 @@ export default function HomePage() {
   return (
     <div className="space-y-10 pb-16">
       <header className="space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Home</h1>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent/15 text-accent" aria-hidden>
-                <Sparkles className="h-4 w-4" />
-              </div>
+        <div className="space-y-3">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Home</h1>
+          {!portfoliosLoading && portfolios != null && portfolios.length > 1 ? (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {portfolios.map((p) => {
+                const focused = activePortfolio?.id === p.id;
+                return (
+                  <Button
+                    key={p.id}
+                    size="sm"
+                    type="button"
+                    variant={focused ? "default" : "outline"}
+                    className="rounded-full"
+                    aria-pressed={focused}
+                    onClick={() => selectPortfolioById(p.id)}
+                  >
+                    {p.label ||
+                      (p.purpose === "primary" ? primaryLabel ?? "Primary" : p.purpose === "pro_board" ? "Desk" : "Workspace")}
+                  </Button>
+                );
+              })}
             </div>
-
-            {!portfoliosLoading && portfolios != null && portfolios.length > 1 ? (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {portfolios.map((p) => {
-                  const focused = activePortfolio?.id === p.id;
-                  return (
-                    <Button
-                      key={p.id}
-                      size="sm"
-                      type="button"
-                      variant={focused ? "default" : "outline"}
-                      className="rounded-full"
-                      aria-pressed={focused}
-                      onClick={() => selectPortfolioById(p.id)}
-                    >
-                      {p.label ||
-                        (p.purpose === "primary" ? primaryLabel ?? "Primary" : p.purpose === "pro_board" ? "Desk" : "Workspace")}
-                    </Button>
-                  );
-                })}
-              </div>
-            ) : portfoliosLoading ? (
-              <Skeleton className="h-9 w-56 rounded-full" />
-            ) : workspaceLabel ? (
-              <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{workspaceLabel}</span>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Showing your primary holdings view.</p>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <ProPreviewToggle />
-            <Button size="lg" className="rounded-full shadow-lg" asChild>
-              <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
-                <Calculator className="mr-2 h-5 w-5" />
-                New valuation
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" className="rounded-full" asChild>
-              <Link href={mergePortfolioHref("/portfolio", portfolioQuerySuffix)}>
-                <Briefcase className="mr-2 h-5 w-5" />
-                Portfolio
-              </Link>
-            </Button>
-          </div>
+          ) : portfoliosLoading ? (
+            <Skeleton className="h-9 w-56 rounded-full" />
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">

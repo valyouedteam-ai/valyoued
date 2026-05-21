@@ -51,6 +51,7 @@ export default function MarketsPage() {
 
   return (
     <div className="space-y-10 pb-16">
+      {isPro ? (
       <header className="space-y-4 pt-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="font-sans text-[10px] uppercase tracking-widest">
@@ -73,16 +74,18 @@ export default function MarketsPage() {
           <Link href="/settings" className="text-accent hover:underline">
             Settings
           </Link>
-          ). They are guides, not live bank rates. Open any report for fees, shipping, and marketplace links,
-          especially with <span className="font-medium text-foreground">Pro</span> turned on.
+          ). They are guides, not live bank rates. Open any report for fees, shipping, and marketplace links.
         </p>
-        {!isPro ? (
-          <p className="text-sm text-muted-foreground max-w-2xl">
-            Turn on <strong className="text-foreground">Pro</strong> with the toggle in the header
-            for full regional detail and comparables inside each report.
-          </p>
-        ) : null}
       </header>
+      ) : (
+        <header className="space-y-3 pt-4">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Markets overview</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground leading-relaxed">
+            Turn on the <span className="font-medium text-foreground">Pro</span> tier preview toggle in the header to
+            see cross-market badges, comparative pricing framing, and the full regional breakdown intro above the table.
+          </p>
+        </header>
+      )}
 
       {loading ? (
         <div className="grid gap-6 md:grid-cols-3">

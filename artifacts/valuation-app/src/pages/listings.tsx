@@ -214,70 +214,71 @@ export default function ListingsPage() {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/25 p-4 sm:p-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end">
-          <div className="min-w-0 flex-1 space-y-2">
-            <Label htmlFor="draft-search" className="text-xs text-muted-foreground">
+      <div className="rounded-xl border border-border/60 bg-muted/25 p-4">
+        <div className="flex flex-nowrap items-end gap-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
+          <div className="flex min-w-[8rem] flex-1 flex-col gap-1.5">
+            <Label htmlFor="draft-search" className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
               Search
             </Label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="draft-search"
-                placeholder="Title, valuation, asset type, marketplace, body text…"
+                placeholder="Title, marketplace, body…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                className="h-9 pl-9"
                 data-testid="draft-search-input"
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-wrap md:items-end md:gap-3">
-            <div className="w-full space-y-2 sm:min-w-[10.5rem]">
-              <Label className="text-xs text-muted-foreground">Marketplace</Label>
-              <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                <SelectTrigger aria-label="Filter by marketplace" data-testid="draft-filter-platform">
-                  <SelectValue placeholder="Marketplace" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All marketplaces</SelectItem>
-                  {platformsInUse.map((slug) => (
-                    <SelectItem key={slug} value={slug}>
-                      {PLATFORM_LABEL[slug] ?? slug}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-full space-y-2 sm:min-w-[10.5rem]">
-              <Label className="text-xs text-muted-foreground">Sort</Label>
-              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-                <SelectTrigger aria-label="Sort ads" data-testid="draft-sort-select">
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest first</SelectItem>
-                  <SelectItem value="oldest">Oldest first</SelectItem>
-                  <SelectItem value="price_high">Price high to low</SelectItem>
-                  <SelectItem value="price_low">Price low to high</SelectItem>
-                  <SelectItem value="title_az">Title A to Z</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {filtersActive ? (
-              <div className="flex w-full sm:col-span-2 md:w-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-9 w-full shrink-0 sm:w-auto md:mt-auto"
-                  onClick={clearFilters}
-                  data-testid="draft-reset-filters"
-                >
-                  Reset filters
-                </Button>
-              </div>
-            ) : null}
+
+          <div className="flex w-40 shrink-0 flex-col gap-1.5 sm:w-44">
+            <Label className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">Marketplace</Label>
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger aria-label="Filter by marketplace" className="h-9" data-testid="draft-filter-platform">
+                <SelectValue placeholder="Marketplace" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All marketplaces</SelectItem>
+                {platformsInUse.map((slug) => (
+                  <SelectItem key={slug} value={slug}>
+                    {PLATFORM_LABEL[slug] ?? slug}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex w-40 shrink-0 flex-col gap-1.5 sm:w-44">
+            <Label className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">Sort</Label>
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger aria-label="Sort ads" className="h-9" data-testid="draft-sort-select">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="price_high">Price high to low</SelectItem>
+                <SelectItem value="price_low">Price low to high</SelectItem>
+                <SelectItem value="title_az">Title A to Z</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-1.5">
+            <div className="h-5 shrink-0" aria-hidden />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 shrink-0 whitespace-nowrap"
+              disabled={!filtersActive}
+              onClick={clearFilters}
+              data-testid="draft-reset-filters"
+            >
+              Reset filters
+            </Button>
           </div>
         </div>
       </div>

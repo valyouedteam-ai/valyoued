@@ -101,6 +101,20 @@ const SHELF_SECTION_META: Record<
 
 const POLL_INTERVAL_MS = 60_000;
 
+/** Line under page title when it adds detail; hides labels that repeat the portfolio heading. */
+function portfolioWorkspaceSubtitle(
+  active: { label?: string | null; purpose?: string } | null | undefined,
+): string | null {
+  if (!active) return null;
+  const trimmed = active.label?.trim();
+  if (trimmed) {
+    const norm = trimmed.toLowerCase().replace(/\s+/g, " ").trim();
+    if (norm === "my portfolio" || norm === "portfolio") return null;
+    return trimmed;
+  }
+  return active.purpose === "pro_board" ? "Professional board" : "Primary";
+}
+
 const PALETTE = [
   "#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981",
   "#06b6d4", "#ef4444", "#84cc16", "#f97316", "#6366f1",
@@ -195,6 +209,8 @@ export default function PortfolioPage() {
 
   const formatRollup = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
 
+  const portfolioHeaderSubtitle = portfolioWorkspaceSubtitle(activePortfolio);
+
   if (isLoading) {
     return (
       <div className="w-full space-y-8">
@@ -244,10 +260,9 @@ export default function PortfolioPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
-          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground mt-2">
-            {activePortfolio?.label ??
-              (activePortfolio?.purpose === "pro_board" ? "Professional board" : "Primary")}
-          </p>
+          {portfolioHeaderSubtitle ? (
+            <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{portfolioHeaderSubtitle}</p>
+          ) : null}
         </div>
         <div>
           <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
@@ -374,14 +389,7 @@ export default function PortfolioPage() {
 
       {/* Collection: single grouped view (by valuation track), highest approximate value first */}
       <section className="space-y-8" data-testid="collection-section">
-        <div className="w-full space-y-1.5">
-          <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Valuations are grouped by the track you chose when you ran them. Within each group, larger holdings
-            (by approximate value in your display currency) appear first. Open a card for the full report, or use{" "}
-            <span className="text-foreground font-medium">List for sale</span> for listing help.
-          </p>
-        </div>
+        <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
 
         <div className="space-y-12">
           {shelfSections.map((section) => {
