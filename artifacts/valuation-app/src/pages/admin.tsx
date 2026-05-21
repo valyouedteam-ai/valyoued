@@ -321,39 +321,6 @@ function AdminDashboardInner({
               </Table>
             </CardContent>
           </Card>
-
-          <Card className="border-border/80 bg-card/40">
-            <CardHeader>
-              <CardTitle>Recent platform events</CardTitle>
-              <CardDescription>Latest rows with raw payloads. Use the chart above for type mix.</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto max-h-[420px] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Event</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Payload</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.recentEvents.map((e) => (
-                    <TableRow key={e.id}>
-                      <TableCell className="text-xs tabular-nums whitespace-nowrap text-muted-foreground">
-                        {new Date(e.createdAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-xs">{e.eventType}</TableCell>
-                      <TableCell className="text-[11px] max-w-[120px] truncate">{e.userId ?? "None"}</TableCell>
-                      <TableCell className="font-sans text-[10px] max-w-md truncate">
-                        {JSON.stringify(e.payload)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
         </>
       ) : null}
     </div>

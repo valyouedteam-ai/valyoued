@@ -1,24 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import type { UseQueryOptions } from "@tanstack/react-query";
 import type { EstimateSummary, PatchEstimateBodyIntent } from "@workspace/api-client-react";
-import {
-  getGetEstimateQueryKey,
-  getGetEstimateStatsQueryKey,
-  getListEstimatesQueryKey,
-  listEstimates,
-  useGetEstimateStats,
-  useListEstimates,
-  usePatchEstimate,
-} from "@workspace/api-client-react";
+import { listEstimates, useGetEstimateStats, useListEstimates } from "@workspace/api-client-react";
 import {
   mergePortfolioHref,
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
 import { formatPercent, formatMoney } from "@/lib/format";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,9 +37,6 @@ type IntentFilterKey = "all" | PatchEstimateBodyIntent | "unset";
 type ShelfFilterKey = "all" | EstimateSummary["portfolioShelf"];
 
 export default function HomePage() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
   const {
     portfolios,
     isLoading: portfoliosLoading,
@@ -90,23 +77,6 @@ export default function HomePage() {
       return e.intent === intentFilter;
     });
   }, [sortedRecent, shelfFilter, intentFilter]);
-
-  const patchIntent = usePatchEstimate({
-    mutation: {
-      onSuccess: (data, variables) => {
-        queryClient.setQueryData(getGetEstimateQueryKey(variables.id), data);
-        void queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
-        void queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
-      },
-      onError: (err) => {
-        toast({
-          title: "Could not save intent",
-          description: err instanceof Error ? err.message : "Try again.",
-          variant: "destructive",
-        });
-      },
-    },
-  });
 
   const quickLinks: Array<{
     href: string;
@@ -324,60 +294,28 @@ export default function HomePage() {
               </div>
             ) : (
               <ul className="divide-y divide-border/50 rounded-xl border border-border/60">
-                {displayedRecent.map((e) => {
-                  const busyRow = patchIntent.isPending && patchIntent.variables?.id === e.id;
-                  return (
-                    <li key={e.id}>
-                      <div className="flex flex-col gap-3 px-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-                        <Link
-                          href={mergePortfolioHref(`/estimates/${e.id}`, portfolioQuerySuffix)}
-                          className="min-w-0 flex-1 px-1 text-sm outline-none ring-offset-background transition-colors hover:text-accent focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-accent/40 sm:py-1"
-                        >
-                          <div className="truncate font-medium text-foreground">{e.title}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 truncate text-xs text-muted-foreground">
-                            <span className="capitalize">{e.assetTypeName}</span>
-                            <span className="rounded-full bg-muted px-2 py-px text-[10px] uppercase tracking-wide">{e.portfolioShelf}</span>
-                            <span className="tabular-nums text-muted-foreground">
-                              Adj. {formatMoney(e.adjustedMid, e.currency, true)}
-                            </span>
-                          </div>
-                        </Link>
-
-                        <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
-                          <ToggleGroup
-                            type="single"
-                            variant="outline"
-                            size="sm"
-                            disabled={busyRow}
-                            value={e.intent ?? ""}
-                            onValueChange={(v) => {
-                              if (!v || (v !== "hold" && v !== "monitor" && v !== "sell")) return;
-                              patchIntent.mutate({
-                                id: e.id,
-                                data: { intent: v as PatchEstimateBodyIntent },
-                              });
-                            }}
-                            className="rounded-full bg-muted/30 p-0.5"
-                            aria-label={`Intent for ${e.title}`}
-                          >
-                            <ToggleGroupItem value="hold" className="h-8 rounded-full px-2.5 text-[11px]" aria-label="Hold">
-                              Hold
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="monitor" className="h-8 rounded-full px-2.5 text-[11px]" aria-label="Monitor">
-                              Monitor
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="sell" className="h-8 rounded-full px-2.5 text-[11px]" aria-label="Prep to sell">
-                              Sell
-                            </ToggleGroupItem>
-                          </ToggleGroup>
-                          <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
-                            {formatDistanceToNow(new Date(e.createdAt), { addSuffix: true })}
+                {displayedRecent.map((e) => (
+                  <li key={e.id}>
+                    <div className="flex flex-col gap-2 px-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <Link
+                        href={mergePortfolioHref(`/estimates/${e.id}`, portfolioQuerySuffix)}
+                        className="min-w-0 flex-1 px-1 text-sm outline-none ring-offset-background transition-colors hover:text-accent focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-accent/40 sm:py-0.5"
+                      >
+                        <div className="truncate font-medium text-foreground">{e.title}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 truncate text-xs text-muted-foreground">
+                          <span className="capitalize">{e.assetTypeName}</span>
+                          <span className="rounded-full bg-muted px-2 py-px text-[10px] uppercase tracking-wide">{e.portfolioShelf}</span>
+                          <span className="tabular-nums text-muted-foreground">
+                            Adj. {formatMoney(e.adjustedMid, e.currency, true)}
                           </span>
                         </div>
-                      </div>
-                    </li>
-                  );
-                })}
+                      </Link>
+                      <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground sm:text-right">
+                        {formatDistanceToNow(new Date(e.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </CardContent>

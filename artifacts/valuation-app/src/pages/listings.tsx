@@ -200,11 +200,11 @@ export default function ListingsPage() {
             <Megaphone className="h-3 w-3" /> Saved ads
           </div>
           <h1 className="text-3xl font-sans font-bold text-foreground">Ads</h1>
-          <p className="text-muted-foreground mt-1">
-            {filteredDrafts.length === allDrafts.length
-              ? `${allDrafts.length} ad${allDrafts.length === 1 ? "" : "s"} ready to copy and paste into your marketplace.`
-              : `Showing ${filteredDrafts.length} of ${allDrafts.length} ad${allDrafts.length === 1 ? "" : "s"}.`}
-          </p>
+          {filteredDrafts.length !== allDrafts.length ? (
+            <p className="text-muted-foreground mt-1">
+              Showing {filteredDrafts.length} of {allDrafts.length} ad{allDrafts.length === 1 ? "" : "s"}.
+            </p>
+          ) : null}
         </div>
         <Link href="/portfolio">
           <Button variant="outline">
