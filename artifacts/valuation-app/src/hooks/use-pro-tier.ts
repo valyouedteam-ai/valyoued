@@ -21,9 +21,9 @@ function readStoredPreview(): boolean {
 }
 
 export type ProTierContextValue = {
-  /** True while the UI "Pro tier" preview switch is on (front-end only until billing gates return). */
+  /** Mirrors `devProPreview` for legacy call sites (does not imply Stripe entitlement). */
   isPro: boolean;
-  /** Persisted local flag between Free-tier and Pro-tier UI (billing does not enforce this currently). */
+  /** Development-only persisted hint for cosmetic UI experiments. Not wired to gated features. */
   devProPreview: boolean;
   setDevProPreview: Dispatch<SetStateAction<boolean>>;
   /** @deprecated Prefer `setDevProPreview`. */

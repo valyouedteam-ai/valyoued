@@ -33,7 +33,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useProTier } from "@/hooks/use-pro-tier";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -149,7 +148,6 @@ function ArbitrageVenueFeeBreakdown({
 export default function EstimateReportPage() {
   const params = useParams();
   const id = params.id as string;
-  const { isPro: globalPro } = useProTier();
   const { data: billing } = useBillingSummary();
   const billingPaid = Boolean(billing?.hasPaidValuationTier);
   const queryClient = useQueryClient();
@@ -233,9 +231,8 @@ export default function EstimateReportPage() {
     );
   }
 
-  // Full detail follows the header Pro tier preview, paid plan, or a Pro-generated estimate.
-  const savedTierPro = estimate.tier === "pro";
-  const showExpandedPro = savedTierPro || globalPro || billingPaid;
+  // Full detail: active paid valuation tier (Stripe) or this row was persisted as Pro at generation time.
+  const showExpandedPro = billingPaid || estimate.tier === "pro";
   const reportBadgePro = showExpandedPro;
 
   const uplift = (estimate.netMarketFactor ?? 1) - 1;
@@ -358,16 +355,16 @@ export default function EstimateReportPage() {
         </section>
 
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm print:border-border print:shadow-none">
-          <div className="border-b border-border/50 bg-gradient-to-br from-accent/[0.07] via-transparent to-transparent px-5 py-5 sm:px-6 sm:py-6 md:px-8">
-            <p className="text-sm font-medium text-muted-foreground">Estimate today</p>
-            <p className="mt-2 text-5xl font-semibold tabular-nums tracking-tight text-foreground sm:text-6xl">{fmt(estimate.adjustedMid)}</p>
-            <p className="mt-2 text-sm text-muted-foreground">
+          <div className="border-b border-border/50 bg-gradient-to-br from-accent/[0.07] via-transparent to-transparent px-4 py-4 sm:px-5">
+            <p className="text-xs font-medium text-muted-foreground sm:text-sm">Estimate today</p>
+            <p className="mt-1 text-4xl font-semibold tabular-nums tracking-tight text-foreground sm:text-5xl">{fmt(estimate.adjustedMid)}</p>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
               Likely band {fmt(estimate.adjustedLow, true)} to {fmt(estimate.adjustedHigh, true)}
             </p>
             {uplift !== 0 ? (
               <p
                 className={cn(
-                  "mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
+                  "mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium sm:text-xs",
                   uplift > 0
                     ? "bg-green-500/10 text-green-700 dark:text-green-400"
                     : "bg-red-500/10 text-red-700 dark:text-red-400",
@@ -377,25 +374,23 @@ export default function EstimateReportPage() {
               </p>
             ) : null}
             {report.marketNarrative ? (
-              <p className="mt-4 max-w-2xl text-sm leading-snug text-foreground/85">{report.marketNarrative}</p>
+              <p className="mt-2 max-w-2xl text-xs leading-snug text-foreground/85 sm:text-sm">{report.marketNarrative}</p>
             ) : null}
           </div>
-          <div className="grid gap-0 sm:grid-cols-2 sm:divide-x sm:divide-border/50">
-            <div className="px-5 py-5 sm:px-6 sm:py-6">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">From similar sales</p>
-              <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{fmt(estimate.baselineMid)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+          <div className="border-t border-border/50 px-4 py-4 sm:px-5">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">From similar sales</p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <span className="text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{fmt(estimate.baselineMid)}</span>
+              <span className="text-[11px] text-muted-foreground sm:text-xs">
                 Range {fmt(estimate.baselineLow, true)} to {fmt(estimate.baselineHigh, true)}
-              </p>
-              {report.baselineNarrative ? (
-                <p className="mt-3 text-sm leading-snug text-muted-foreground">{report.baselineNarrative}</p>
-              ) : null}
+              </span>
             </div>
-            <div className="border-t border-border/50 px-5 py-5 sm:border-t-0 sm:px-6 sm:py-6">
-              <p className="text-sm text-muted-foreground leading-snug">
-                The headline layers news and demand on similar sales. Use the range when you talk price.
-              </p>
-            </div>
+            {report.baselineNarrative ? (
+              <p className="mt-2 text-xs leading-snug text-muted-foreground sm:text-sm">{report.baselineNarrative}</p>
+            ) : null}
+            <p className="mt-3 border-l-2 border-accent/25 pl-3 text-[11px] leading-snug text-muted-foreground sm:text-xs">
+              The headline layers news and demand on similar sales. Use the range when you talk price.
+            </p>
           </div>
         </div>
       </header>
@@ -410,40 +405,35 @@ export default function EstimateReportPage() {
                 </div>
                 <div className="min-w-0 space-y-1">
                   <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                    {savedTierPro ? "Turn on Pro preview to see the rest" : "See the full picture"}
+                    See the full picture
                   </h2>
                   <p className="max-w-xl text-sm leading-snug text-muted-foreground">
-                    {savedTierPro
-                      ? "This report was run with full detail. Flip the Pro switch in the header to show news, similar sales, and seller tips."
-                      : "Add news, where to list, similar sales, and step-by-step selling help."}
+                    Subscribe for news, payouts by venue, similar sales, and the seller playbook. This summary stays
+                    here until billing is active or you open a valuation generated on Pro.
                   </p>
                 </div>
               </div>
-              {!savedTierPro ? (
-                <div className="flex shrink-0 flex-col gap-3 md:items-end">
-                  <Link href="/settings">
-                    <Button className="bg-accent text-accent-foreground hover:bg-accent/90">Upgrade in settings</Button>
-                  </Link>
-                  <p className="text-xs text-muted-foreground md:text-right">Everyday+ or Professional</p>
-                </div>
-              ) : null}
+              <div className="flex shrink-0 flex-col gap-3 md:items-end">
+                <Link href="/settings">
+                  <Button className="bg-accent text-accent-foreground hover:bg-accent/90">Upgrade in settings</Button>
+                </Link>
+                <p className="text-xs text-muted-foreground md:text-right">Everyday+ or Professional</p>
+              </div>
             </div>
-            {!savedTierPro ? (
-              <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-                {[
-                  { icon: Clock, text: "Good times to list" },
-                  { icon: Newspaper, text: "How headlines might change your price" },
-                  { icon: Globe2, text: isMobile ? "Where abroad might pay more" : "Where local buyers shop most" },
-                  { icon: Scale, text: "Similar sales you can point to" },
-                  { icon: Target, text: "Prices to open with and walk away from" },
-                ].map((f) => (
-                  <li key={f.text} className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/60 px-2.5 py-2 text-sm">
-                    <f.icon className="h-4 w-4 shrink-0 text-accent" />
-                    <span className="text-foreground/90">{f.text}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            <ul className="mt-5 grid gap-2 sm:grid-cols-2">
+              {[
+                { icon: Clock, text: "Good times to list" },
+                { icon: Newspaper, text: "How headlines might change your price" },
+                { icon: Globe2, text: isMobile ? "Where abroad might pay more" : "Where local buyers shop most" },
+                { icon: Scale, text: "Similar sales you can point to" },
+                { icon: Target, text: "Prices to open with and walk away from" },
+              ].map((f) => (
+                <li key={f.text} className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/60 px-2.5 py-2 text-sm">
+                  <f.icon className="h-4 w-4 shrink-0 text-accent" />
+                  <span className="text-foreground/90">{f.text}</span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
@@ -885,21 +875,21 @@ export default function EstimateReportPage() {
           </section>
         )}
 
-        {/* If user has Pro mode on but the estimate was generated as Free, prompt re-run */}
-        {globalPro && estimate.tier === "free" && !estimate.proInsights && (
+        {/* Paid account but snapshot predates Pro / playbook not stored on this row */}
+        {billingPaid && estimate.tier === "free" && !estimate.proInsights && (
           <section className="mt-12 rounded-2xl border border-accent/35 bg-accent/10 px-4 py-5 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
             <div className="flex gap-3">
               <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
               <div>
-                <p className="text-sm font-medium text-foreground">Pro preview is on, but this run was saved as a summary-only report.</p>
+                <p className="text-sm font-medium text-foreground">Your subscription is active, but this report was saved as a free-tier run.</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Run a fresh valuation while Pro is active to unlock seller tips and the extra sections.
+                  Run a new valuation now to persist seller playbook and full detail on the row.
                 </p>
               </div>
             </div>
             <Link href="/estimate/new">
               <Button size="sm" className="mt-4 bg-accent hover:bg-accent/90 text-accent-foreground sm:mt-0">
-                New full report
+                New valuation
               </Button>
             </Link>
           </section>

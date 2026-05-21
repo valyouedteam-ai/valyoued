@@ -29,7 +29,7 @@ Monorepo (pnpm workspaces).
   - Pages: `/`, `/estimate/new`, `/estimates`, `/estimates/:id`, `/portfolio`, `/listings`, `/stats`, `/settings`, `/admin`, public `/privacy`, `/about`
   - `/portfolio`: dashboard with USD-equivalent total (FX_TO_USD constants), recharts pie chart + Herfindahl diversification score, three tabs (Albums / Asset boxes / Table). Asset boxes have a "List for sale" button that opens the ad-generator dialog.
   - `/listings`: saved ad drafts grid (platform badge, suggested price, snippet) → click for full draft view dialog with copy-to-clipboard, photo angles, hashtags, pro tips. Delete with confirm.
-  - `PhotoUploadCard` (used on `/estimate/new`): drag-drop photo, then photo-based field reads feed `form.setValue` for matched fields. Skips year of purchase, mileage, original price (user-only data). Uses request tokens to ignore stale responses.
+  - `PhotoUploadCard` (used on `/estimate/new`): after the user picks an item template, the same drag-drop card appears on every wizard step so they can auto-fill fields from a photo at any time. Skips owner-only data the model should not guess (see `vision.ts` `NON_VISUAL_KEYS`). Uses request tokens to ignore stale responses.
   - `GenerateListingDialog`: platform select (auto-suggested from asset class) + pricing strategy + generated draft copy. Mounted both on `/portfolio` asset boxes and `/estimates/:id` report header.
   - Pro tier toggle persisted to `localStorage["valyoued.pro"]`; passed to `useCreateEstimate` as `params.pro`. **Server-backed Pro** uses Stripe + `billing_subscriptions.tier` (`GET /api/me/billing`): wire UI to prefer subscription tier when you deprecate the local toggle.
 

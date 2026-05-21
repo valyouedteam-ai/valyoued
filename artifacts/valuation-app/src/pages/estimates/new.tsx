@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useForm, type UseFormReturn, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -240,7 +240,6 @@ type WizardStepId =
   | "identity"
   | "valueDrivers"
   | "valueDrivers2"
-  | "photos"
   | "condition"
   | "purchasePrice"
   | "additional";
@@ -273,8 +272,6 @@ function stepTitle(id: WizardStepId): string {
       return "Details buyers care about";
     case "valueDrivers2":
       return "More details";
-    case "photos":
-      return "Photos (optional)";
     case "condition":
       return "Overall condition";
     case "purchasePrice":
@@ -667,7 +664,7 @@ function NewEstimatePageInner({
       steps.push("valueDrivers");
       if (drivers.length > VALUE_DRIVER_STEP_CAP) steps.push("valueDrivers2");
     }
-    steps.push("photos", "condition", "purchasePrice", "additional");
+    steps.push("condition", "purchasePrice", "additional");
     return {
       identityFields: c.identity,
       driverFieldsPage1: drivers.slice(0, VALUE_DRIVER_STEP_CAP),
@@ -698,6 +695,28 @@ function NewEstimatePageInner({
   const purchaseFieldDef = useMemo(
     () => selectedType?.fields.find((f) => f.key === "purchasePrice"),
     [selectedType],
+  );
+
+  const handlePhotoAutoFill = useCallback(
+    (extracted: Record<string, string>, suggestedTitle?: string) => {
+      if (!selectedType) return;
+      if (suggestedTitle && !String(form.getValues("title") ?? "").trim()) {
+        form.setValue("title", suggestedTitle, { shouldValidate: true });
+      }
+      for (const [key, value] of Object.entries(extracted)) {
+        const fd = selectedType.fields.find((f) => f.key === key);
+        if (!fd) continue;
+        if (fd.type === "number") {
+          const n = Number(value);
+          if (!Number.isNaN(n)) {
+            form.setValue(key as keyof FormValues, n, { shouldValidate: true });
+          }
+        } else {
+          form.setValue(key as keyof FormValues, value, { shouldValidate: true });
+        }
+      }
+    },
+    [form, selectedType],
   );
 
   function validateWizardStep(stepId: WizardStepId): boolean {
@@ -786,8 +805,6 @@ function NewEstimatePageInner({
             return false;
           }
         }
-        return true;
-      case "photos":
         return true;
       case "condition": {
         const c0 = Number(v.condition);
@@ -986,6 +1003,22 @@ function NewEstimatePageInner({
               </h2>
             </CardHeader>
             <CardContent className="space-y-6">
+              {selectedType && currentStepId !== "tier" && currentStepId !== "pickType" && (
+                <div className="space-y-2">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    After you choose the item template, drag or upload a photo on any step. We auto-fill whatever the
+                    image supports (brand, specs, condition hints, and similar). You will still enter owner-only facts
+                    such as mileage, purchase year, receipts, or tenancy when the form asks for them.
+                  </p>
+                  <PhotoUploadCard
+                    assetTypeId={selectedType.id}
+                    assetTypeName={selectedType.name}
+                    assetCategory={selectedType.category}
+                    onAutoFill={handlePhotoAutoFill}
+                  />
+                </div>
+              )}
+
               {currentStepId === "tier" && (
                 <FormField
                   control={form.control}
@@ -1348,36 +1381,6 @@ function NewEstimatePageInner({
                       assetTypeId={selectedType.id}
                     />
                   ))}
-                </div>
-              )}
-
-              {currentStepId === "photos" && selectedType && (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Add a clear photo if you can. We may read model hints from it. You can skip if you prefer.
-                  </p>
-                  <PhotoUploadCard
-                    assetTypeId={selectedType.id}
-                    assetTypeName={selectedType.name}
-                    assetCategory={selectedType.category}
-                    onAutoFill={(extracted, suggestedTitle) => {
-                      if (suggestedTitle && !form.getValues("title")) {
-                        form.setValue("title", suggestedTitle, { shouldValidate: true });
-                      }
-                      for (const [key, value] of Object.entries(extracted)) {
-                        const fd = selectedType.fields.find((f) => f.key === key);
-                        if (!fd) continue;
-                        if (fd.type === "number") {
-                          const n = Number(value);
-                          if (!Number.isNaN(n)) {
-                            form.setValue(key as any, n, { shouldValidate: true });
-                          }
-                        } else {
-                          form.setValue(key as any, value, { shouldValidate: true });
-                        }
-                      }
-                    }}
-                  />
                 </div>
               )}
 

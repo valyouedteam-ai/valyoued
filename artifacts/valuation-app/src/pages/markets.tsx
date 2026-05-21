@@ -17,7 +17,6 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
-import { useProTier } from "@/hooks/use-pro-tier";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import type { EstimateSummaryTier } from "@workspace/api-client-react";
 
@@ -33,7 +32,6 @@ export default function MarketsPage() {
       retry: 1,
     },
   });
-  const { isPro } = useProTier();
   const { data: billing } = useBillingSummary();
   const billingPaid = Boolean(billing?.hasPaidValuationTier);
 
@@ -51,7 +49,7 @@ export default function MarketsPage() {
 
   return (
     <div className="space-y-10 pb-16">
-      {isPro ? (
+      {canSeeRegionalPayHints ? (
       <header className="space-y-4 pt-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="font-sans text-[10px] uppercase tracking-widest">
@@ -81,8 +79,12 @@ export default function MarketsPage() {
         <header className="space-y-3 pt-4">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Markets overview</h1>
           <p className="max-w-2xl text-sm text-muted-foreground leading-relaxed">
-            Turn on the <span className="font-medium text-foreground">Pro</span> tier preview toggle in the header to
-            see cross-market badges, comparative pricing framing, and the full regional breakdown intro above the table.
+            Upgrade in{" "}
+            <Link href="/settings" className="font-medium text-accent hover:underline">
+              Settings
+            </Link>{" "}
+            for cross-market framing, comparative pricing badges on this screen, and the full regional breakdown copy.
+            It also unlocks whenever you already have valuations saved from a Pro billing run.
           </p>
         </header>
       )}

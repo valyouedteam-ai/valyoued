@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
-import { useProTier } from "@/hooks/use-pro-tier";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -36,6 +35,7 @@ import {
 
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
+const SHOW_DEV_PRO_CHROME_PREVIEW = import.meta.env.DEV;
 
 type NavItem = { href: string; label: string; icon: typeof LibrarySquare };
 
@@ -171,8 +171,7 @@ function UserMenu({ compact }: { compact?: boolean }) {
 function PlanBrief({ className, block }: { className?: string; block?: boolean }) {
   const { data } = useBillingSummary();
   const paidApi = Boolean(data?.hasPaidValuationTier);
-  const { devProPreview } = useProTier();
-  const uiLabel = devProPreview ? "Pro tier UI" : "Free tier UI";
+  const uiLabel = paidApi ? "Pro valuation access" : "Free valuation plan";
   const remaining = !paidApi ? data?.valuationsRemainingFree : null;
 
   return (
@@ -180,17 +179,15 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
       href="/settings"
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition-colors hover:bg-muted/35",
-        devProPreview ? "border-accent/35 bg-accent/10" : "border-border/80 bg-card",
+        paidApi ? "border-accent/35 bg-accent/10" : "border-border/80 bg-card",
         block && "w-full justify-between",
         className,
       )}
       title={
-        paidApi
-          ? "Stripe shows an active plan. Toggle in the header still switches layout between Free-tier and Pro-tier views."
-          : "Open billing and limits (API free cap). Toggle in the header switches layout previews."
+        paidApi ? "Stripe shows an active paid valuation tier. Opens Settings for receipts and upgrades." : "Open billing and free valuation limits."
       }
     >
-      <Sparkles className={cn("h-4 w-4 shrink-0", devProPreview ? "text-accent" : "text-muted-foreground")} />
+      <Sparkles className={cn("h-4 w-4 shrink-0", paidApi ? "text-accent" : "text-muted-foreground")} />
       <div className="flex min-w-0 flex-col text-left leading-tight">
         <span className="text-xs font-medium text-foreground">{uiLabel}</span>
         {!paidApi && remaining != null ? (
@@ -317,7 +314,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {!isMobile ? <ProPreviewToggle /> : null}
+            {SHOW_DEV_PRO_CHROME_PREVIEW && !isMobile ? <ProPreviewToggle /> : null}
             {!isMobile ? <PlanBrief className="hidden lg:flex" /> : null}
             <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
               <Button
@@ -343,7 +340,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         </div>
         {isMobile ? (
           <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            <ProPreviewToggle compact />
+            {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle compact /> : null}
             <PlanBrief />
           </div>
         ) : null}

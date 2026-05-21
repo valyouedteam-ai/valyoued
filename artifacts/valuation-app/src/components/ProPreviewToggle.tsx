@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useProTier } from "@/hooks/use-pro-tier";
 
-/** Toggle Free-tier vs Pro-tier UI everywhere (persisted locally; billing does not gate this layout for now). */
+/** Local-only styling hint for development builds. Production hides this toggle; entitlement comes from Stripe and persisted estimate tier on the API. */
 export function ProPreviewToggle({
   compact,
   label = "Pro tier",
@@ -22,7 +22,7 @@ export function ProPreviewToggle({
         "flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-2 py-1 shadow-sm",
         compact ? "px-2" : "sm:gap-2 sm:px-2.5",
       )}
-      title="Choose Free-tier or Pro-tier browsing in this browser. Stripe and API limits may still apply elsewhere."
+      title="Dev-only: persists a harmless UI chrome preference in this browser. It never unlocks paid valuation outputs or API limits."
     >
       <Label
         htmlFor={switchId}
