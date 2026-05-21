@@ -283,6 +283,8 @@ export async function generateEstimate(
   input: EstimateInput,
   assetType: AssetType,
   tier: "free" | "pro",
+  /** When tier is Pro, Professional subscribers still flip this on to persist seller playbook (`proInsights`). */
+  includeSellerPlaybook: boolean,
 ): Promise<Omit<EstimateResult, "id" | "createdAt">> {
   const currency = input.currency;
 
@@ -359,7 +361,7 @@ export async function generateEstimate(
     bestArbitrageRegion,
     report: core.report,
     tier,
-    ...(tier === "pro" ? { proInsights: core.proInsights } : {}),
+    ...(tier === "pro" && includeSellerPlaybook ? { proInsights: core.proInsights } : {}),
   };
 
   return result;

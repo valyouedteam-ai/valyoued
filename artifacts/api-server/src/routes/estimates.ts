@@ -30,6 +30,7 @@ import {
   incrementMonthlyEstimateUsage,
   resolveUserEntitlements,
   valuationTierForEstimate,
+  includeSellerPlaybookInEstimate,
 } from "../lib/entitlements";
 import { getPortfolioByIdForUser, resolveDefaultPortfolioId } from "../lib/portfoliosService";
 
@@ -334,6 +335,7 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
 
   const region = getRegion(body.data.currentRegion);
   const tier = valuationTierForEstimate(ent);
+  const includePlaybook = includeSellerPlaybookInEstimate(ent);
 
   const input: EstimateInput = {
     ...(body.data as EstimateInput),
@@ -342,7 +344,7 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
     portfolioId: portfolioIdToUse,
   };
 
-  const computed = await generateEstimate(input, assetType, tier);
+  const computed = await generateEstimate(input, assetType, tier, includePlaybook);
 
   const [row] = await db
     .insert(estimatesTable)

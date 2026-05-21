@@ -581,9 +581,10 @@ function SettingsPageInner({
                 </div>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                You already have paid valuation tier access. Manage billing to change seats, cards, or add-ons via the
-                customer portal.
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                You&apos;re subscribed. Everyday+ adds unlimited valuations, full arbitrage payout rows, and configurable
+                monitor alerts. Professional also adds seller-grade listing presets, the seller playbook on new valuations,
+                and desk portfolios. Use the portal to change plans or payment details.
               </p>
             )}
             <Button
