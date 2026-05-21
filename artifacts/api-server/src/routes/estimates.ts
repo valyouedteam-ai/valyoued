@@ -337,6 +337,7 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
 
   const input: EstimateInput = {
     ...(body.data as EstimateInput),
+    assetTypeId: assetType.id,
     currency: region?.currencyCode ?? body.data.currency ?? "USD",
     portfolioId: portfolioIdToUse,
   };

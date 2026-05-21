@@ -46,7 +46,7 @@ import {
   PLATFORM_LABEL,
   PLATFORM_URL,
   matchPlatformSlug,
-  platformSearchUrl,
+  platformComparableSearchUrl,
   platformsForAssetType,
 } from "@/lib/platforms";
 import { safeHttpUrl } from "@/lib/safe-url";
@@ -738,13 +738,24 @@ export default function EstimateReportPage() {
           <div className="space-y-2">
             <h2 className="text-xl font-semibold tracking-tight text-foreground">Similar past sales</h2>
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Use these as reference points. We only show links we could verify. Buttons open a fresh search so you see what buyers are seeing now.
+              Use these as reference points. When we have a verifiable source URL for a row you can open it below. Marketplace buttons jump to similar sold results on eBay where we support it, and to live listing search everywhere else.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {comparables.map((comp, i) => {
               const livePlatforms = [...new Set(platformsForAssetType(assetTypeName))];
               const searchQuery = `${estimateTitle} ${comp.description}`.slice(0, 90);
+              const platformSearchContext = {
+                currency: ccy,
+                sellerRegion: estimate.input?.currentRegion ?? null,
+              };
+              const hasSoldShortcut = livePlatforms.some(
+                (slug) =>
+                  platformComparableSearchUrl(slug, searchQuery, {
+                    intent: "sold",
+                    context: platformSearchContext,
+                  }) != null,
+              );
               const verifiedUrl = safeHttpUrl(comp.url);
               const saleYear = typeof comp.year === "number" && Number.isFinite(comp.year) ? comp.year : null;
               const isStaleSale = saleYear != null && saleYear < staleSaleBeforeYear;
@@ -791,26 +802,62 @@ export default function EstimateReportPage() {
                         <span className="text-muted-foreground/80">No link for this row</span>
                       )}
                     </div>
-                    <div className="mt-auto border-t border-border/40 pt-3">
-                      <p className="mb-2 text-[11px] font-medium text-muted-foreground">Search what&apos;s listed now</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {livePlatforms.map((slug) => {
-                          const url = platformSearchUrl(slug, searchQuery);
-                          if (!url) return null;
-                          return (
-                            <a
-                              key={slug}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-lg border border-accent/35 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/18"
-                              data-testid={`comp-${i}-platform-${slug}`}
-                            >
-                              {PLATFORM_LABEL[slug] ?? slug}
-                              <ExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          );
-                        })}
+                    <div className="mt-auto space-y-4 border-t border-border/40 pt-3">
+                      <div>
+                        <p className="mb-2 text-[11px] font-medium text-muted-foreground">Similar sold listings</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {livePlatforms.map((slug) => {
+                            const url = platformComparableSearchUrl(slug, searchQuery, {
+                              intent: "sold",
+                              context: platformSearchContext,
+                            });
+                            if (!url) return null;
+                            return (
+                              <a
+                                key={`${slug}-sold`}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-lg border border-accent/35 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/18"
+                                aria-label={`Search completed and sold listings on ${PLATFORM_LABEL[slug] ?? slug}`}
+                                data-testid={`comp-${i}-platform-${slug}-sold`}
+                              >
+                                {PLATFORM_LABEL[slug] ?? slug}
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            );
+                          })}
+                        </div>
+                        {!hasSoldShortcut ? (
+                          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                            Sold-search shortcuts are available for eBay on this report. Use live listings below for other marketplaces, or open the verified source link when we have one.
+                          </p>
+                        ) : null}
+                      </div>
+                      <div>
+                        <p className="mb-2 text-[11px] font-medium text-muted-foreground">Browse live listings</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {livePlatforms.map((slug) => {
+                            const url = platformComparableSearchUrl(slug, searchQuery, {
+                              intent: "live",
+                            });
+                            if (!url) return null;
+                            return (
+                              <a
+                                key={`${slug}-live`}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-muted/30 px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-muted/50"
+                                aria-label={`Search live listings on ${PLATFORM_LABEL[slug] ?? slug}`}
+                                data-testid={`comp-${i}-platform-${slug}-live`}
+                              >
+                                {PLATFORM_LABEL[slug] ?? slug}
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </CardContent>

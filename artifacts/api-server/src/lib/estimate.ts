@@ -100,7 +100,7 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
     "description": string,      // what sold, condition nuance, lot notes (keep short)
     "price": number,            // in ${currency}
     "year": number,             // CALENDAR YEAR of that sale (NOT "model year" of the item unless the sale was in that year)
-    "url"?: string              // ONLY if you know a real public page (sold listing, auction lot result, official auction PDF). Omit if unsure. NEVER invent URLs.
+    "url"?: string              // Permalink to a specific sale evidence page ONLY: eBay /itm/ item, Bring a Trailer /listing/, Chrono24 offer, auction PDF, or news article quoting the sale. OMIT if unsure. NEVER invent URLs.
   }>,
   "marketSignals": Array<{      // 3-5 current market factors
     "label": string,
@@ -155,7 +155,10 @@ Rules:
   - Prefer sales from the **last 12–24 months**. At least **two** comparables should be from the last ~18 months when plausible for this asset class.
   - Do **not** lean on ancient sales (e.g. 2010s or earlier) as primary anchors unless the asset is extremely rare and you explicitly say so in the description. If you must cite an older sale, still prioritize newer comps first in the array.
   - Include **Facebook Marketplace** as a plausible source when the asset commonly trades locally (general merchandise, vehicles, furniture, electronics, many collectibles). Name the source accurately (e.g. "Facebook Marketplace", "eBay sold", "Bring a Trailer").
-  - **url** field: only real http(s) links a user can open. If you cannot name a specific listing, omit **url** entirely. Never use placeholder or fabricated links.
+  - **url** field (strict):
+    - Must be a **permalink** to that specific sale or lot: e.g. eBay **"/itm/"** item pages, Bring a Trailer **"/listing/"** (or equivalent auction URL), Chrono24 offer page, auction house lot page, or a reputable article that states the realized price with this URL.
+    - **Never** use marketplace **search or browse** URLs: no eBay **"/sch/"** search results, no **"?_nkw="** keyword-only hubs, no Google **"/search"**, no **"facebook.com/.../marketplace/search"**, no generic category browse pages. If you only have a search URL, **omit url entirely** rather than paste it.
+    - Never use placeholder or fabricated links.
 - Never wrap report copy or pro insight strings in quotation marks; use plain prose only (no leading/trailing " characters).
 - World events MUST be GROUNDED in the LIVE NEWS HEADLINES above. Pick the 3-6 most relevant articles, copy their source/url/publishedAt verbatim, and explain in 1-2 sentences how each ONE specifically moves the price of THIS asset for THIS seller. Do NOT invent URLs.
 - If none of the live articles are relevant (rare), you may add ONE training-knowledge entry with source:"General market context" and url:"". All other entries must come from the live list.

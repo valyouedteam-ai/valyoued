@@ -247,46 +247,36 @@ export const ASSET_TYPES: AssetType[] = [
 
   // ============ Vehicles ============
   {
-    id: "classic-car",
-    name: "Classic / Collector Car",
+    id: "car",
+    name: "Car",
     category: "Vehicles",
-    tagline: "Vintage, exotic and collectible cars",
-    exampleAttributes: "Mileage, matching numbers, restoration history",
+    tagline: "Daily drivers through collector and exotic cars",
+    exampleAttributes:
+      "Mileage, owners, matching numbers where relevant, service history, damage or MOT context",
     internationallyTradeable: true,
-    fields: [
-      { key: "brand", label: "Make", type: "text", required: true, placeholder: "Porsche" },
-      { key: "model", label: "Model", type: "text", required: true, placeholder: "911 Carrera 3.2" },
-      { key: "year", label: "Year", type: "number", required: true, placeholder: "1987" },
-      conditionField,
-      purchasePriceField,
-      { key: "mileage", label: "Mileage", type: "number", required: false, placeholder: "62000" },
-      { key: "ownerCount", label: "Number of previous owners", type: "number", required: false, placeholder: "2" },
-      { key: "matchingNumbers", label: "Matching numbers / original engine?", type: "select", required: false, options: ["Yes, fully matching", "Engine replaced", "Unsure"] },
-      { key: "serviceHistory", label: "Service history", type: "select", required: false, options: ["Full main-dealer", "Full independent specialist", "Partial", "None"] },
-      { key: "fuelType", label: "Fuel type", type: "select", required: false, options: ["Petrol", "Diesel", "Hybrid", "Electric"] },
-      sharedExtras("No accidents, garage-stored, recent service", "Restoration, accidents, storage, modifications"),
-    ],
-  },
-  {
-    id: "everyday-car",
-    name: "Everyday Car",
-    category: "Vehicles",
-    tagline: "Daily-driver cars sold in the local market",
-    exampleAttributes: "Mileage, owners, service history, MOT/safety inspection",
-    internationallyTradeable: false,
     fields: [
       { key: "brand", label: "Make", type: "text", required: true, placeholder: "Toyota" },
       { key: "model", label: "Model + trim", type: "text", required: true, placeholder: "Corolla Hybrid Excel" },
-      { key: "year", label: "Year", type: "number", required: true },
+      { key: "year", label: "Year", type: "number", required: true, placeholder: "2019" },
       conditionField,
       purchasePriceField,
       { key: "mileage", label: "Mileage", type: "number", required: true, placeholder: "48000" },
       { key: "ownerCount", label: "Previous owners", type: "number", required: false, placeholder: "2" },
+      {
+        key: "matchingNumbers",
+        label: "Matching numbers / original engine (collector relevance)",
+        type: "select",
+        required: false,
+        options: ["Yes, fully matching", "Engine replaced", "Unsure / N/A for this car"],
+      },
       { key: "fuelType", label: "Fuel type", type: "select", required: true, options: ["Petrol", "Diesel", "Hybrid", "Plug-in Hybrid", "Electric"] },
       { key: "transmission", label: "Transmission", type: "select", required: false, options: ["Manual", "Automatic", "Other"] },
-      { key: "serviceHistory", label: "Service history", type: "select", required: false, options: ["Full main-dealer", "Full independent", "Partial", "None"] },
+      { key: "serviceHistory", label: "Service history", type: "select", required: false, options: ["Full main-dealer", "Full independent specialist", "Partial", "None"] },
       { key: "accidents", label: "Accident / damage history", type: "select", required: false, options: ["None", "Minor cosmetic", "Major repaired", "Cat S/N or write-off"] },
-      sharedExtras("12 months MOT, full service history, two keys", "Tyres, MOT, keys, modifications"),
+      sharedExtras(
+        "Garage-kept; recent service; MOT or inspection current",
+        "Restoration depth, tyres, MOT or inspection dates, modifications, extras",
+      ),
     ],
   },
   {
@@ -877,6 +867,17 @@ export const ASSET_TYPES: AssetType[] = [
   },
 ];
 
+/** Legacy IDs still stored on older estimates; resolved to canonical `car` fields. */
+const LEGACY_ASSET_TYPE_IDS: Record<string, string> = {
+  "everyday-car": "car",
+  "classic-car": "car",
+};
+
+export function resolveCanonicalAssetTypeId(id: string): string {
+  return LEGACY_ASSET_TYPE_IDS[id] ?? id;
+}
+
 export function getAssetType(id: string): AssetType | undefined {
-  return ASSET_TYPES.find((a) => a.id === id);
+  const resolved = LEGACY_ASSET_TYPE_IDS[id] ?? id;
+  return ASSET_TYPES.find((a) => a.id === resolved);
 }

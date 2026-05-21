@@ -60,17 +60,11 @@ This document maps each `id` in `artifacts/api-server/src/lib/assetTypes.ts` to 
 
 ## Vehicles and marine
 
-### classic-car
+### car
 
-- Matching numbers, restoration depth, mileage, provenance.
+- Covers daily-use and collectible cars (trim accuracy, mileage, damage or inspection context, collector signals such as matching numbers).
 
-**Form fields:** existing plus restorationExtent.
-
-### everyday-car
-
-- Trim accuracy, mileage, damage history, MOT/inspection context, keys.
-
-**Form fields:** existing plus motOrInspectionNote, spareKeys.
+**Form fields:** merged essentials from legacy classic-car and everyday-car (matching numbers optional, MOT or inspection wording in extras).
 
 ### motorcycle
 

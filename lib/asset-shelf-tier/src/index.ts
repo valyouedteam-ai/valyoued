@@ -14,6 +14,7 @@ const LUXURY_ONLY_IDS = new Set<string>([
   "designer-accessories",
   "sneakers",
   "streetwear-apparel",
+  /** Legacy IDs from before `car`; keep for shelving older estimates only. */
   "classic-car",
   "fine-art",
   "trading-cards",
@@ -34,11 +35,12 @@ const LUXURY_ONLY_IDS = new Set<string>([
  * Mass-market / depreciating consumer goods, shown only on the everyday track.
  */
 const EVERYDAY_ONLY_IDS = new Set<string>([
-  "everyday-car",
   "smartphone",
   "laptop",
   "camera",
   "tablet",
+  /** Legacy IDs from before `car`; keep for shelving older estimates only. */
+  "everyday-car",
   "bicycle",
   "golf-equipment",
   "winter-sports",

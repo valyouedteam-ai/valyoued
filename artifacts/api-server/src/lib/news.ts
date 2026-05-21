@@ -90,13 +90,14 @@ export function buildNewsQueries(
 ): string[] {
   const base = `${assetTypeName} market ${region}`;
   switch (assetTypeId) {
+    case "car":
     case "everyday-car":
     case "classic-car":
     case "motorcycle":
       return [
         `${region} petrol diesel prices`,
         `${region} EV electric vehicle legislation tax`,
-        `${region} used car market ${assetTypeName === "Classic / Collector Car" ? "classic" : ""}`.trim(),
+        `${region} used car market collector classic auctions`,
       ];
     case "residential-property":
       return [

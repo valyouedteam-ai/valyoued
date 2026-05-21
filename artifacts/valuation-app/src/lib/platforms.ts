@@ -32,37 +32,30 @@ export const PLATFORM_URL: Record<string, string> = {
   zillow: "https://www.zillow.com/sell/",
 };
 
-// Map a free-text marketplace name (as returned by the model) to one of our
-// known PLATFORM_URL slugs. Uses word-boundary matching on a normalized
-// (lowercased, punctuation-stripped) form so generic words like "marketplace"
-// don't accidentally route the user to the wrong posting URL.
-export function matchPlatformSlug(rawName: string): string | null {
-  const n = ` ${rawName.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim()} `;
-  // Order matters: more specific aliases first, generic ones last.
-  const candidates: Array<[string, string[]]> = [
-    ["chrono24", ["chrono24", "chrono 24"]],
-    ["watchcharts", ["watchcharts", "watch charts"]],
-    ["bring-a-trailer", ["bring a trailer", "bringatrailer"]],
-    ["autotrader", ["autotrader", "auto trader"]],
-    ["vestiaire-collective", ["vestiaire", "vestiaire collective"]],
-    ["facebook-marketplace", ["facebook marketplace", "fb marketplace", "facebook"]],
-    ["ebay", ["ebay"]],
-    ["gumtree", ["gumtree"]],
-    ["craigslist", ["craigslist"]],
-    ["depop", ["depop"]],
-    ["vinted", ["vinted"]],
-    ["rightmove", ["rightmove"]],
-    ["zillow", ["zillow"]],
-  ];
-  for (const [slug, needles] of candidates) {
-    if (needles.some((needle) => n.includes(` ${needle} `))) return slug;
+/** Narrow intent for deep links next to "Similar past sales" on reports. */
+export type PlatformComparableIntent = "sold" | "live";
+
+export type PlatformComparableContext = {
+  /** ISO currency code from the estimate (e.g. GBP → eBay UK host for sold search). */
+  currency?: string;
+  /** Seller region string from the estimate, for locale hints. */
+  sellerRegion?: string | null;
+};
+
+function ebayHostForContext(ctx?: PlatformComparableContext): "www.ebay.com" | "www.ebay.co.uk" {
+  const c = (ctx?.currency ?? "").trim().toUpperCase();
+  if (c === "GBP") return "www.ebay.co.uk";
+  const r = (ctx?.sellerRegion ?? "").toLowerCase();
+  if (
+    /\b(uk|u\.k\.|united kingdom|great britain|england|scotland|wales|northern ireland|gb)\b/.test(r) ||
+    /\blondon\b|\bmanchester\b|\bedinburgh\b|\bglasgow\b|\bcardiff\b|\bbelfast\b/.test(r)
+  ) {
+    return "www.ebay.co.uk";
   }
-  return null;
+  return "www.ebay.com";
 }
 
-// Search-by-text URLs, used to deep-link comparables to live listings on each
-// marketplace so users can see what's currently for sale on different sites.
-export function platformSearchUrl(slug: string, query: string): string | null {
+function platformLiveSearchUrl(slug: string, query: string): string | null {
   const q = encodeURIComponent(query);
   switch (slug) {
     case "ebay":
@@ -94,6 +87,68 @@ export function platformSearchUrl(slug: string, query: string): string | null {
     default:
       return null;
   }
+}
+
+/**
+ * Deep links for the comparable cards: "sold" uses completed-listing filters where we have
+ * stable public URL patterns; "live" is keyword search (current listings / mixed).
+ */
+export function platformComparableSearchUrl(
+  slug: string,
+  query: string,
+  opts: { intent: PlatformComparableIntent; context?: PlatformComparableContext },
+): string | null {
+  const { intent, context } = opts;
+  const q = encodeURIComponent(query);
+
+  if (intent === "sold") {
+    switch (slug) {
+      case "ebay": {
+        const host = ebayHostForContext(context);
+        return `https://${host}/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1`;
+      }
+      default:
+        return null;
+    }
+  }
+
+  return platformLiveSearchUrl(slug, query);
+}
+
+// Map a free-text marketplace name (as returned by the model) to one of our
+// known PLATFORM_URL slugs. Uses word-boundary matching on a normalized
+// (lowercased, punctuation-stripped) form so generic words like "marketplace"
+// don't accidentally route the user to the wrong posting URL.
+export function matchPlatformSlug(rawName: string): string | null {
+  const n = ` ${rawName.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim()} `;
+  // Order matters: more specific aliases first, generic ones last.
+  const candidates: Array<[string, string[]]> = [
+    ["chrono24", ["chrono24", "chrono 24"]],
+    ["watchcharts", ["watchcharts", "watch charts"]],
+    ["bring-a-trailer", ["bring a trailer", "bringatrailer"]],
+    ["autotrader", ["autotrader", "auto trader"]],
+    ["vestiaire-collective", ["vestiaire", "vestiaire collective"]],
+    ["facebook-marketplace", ["facebook marketplace", "fb marketplace", "facebook"]],
+    ["ebay", ["ebay"]],
+    ["gumtree", ["gumtree"]],
+    ["craigslist", ["craigslist"]],
+    ["depop", ["depop"]],
+    ["vinted", ["vinted"]],
+    ["rightmove", ["rightmove"]],
+    ["zillow", ["zillow"]],
+  ];
+  for (const [slug, needles] of candidates) {
+    if (needles.some((needle) => n.includes(` ${needle} `))) return slug;
+  }
+  return null;
+}
+
+/**
+ * Search-by-text URLs for live listings (keyword search). Prefer
+ * {@link platformComparableSearchUrl} with `intent: "sold"` when showing past-sale discovery.
+ */
+export function platformSearchUrl(slug: string, query: string): string | null {
+  return platformComparableSearchUrl(slug, query, { intent: "live" });
 }
 
 // Best-fit "find more like this" platforms for a given asset type name, used

@@ -2,7 +2,9 @@
 
 **Last reviewed:** 2026-05-21
 
-This note tracks how posting drafts narrow marketplaces to regions that align with posting URLs shipped in [`artifacts/valuation-app/src/lib/platforms.ts`](artifacts/valuation-app/src/lib/platforms.ts).
+Longer roadmap (agents, prerequisites UI, autocomplete): [Marketplace research and agents plan](./marketplace-research-and-agents-plan.md).
+
+This note tracks how posting drafts narrow marketplaces to regions that align with posting URLs shipped in [`artifacts/valuation-app/src/lib/platforms.ts`](../artifacts/valuation-app/src/lib/platforms.ts).
 
 ## Sources of truth
 

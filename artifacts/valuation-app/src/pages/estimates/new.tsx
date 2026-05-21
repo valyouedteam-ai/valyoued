@@ -191,6 +191,7 @@ const ASSET_TYPE_ICONS: Partial<Record<string, LucideIcon>> = {
   "sneakers": Footprints,
   "streetwear-apparel": Shirt,
   "designer-accessories": Wallet,
+  "car": Car,
   "classic-car": Car,
   "everyday-car": Car,
   "motorcycle": Bike,
@@ -305,7 +306,8 @@ function DynamicAssetFieldRow({
   const brandWatch = String(useWatch({ control: form.control, name: "brand" as any }) ?? "").trim();
   const modelWatch = String(useWatch({ control: form.control, name: "model" as any }) ?? "").trim();
   const fuelHint =
-    f.key === "fuelType" && (assetTypeId === "everyday-car" || assetTypeId === "classic-car")
+    f.key === "fuelType" &&
+    (assetTypeId === "car" || assetTypeId === "everyday-car" || assetTypeId === "classic-car")
       ? inferVehicleFuelHint({ brand: brandWatch, model: modelWatch })
       : null;
   const inferredFuelOption = useMemo(() => {
@@ -1052,9 +1054,9 @@ function NewEstimatePageInner({
                         {!selectedCategory ? (
                           <p className="text-xs leading-relaxed text-muted-foreground">
                             We support <span className="font-medium text-foreground">{WIZARD_CURATED_PRIMARY_COUNT}</span>{" "}
-                            guided item templates (electronics, watches, cameras, bicycles, handbags, sneakers, and both
-                            car flows). Everyday vs Luxury only hides picks that clash with that framing. Anything Else
-                            is for everything outside those templates.
+                            guided item templates (electronics, watches, cameras, jewelry, fine art, cars, handbags, and
+                            sneakers). Everyday vs Luxury only hides picks that clash with that framing. Anything Else is
+                            for everything outside those templates.
                           </p>
                         ) : null}
 
