@@ -13,6 +13,7 @@
     "@clerk/express": "^2.1.9",
     "@workspace/asset-shelf-tier": "workspace:*",
     "@workspace/api-zod": "workspace:*",
+    "@workspace/curated-asset-ids": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/fx-usd": "workspace:*",
     "@workspace/marketplace-regions": "workspace:*",

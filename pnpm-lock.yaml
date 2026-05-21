@@ -95,6 +95,9 @@ importers:
       '@workspace/asset-shelf-tier':
         specifier: workspace:*
         version: link:../../lib/asset-shelf-tier
+      '@workspace/curated-asset-ids':
+        specifier: workspace:*
+        version: link:../../lib/curated-asset-ids
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
@@ -487,6 +490,9 @@ importers:
       '@workspace/asset-shelf-tier':
         specifier: workspace:*
         version: link:../../lib/asset-shelf-tier
+      '@workspace/curated-asset-ids':
+        specifier: workspace:*
+        version: link:../../lib/curated-asset-ids
       '@workspace/fx-usd':
         specifier: workspace:*
         version: link:../../lib/fx-usd
@@ -582,6 +588,8 @@ importers:
         version: 3.25.76
 
   lib/asset-shelf-tier: {}
+
+  lib/curated-asset-ids: {}
 
   lib/db:
     dependencies:

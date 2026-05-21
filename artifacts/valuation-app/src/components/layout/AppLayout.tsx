@@ -47,7 +47,7 @@ const navWorkspace: NavItem[] = [
 
 const navInsights: NavItem[] = [
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-  { href: "/listings", label: "Ad Drafts", icon: Megaphone },
+  { href: "/listings", label: "Ads", icon: Megaphone },
 ];
 
 function NavLink({
@@ -291,7 +291,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
   return (
     <div className="no-print flex min-h-[100dvh] flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4">
           <Link
             href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}
             className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition-opacity hover:opacity-90"
@@ -353,7 +353,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]">
           <div className="grid-bg absolute inset-0" />
         </div>
-        <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">{children}</div>
+        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">{children}</div>
       </main>
     </div>
   );

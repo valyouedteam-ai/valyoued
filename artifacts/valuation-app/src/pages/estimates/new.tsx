@@ -21,7 +21,6 @@ import {
   Disc3,
   Dumbbell,
   Footprints,
-  Gamepad2,
   Gem,
   Guitar,
   Home,
@@ -40,7 +39,6 @@ import {
   Sofa,
   Snowflake,
   Sparkles,
-  Speaker,
   SquareStack,
   Tablet,
   Tent,
@@ -65,6 +63,7 @@ import {
 } from "@workspace/api-client-react";
 import type { EstimateInput, AssetType, AssetField } from "@workspace/api-client-react";
 import { assetTypeAllowedForSellerTier } from "@workspace/asset-shelf-tier";
+import { GENERAL_ITEM_ASSET_TYPE_ID, isWizardSupportedAssetTypeId, pickAssetTypesForWizardPicker, WIZARD_CURATED_PRIMARY_COUNT } from "@workspace/curated-asset-ids";
 import { inferVehicleFuelHint, matchFuelDropdownOption } from "@workspace/marketplace-regions";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -88,10 +87,7 @@ import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
 const PENDING_KEY = "valyoued.pendingEstimate";
 /** When a type has more driver fields than this, the wizard adds a second "details" step. */
 const VALUE_DRIVER_STEP_CAP = 8;
-/** Fallback type for items that do not match a predefined class (see assetTypes.ts). */
-const GENERAL_ITEM_ASSET_TYPE_ID = "general-item";
-
-/** Mirrors server `general-item` so the wizard can render if /api/asset-types is slow or unavailable. */
+/** Mirrors server `general-item` so the wizard can render if `/api/asset-types` is slow or unavailable. */
 const GENERAL_ITEM_FALLBACK: AssetType = {
   id: GENERAL_ITEM_ASSET_TYPE_ID,
   name: "Anything Else",
@@ -202,10 +198,8 @@ const ASSET_TYPE_ICONS: Partial<Record<string, LucideIcon>> = {
   "rv-camper": Tent,
   "smartphone": Smartphone,
   "laptop": Laptop,
-  "gaming-console": Gamepad2,
   "camera": Camera,
   "tablet": Tablet,
-  "audio-hifi": Speaker,
   "drone-uav": Plane,
   "residential-property": Home,
   "commercial-property": Building2,
@@ -476,6 +470,17 @@ function NewEstimatePageInner({
       sessionStorage.removeItem(PENDING_KEY);
       return;
     }
+    if (!pending || !pending.input?.assetTypeId || !isWizardSupportedAssetTypeId(pending.input.assetTypeId)) {
+      sessionStorage.removeItem(PENDING_KEY);
+      if (pending?.input?.assetTypeId && !isWizardSupportedAssetTypeId(pending.input.assetTypeId)) {
+        toast({
+          title: "Could not resume",
+          description: `That valuation used a retired category. Please start again and pick one of the ${WIZARD_CURATED_PRIMARY_COUNT} supported types, or Anything Else.`,
+          variant: "destructive",
+        });
+      }
+      return;
+    }
     resumedRef.current = true;
     sessionStorage.removeItem(PENDING_KEY);
     const resumePayload = { ...pending.input } satisfies PendingPayload["input"];
@@ -533,6 +538,17 @@ function NewEstimatePageInner({
       if (!baseResult.success) {
         return { values: {}, errors: baseResult.error.formErrors.fieldErrors as any };
       }
+      if (!isWizardSupportedAssetTypeId(data.assetTypeId)) {
+        return {
+          values: {},
+          errors: {
+            assetTypeId: {
+              type: "validate",
+              message: `Choose one of the ${WIZARD_CURATED_PRIMARY_COUNT} supported item types, or Anything Else.`,
+            },
+          },
+        };
+      }
       const type = assetTypes?.find((t) => t.id === data.assetTypeId);
       if (!type) return { values: data, errors: {} };
       const errors: Record<string, any> = {};
@@ -557,9 +573,14 @@ function NewEstimatePageInner({
 
   const selectedTier = form.watch("assetTier");
   const selectedTypeId = form.watch("assetTypeId");
-  const selectedType =
-    assetTypes?.find((t) => t.id === selectedTypeId) ??
-    (selectedTypeId === GENERAL_ITEM_ASSET_TYPE_ID ? GENERAL_ITEM_FALLBACK : undefined);
+  const selectedType = useMemo((): AssetType | undefined => {
+    if (!selectedTypeId) return undefined;
+    if (!isWizardSupportedAssetTypeId(selectedTypeId)) return undefined;
+    if (selectedTypeId === GENERAL_ITEM_ASSET_TYPE_ID) {
+      return assetTypes?.find((t) => t.id === GENERAL_ITEM_ASSET_TYPE_ID) ?? GENERAL_ITEM_FALLBACK;
+    }
+    return assetTypes?.find((t) => t.id === selectedTypeId);
+  }, [assetTypes, selectedTypeId]);
 
   const selectedRegionName = form.watch("currentRegion");
   const selectedRegion = useMemo(
@@ -572,16 +593,21 @@ function NewEstimatePageInner({
     return assetTypes.filter((t) => assetTypeAllowedForSellerTier(t.id, selectedTier));
   }, [assetTypes, selectedTier]);
 
+  const wizardPickableAssetTypes = useMemo(
+    () => pickAssetTypesForWizardPicker(tierFilteredAssetTypes),
+    [tierFilteredAssetTypes],
+  );
+
   const grouped = useMemo(() => {
-    if (!tierFilteredAssetTypes.length) return [];
+    if (!wizardPickableAssetTypes.length) return [];
     const map = new Map<string, AssetType[]>();
-    for (const t of tierFilteredAssetTypes) {
+    for (const t of wizardPickableAssetTypes) {
       const key = t.category || "Other";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(t);
     }
     return Array.from(map.entries());
-  }, [tierFilteredAssetTypes]);
+  }, [wizardPickableAssetTypes]);
 
   const assetTypesLoading = assetTypes === undefined && assetTypesFetching;
   const assetTypesErrMessage =
@@ -596,7 +622,21 @@ function NewEstimatePageInner({
   }, [selectedTier]);
 
   useEffect(() => {
+    if (!selectedTypeId || !assetTypes?.length) return;
+    if (isWizardSupportedAssetTypeId(selectedTypeId)) return;
+    const prev = assetTypes.find((t) => t.id === selectedTypeId);
+    if (prev) {
+      prev.fields.forEach((f) => {
+        if (!STANDARD_KEYS.has(f.key)) form.setValue(f.key as any, undefined);
+      });
+    }
+    form.setValue("assetTypeId", "");
+    setSelectedCategory(null);
+  }, [selectedTypeId, assetTypes, form]);
+
+  useEffect(() => {
     if (!selectedTier || !selectedTypeId || !assetTypes?.length) return;
+    if (!isWizardSupportedAssetTypeId(selectedTypeId)) return;
     if (assetTypeAllowedForSellerTier(selectedTypeId, selectedTier)) return;
     const prev = assetTypes.find((t) => t.id === selectedTypeId);
     if (prev) {
@@ -676,6 +716,14 @@ function NewEstimatePageInner({
           toast({
             title: "Pick an item type",
             description: "Select what you are valuing to continue.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        if (!isWizardSupportedAssetTypeId(v.assetTypeId)) {
+          toast({
+            title: "Pick a supported item type",
+            description: `Choose one of the ${WIZARD_CURATED_PRIMARY_COUNT} guided templates we support, or Anything Else.`,
             variant: "destructive",
           });
           return false;
@@ -771,6 +819,14 @@ function NewEstimatePageInner({
   }
 
   const onSubmit = (data: any) => {
+    if (!isWizardSupportedAssetTypeId(data.assetTypeId)) {
+      toast({
+        title: "Unsupported item type",
+        description: `Choose one of the ${WIZARD_CURATED_PRIMARY_COUNT} guided templates we support, or Anything Else.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (!selectedType) {
       toast({ title: "Pick an asset class first", description: "Choose what you're valuing from the dropdown.", variant: "destructive" });
       return;
@@ -993,6 +1049,14 @@ function NewEstimatePageInner({
                             ? `Pick the specific item type in ${selectedCategory}`
                             : "Pick a category"}
                         </p>
+                        {!selectedCategory ? (
+                          <p className="text-xs leading-relaxed text-muted-foreground">
+                            We support <span className="font-medium text-foreground">{WIZARD_CURATED_PRIMARY_COUNT}</span>{" "}
+                            guided item templates (electronics, watches, cameras, bicycles, handbags, sneakers, and both
+                            car flows). Everyday vs Luxury only hides picks that clash with that framing. Anything Else
+                            is for everything outside those templates.
+                          </p>
+                        ) : null}
 
                         {!selectedCategory && (
                           <>

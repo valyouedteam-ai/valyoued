@@ -20,6 +20,9 @@
     },
     {
       "path": "./lib/marketplace-regions"
+    },
+    {
+      "path": "./lib/curated-asset-ids"
     }
   ]
 }

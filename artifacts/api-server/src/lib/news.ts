@@ -135,8 +135,8 @@ export function buildNewsQueries(
         `${region} collectibles auction`,
       ];
     case "smartphone":
+    case "tablet":
     case "laptop":
-    case "gaming-console":
     case "camera":
       return [
         `${assetTypeName} resale price 2026`,

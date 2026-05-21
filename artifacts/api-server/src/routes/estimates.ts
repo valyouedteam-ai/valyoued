@@ -227,6 +227,7 @@ router.get("/estimates", async (req, res): Promise<void> => {
       adjustedMid: r.adjustedMid,
       currency: r.currency,
       bestArbitrageRegion: r.bestArbitrageRegion,
+      tier: r.tier === "pro" ? "pro" : "free",
       currentRegion: readSellerRegionFromStoredResult(r.result, r.bestArbitrageRegion),
       portfolioShelf,
       createdAt: r.createdAt.toISOString(),

@@ -7,6 +7,7 @@
  */
 import type { EstimateSummaryIntent } from "./estimateSummaryIntent";
 import type { EstimateSummaryPortfolioShelf } from "./estimateSummaryPortfolioShelf";
+import type { EstimateSummaryTier } from "./estimateSummaryTier";
 
 export interface EstimateSummary {
   id: string;
@@ -17,6 +18,8 @@ export interface EstimateSummary {
   adjustedMid: number;
   currency: string;
   bestArbitrageRegion: string;
+  /** Tier used when the valuation was generated (Pro unlocks full arbitrage rows on the report). */
+  tier: EstimateSummaryTier;
   /** Seller region from stored valuation input when available. */
   currentRegion?: string;
   /** Shelf for portfolio grouping: from the seller tier captured on the estimate plus asset-class hints. */

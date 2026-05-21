@@ -93,6 +93,11 @@ export const ListEstimatesResponseItem = zod.object({
   adjustedMid: zod.number(),
   currency: zod.string(),
   bestArbitrageRegion: zod.string(),
+  tier: zod
+    .enum(["free", "pro"])
+    .describe(
+      "Tier used when the valuation was generated (Pro unlocks full arbitrage rows on the report).",
+    ),
   currentRegion: zod
     .string()
     .optional()

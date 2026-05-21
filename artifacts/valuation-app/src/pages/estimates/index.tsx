@@ -2,13 +2,21 @@ import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { FileText, ArrowRight, AlertCircle, Plus } from "lucide-react";
 import { useListEstimates } from "@workspace/api-client-react";
+import type { EstimateSummaryTier } from "@workspace/api-client-react";
 import { formatMoney } from "@/lib/format";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
 export default function EstimatesPage() {
   const { data: estimates, isLoading } = useListEstimates();
+  const { data: billing } = useBillingSummary();
+  const billingPaid = Boolean(billing?.hasPaidValuationTier);
+
+  function canSeeTopMarketHint(tier: EstimateSummaryTier) {
+    return billingPaid || tier === "pro";
+  }
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-16">
@@ -69,10 +77,20 @@ export default function EstimatesPage() {
                   <div className="text-xl font-sans font-bold text-foreground">
                     {formatMoney(est.adjustedMid, est.currency)}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                    <span className="uppercase tracking-wider">Top Market:</span>
-                    <span className="font-medium text-foreground">{est.bestArbitrageRegion}</span>
-                  </div>
+                  {canSeeTopMarketHint(est.tier) ? (
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                      <span className="uppercase tracking-wider">Top Market:</span>
+                      <span className="font-medium text-foreground">{est.bestArbitrageRegion}</span>
+                    </div>
+                  ) : (
+                    <div className="mt-1 max-w-[15rem] space-y-2 text-right text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">Top market</p>
+                      <p>Included with a paid plan or after a Pro valuation run.</p>
+                      <Link href="/settings" className="font-medium text-accent hover:underline">
+                        Settings
+                      </Link>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="sm:hidden text-accent">

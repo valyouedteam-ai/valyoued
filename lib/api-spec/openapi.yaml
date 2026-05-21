@@ -664,7 +664,19 @@ components:
     EstimateSummary:
       type: object
       required:
-        [id, title, assetTypeId, assetTypeName, baselineMid, adjustedMid, currency, bestArbitrageRegion, portfolioShelf, createdAt]
+        [
+          id,
+          title,
+          assetTypeId,
+          assetTypeName,
+          baselineMid,
+          adjustedMid,
+          currency,
+          bestArbitrageRegion,
+          tier,
+          portfolioShelf,
+          createdAt,
+        ]
       properties:
         id:
           type: string
@@ -682,6 +694,10 @@ components:
           type: string
         bestArbitrageRegion:
           type: string
+        tier:
+          type: string
+          enum: [free, pro]
+          description: Tier used when the valuation was generated (Pro unlocks full arbitrage rows on the report).
         currentRegion:
           type: string
           description: Seller region from stored valuation input when available.

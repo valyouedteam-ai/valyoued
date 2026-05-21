@@ -18,6 +18,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useProTier } from "@/hooks/use-pro-tier";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
+import type { EstimateSummaryTier } from "@workspace/api-client-react";
 
 export default function MarketsPage() {
   const { code: displayCcy } = useDisplayCurrency();
@@ -32,11 +34,18 @@ export default function MarketsPage() {
     },
   });
   const { isPro } = useProTier();
+  const { data: billing } = useBillingSummary();
+  const billingPaid = Boolean(billing?.hasPaidValuationTier);
+
+  function canHintPayBestForEstimate(tier: EstimateSummaryTier) {
+    return billingPaid || tier === "pro";
+  }
 
   const fxMult = fxSnap?.rates;
   const fmtUsd = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
 
   const rows = useMemo(() => (Array.isArray(estimates) ? estimates : []), [estimates]);
+  const canSeeRegionalPayHints = billingPaid || rows.some((e) => e.tier === "pro");
 
   const loading = statsLoading || listLoading;
 
@@ -135,6 +144,18 @@ export default function MarketsPage() {
           <CardContent>
             {loading ? (
               <Skeleton className="h-40 w-full" />
+            ) : !canSeeRegionalPayHints ? (
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Regional payout view</p>
+                <p>See which regions show up as the strongest match across your valuations.</p>
+                <p>
+                  <Link href="/settings" className="font-medium text-accent hover:underline">
+                    Subscribe in Settings
+                  </Link>
+                  {" "}
+                  or run a valuation with Pro.
+                </p>
+              </div>
             ) : stats && stats.topArbitrageRegions.length > 0 ? (
               <Table>
                 <TableHeader>
@@ -217,7 +238,7 @@ export default function MarketsPage() {
             Comparative pricing versus recent sales, live marketplace search shortcuts, and optional
             listing drafts are on each report and in{" "}
             <Link href="/listings" className="text-accent hover:underline">
-              Ad Drafts
+              Ads
             </Link>
             .
           </CardDescription>
@@ -232,7 +253,7 @@ export default function MarketsPage() {
                   <TableHead>Asset</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Adjusted</TableHead>
-                  <TableHead>Top region (hint)</TableHead>
+                  <TableHead>Top region (Pro)</TableHead>
                   <TableHead className="w-[120px]" />
                 </TableRow>
               </TableHeader>
@@ -244,7 +265,9 @@ export default function MarketsPage() {
                     <TableCell className="text-right font-sans text-sm">
                       {formatMoney(e.adjustedMid, e.currency)}
                     </TableCell>
-                    <TableCell className="text-sm">{e.bestArbitrageRegion || "N/A"}</TableCell>
+                    <TableCell className="text-sm">
+                      {canHintPayBestForEstimate(e.tier) ? e.bestArbitrageRegion || "N/A" : "—"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Link href={`/estimates/${e.id}`}>
                         <Button variant="ghost" size="sm" className="gap-1">

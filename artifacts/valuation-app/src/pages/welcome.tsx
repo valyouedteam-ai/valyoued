@@ -118,7 +118,7 @@ export default function WelcomePersonaPage() {
           </motion.div>
         </div>
 
-        <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
+        <p className="w-full max-w-none text-pretty text-sm leading-relaxed text-muted-foreground">
           Tip: Everyday free includes five valuations per calendar month.{" "}
           <Link href="/pricing" className="font-medium text-accent underline-offset-4 hover:underline">
             See the Pricing page for full tiers.

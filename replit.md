@@ -20,7 +20,7 @@ Monorepo (pnpm workspaces).
   - `/api/billing/checkout-session`, `/api/billing/customer-portal`, `/api/billing/webhook`: Stripe (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO`, `STRIPE_WEBHOOK_SECRET`, `PUBLIC_APP_URL`). Webhook mounted before `express.json()` with raw body.
   - `/api/vision/extract`: Anthropic vision (`src/lib/vision.ts`). Rate-limited to 8 req/min/IP.
   - `/api/listings`: marketplace drafts via Anthropic (`src/lib/listing.ts`). Rate-limited to 12 req/min/IP.
-  - `src/lib/assetTypes.ts`: catalog of asset categories and dynamic form fields (20+ asset classes)
+  - `src/lib/assetTypes.ts`: full server catalog (`/api/asset-types`); wizard UI exposes 10 curated guided templates plus Anything Else (`@workspace/curated-asset-ids`)
   - `src/lib/estimate.ts`: Anthropic claude-sonnet-4-5 prompt → JSON; net market factor + arbitrage; heuristic fallback
   - `src/lib/platformEvents.ts`: append-only `platform_events` on estimate / listing / vision
   - `src/lib/rateLimit.ts`: in-memory IP buckets on vision, listing, and estimate routes

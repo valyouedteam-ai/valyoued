@@ -98,7 +98,7 @@ function AdminDashboardInner({
         ? [
             { label: "Valuations saved", short: "Valuations", count: data.totals.estimates },
             { label: "Users (1+ valuation)", short: "Users", count: data.totals.distinctUsersWithEstimates },
-            { label: "Ad drafts", short: "Ad drafts", count: data.totals.listings },
+            { label: "Ads", short: "Ads", count: data.totals.listings },
           ]
         : [],
     [data],
@@ -177,7 +177,7 @@ function AdminDashboardInner({
             </Card>
             <Card className="border-border/80 bg-card/50">
               <CardHeader className="pb-2">
-                <CardDescription>Ad drafts saved</CardDescription>
+                <CardDescription>Ads saved</CardDescription>
                 <CardTitle className="text-3xl font-sans tabular-nums tracking-tight">{data.totals.listings}</CardTitle>
               </CardHeader>
             </Card>

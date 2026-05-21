@@ -1,0 +1,9 @@
+{
+  "name": "@workspace/curated-asset-ids",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

@@ -28,6 +28,7 @@ export * from "./estimateStatsTopArbitrageRegionsItem";
 export * from "./estimateSummary";
 export * from "./estimateSummaryIntent";
 export * from "./estimateSummaryPortfolioShelf";
+export * from "./estimateSummaryTier";
 export * from "./fxRatesResponse";
 export * from "./fxRatesResponseRates";
 export * from "./fxRatesResponseSource";

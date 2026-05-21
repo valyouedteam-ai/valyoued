@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import type { UseQueryOptions } from "@tanstack/react-query";
 import type { EstimateSummary, PatchEstimateBodyIntent } from "@workspace/api-client-react";
 import {
+  getGetEstimateQueryKey,
   getGetEstimateStatsQueryKey,
   getListEstimatesQueryKey,
   listEstimates,
@@ -17,6 +18,7 @@ import {
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
 import { formatPercent, formatMoney } from "@/lib/format";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,41 +49,9 @@ function inActiveWorkspace(
 type IntentFilterKey = "all" | PatchEstimateBodyIntent | "unset";
 type ShelfFilterKey = "all" | EstimateSummary["portfolioShelf"];
 
-function StatPulse({
-  label,
-  value,
-  active,
-  onClick,
-  disabled,
-}: {
-  label: string;
-  value: string | number;
-  active?: boolean;
-  onClick?: () => void;
-  disabled?: boolean;
-}) {
-  const clickable = typeof onClick === "function";
-  const Comp = clickable ? "button" : "div";
-  return (
-    <Comp
-      type={clickable ? "button" : undefined}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "rounded-2xl border px-4 py-3 text-left shadow-sm outline-none transition-all",
-        "border-border/60 bg-card/80 backdrop-blur-sm",
-        clickable && "cursor-pointer hover:border-accent/35 hover:bg-card focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50",
-        active && "border-accent/50 bg-accent/10 ring-1 ring-accent/25",
-      )}
-    >
-      <div className="text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{value}</div>
-      <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</div>
-    </Comp>
-  );
-}
-
 export default function HomePage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const {
     portfolios,
@@ -107,20 +77,6 @@ export default function HomePage() {
     return rows.filter((e) => inActiveWorkspace(e, act, prim));
   }, [estimates, activePortfolio?.id, primaryPortfolio?.id]);
 
-  const intentCounts = useMemo(() => {
-    let sell = 0,
-      monitor = 0,
-      hold = 0,
-      unset = 0;
-    for (const e of filtered) {
-      if (!e.intent) unset++;
-      else if (e.intent === "sell") sell++;
-      else if (e.intent === "monitor") monitor++;
-      else if (e.intent === "hold") hold++;
-    }
-    return { sell, monitor, hold, unset };
-  }, [filtered]);
-
   const workspaceLabel =
     activePortfolio?.label ??
     (activePortfolio?.purpose === "pro_board" ? "Professional desk" : null);
@@ -144,9 +100,17 @@ export default function HomePage() {
 
   const patchIntent = usePatchEstimate({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data, variables) => {
+        queryClient.setQueryData(getGetEstimateQueryKey(variables.id), data);
         void queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
         void queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not save intent",
+          description: err instanceof Error ? err.message : "Try again.",
+          variant: "destructive",
+        });
       },
     },
   });
@@ -177,8 +141,8 @@ export default function HomePage() {
     },
     {
       href: mergePortfolioHref("/listings", portfolioQuerySuffix),
-      title: "Ad Drafts",
-      description: "Draft copy",
+      title: "Ads",
+      description: "Listing copy",
       icon: Megaphone,
     },
   ];
@@ -186,10 +150,6 @@ export default function HomePage() {
   function resetFilters() {
     setIntentFilter("all");
     setShelfFilter("all");
-  }
-
-  function toggleIntentFilter(next: PatchEstimateBodyIntent) {
-    setIntentFilter((curr) => (curr === next ? "all" : next));
   }
 
   const primaryLabel = portfolios?.find((p) => p.purpose === "primary")?.label ?? null;
@@ -252,28 +212,6 @@ export default function HomePage() {
               </Link>
             </Button>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
-          <StatPulse label="Saved here" value={filtered.length} onClick={() => resetFilters()} active={intentFilter === "all" && shelfFilter === "all"} />
-          <StatPulse
-            label="Prep to sell"
-            value={intentCounts.sell}
-            onClick={() => toggleIntentFilter("sell")}
-            active={intentFilter === "sell"}
-          />
-          <StatPulse
-            label="Watching"
-            value={intentCounts.monitor}
-            onClick={() => toggleIntentFilter("monitor")}
-            active={intentFilter === "monitor"}
-          />
-          <StatPulse
-            label="Holding"
-            value={intentCounts.hold}
-            onClick={() => toggleIntentFilter("hold")}
-            active={intentFilter === "hold"}
-          />
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -558,14 +496,14 @@ export default function HomePage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Megaphone className="h-5 w-5 text-muted-foreground" />
-              <CardTitle className="text-lg">Ad Drafts &amp; monitors</CardTitle>
+              <CardTitle className="text-lg">Ads &amp; monitors</CardTitle>
             </div>
-            <p className="text-sm text-muted-foreground">Shortcuts for drafts you already surfaced in reports.</p>
+            <p className="text-sm text-muted-foreground">Shortcuts for ads you already surfaced in reports.</p>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" className="h-auto flex-col items-start rounded-2xl py-4 text-left" asChild>
               <Link href={mergePortfolioHref("/listings", portfolioQuerySuffix)}>
-                <span className="text-sm font-semibold">Ad Drafts</span>
+                <span className="text-sm font-semibold">Ads</span>
                 <span className="text-xs text-muted-foreground">Copy blocks</span>
               </Link>
             </Button>

@@ -2,7 +2,13 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ArbitrageOption, Comparable } from "@workspace/api-client-react";
-import { useGetEstimate, getGetEstimateQueryKey, usePatchEstimate } from "@workspace/api-client-react";
+import {
+  useGetEstimate,
+  getGetEstimateQueryKey,
+  getGetEstimateStatsQueryKey,
+  getListEstimatesQueryKey,
+  usePatchEstimate,
+} from "@workspace/api-client-react";
 import {
   formatMoney,
   formatPercent,
@@ -35,6 +41,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { useToast } from "@/hooks/use-toast";
 import {
   PLATFORM_LABEL,
   PLATFORM_URL,
@@ -168,13 +175,24 @@ export default function EstimateReportPage() {
   const { data: billing } = useBillingSummary();
   const billingPaid = Boolean(billing?.hasPaidValuationTier);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [listingOpen, setListingOpen] = useState(false);
   const [openedBreakdownIdx, setOpenedBreakdownIdx] = useState<number | null>(null);
 
   const patchIntent = usePatchEstimate({
     mutation: {
-      onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: getGetEstimateQueryKey(id) }),
+      onSuccess: (data, variables) => {
+        queryClient.setQueryData(getGetEstimateQueryKey(variables.id), data);
+        void queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not save intent",
+          description: err instanceof Error ? err.message : "Try again.",
+          variant: "destructive",
+        });
+      },
     },
   });
 
@@ -215,7 +233,7 @@ export default function EstimateReportPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl animate-pulse space-y-10 px-4 pt-8 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl animate-pulse space-y-10 px-4 pt-8 sm:px-6">
         <div className="h-9 w-28 rounded-full bg-muted" />
         <div className="h-12 max-w-xl rounded-xl bg-muted" />
         <div className="h-40 rounded-3xl bg-muted" />
@@ -238,10 +256,9 @@ export default function EstimateReportPage() {
     );
   }
 
-  // Pro detail: browser toggle, paid subscription snapshot, or estimates generated on the Pro tier unlock most sections.
-  // International marketplace table and arbitrage narrative additionally require Pro-generate or an active paid valuation plan.
+  // International marketplace table (where listing might pay best) requires a Pro-generated estimate or an active paid valuation plan. The header Pro preview alone does not unlock it.
   const savedTierPro = estimate.tier === "pro";
-  const arbitrageVenuesUnlocked = savedTierPro || billingPaid;
+  const payBestVenuesUnlocked = savedTierPro || billingPaid;
   const reportBadgePro = savedTierPro || globalPro || billingPaid;
   const showExpandedPro = savedTierPro || globalPro || billingPaid;
 
@@ -277,7 +294,7 @@ export default function EstimateReportPage() {
   const adjustedMidLabel = fmt(estimate.adjustedMid);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-24 pt-2 print:max-w-none print:px-0 print:pb-0 sm:px-6">
+    <div className="mx-auto w-full max-w-7xl px-4 pb-24 pt-2 print:max-w-none print:px-0 print:pb-0 sm:px-6">
       <div className="no-print mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/estimates">
           <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground">
@@ -351,7 +368,7 @@ export default function EstimateReportPage() {
                 disabled={patchIntent.isPending}
                 onClick={() => {
                   patchIntent.mutate(
-                    { id, data: { intent } },
+                    { id: estimate.id, data: { intent } },
                     {
                       onSuccess: () => {
                         if (intent === "sell") setListingOpen(true);
@@ -526,23 +543,31 @@ export default function EstimateReportPage() {
         )}
 
         {/* Where to sell estimates: Pro-tier generation or paid plan */}
-        {showExpandedPro && arbitrageVenuesUnlocked && arbitrageRows.length > 0 && (
-          <section className="space-y-6 print:break-inside-avoid">
-            <div className="space-y-2">
+        {showExpandedPro && payBestVenuesUnlocked && arbitrageRows.length > 0 && (
+          <section className="space-y-8 print:break-inside-avoid">
+            <div className="rounded-2xl border border-border/60 bg-muted/15 p-5 sm:p-6">
               <h2 className="text-xl font-semibold tracking-tight text-foreground">
                 {isMobile ? "Where listing might pay best" : "Local sites and payouts"}
               </h2>
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Rough guesses for listing price minus typical fees so you can compare destinations. Open a row for plain-English notes.
-              </p>
+              <ul className="mt-4 max-w-2xl list-none space-y-2.5 text-sm leading-relaxed text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden />
+                  <span>These rows are rough: list price minus typical fees, shipping, and duties so you can compare destinations side by side.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden />
+                  <span>Open a row for a fee breakdown and quick notes.</span>
+                </li>
+              </ul>
             </div>
 
             {compAnchorsTop.length > 0 ? (
-              <div className="rounded-2xl border border-border/50 bg-muted/20 px-4 py-4">
-                <p className="text-xs font-medium text-muted-foreground">Sales shaping this estimate</p>
-                <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 sm:p-6">
+                <p className="text-sm font-medium text-foreground">Sales shaping this estimate</p>
+                <p className="mt-1 text-xs text-muted-foreground">References the model used for your headline range.</p>
+                <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm text-muted-foreground marker:text-muted-foreground/60">
                   {compAnchorsTop.map((c, idx) => (
-                    <li key={idx}>
+                    <li key={idx} className="pl-0.5">
                       <span className="font-medium text-foreground">{c.source}</span>, {c.year}: {c.description} at{" "}
                       <span className="tabular-nums font-medium text-foreground">{fmt(c.price)}</span>.
                     </li>
@@ -550,28 +575,60 @@ export default function EstimateReportPage() {
                 </ul>
               </div>
             ) : (
-              <p className="rounded-2xl border border-dashed border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
-                We could not attach specific sold listings to this estimate. Numbers below still follow from your headline estimate; open any row for more detail.
-              </p>
+              <div className="space-y-2 rounded-2xl border border-dashed border-border/60 bg-muted/10 px-4 py-4 sm:px-5 sm:py-5">
+                <p className="text-sm font-medium text-foreground">No matched sold listings</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  We could not tie this to specific sold listings.
+                </p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  The table below still follows from your headline estimate. Open a row for detail.
+                </p>
+              </div>
             )}
 
-            {report.arbitrageNarrative ? (
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{report.arbitrageNarrative}</p>
+            {report.arbitrageNarrative?.trim() ? (
+              <div className="max-w-2xl space-y-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-4 sm:px-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Regional angle</p>
+                {report.arbitrageNarrative
+                  .trim()
+                  .split(/\n\s*\n/)
+                  .map((block) => block.trim())
+                  .filter(Boolean)
+                  .map((para, i) => (
+                    <p key={i} className="text-sm leading-relaxed text-muted-foreground">
+                      {para}
+                    </p>
+                  ))}
+              </div>
             ) : null}
 
-            <div className="overflow-x-auto rounded-2xl border border-border/50 bg-card shadow-sm">
-              <Table>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Compare destinations</p>
+              <div className="mt-3 overflow-x-auto rounded-2xl border border-border/50 bg-card shadow-sm">
+              <Table className="min-w-[58rem] w-full table-fixed lg:min-w-full">
                 <TableHeader className="border-b border-border/50 bg-muted/30">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="whitespace-nowrap font-medium text-foreground">Place</TableHead>
-                    <TableHead className="min-w-[120px] font-medium text-foreground">Site</TableHead>
-                    <TableHead className="text-right font-medium whitespace-nowrap text-foreground">List price*</TableHead>
-                    <TableHead className="text-right text-muted-foreground">
-                      Costs*
-                      <div className="text-[11px] font-normal normal-case text-muted-foreground/80">Fees, ship, duty</div>
+                    <TableHead className="w-[26%] min-w-[13rem] whitespace-normal px-4 py-3.5 pl-6 text-left font-medium text-foreground first:rounded-tl-2xl">
+                      Place
                     </TableHead>
-                    <TableHead className="text-right font-semibold text-foreground">You'd keep*</TableHead>
-                    <TableHead className="w-[120px] text-right whitespace-nowrap">Post listing</TableHead>
+                    <TableHead className="w-[22%] min-w-[12rem] whitespace-normal px-4 py-3.5 text-left font-medium text-foreground">
+                      Site
+                    </TableHead>
+                    <TableHead className="w-[12%] min-w-[7.5rem] whitespace-nowrap px-4 py-3.5 text-right font-medium text-foreground">
+                      List price*
+                    </TableHead>
+                    <TableHead className="w-[14%] min-w-[8.5rem] whitespace-normal px-4 py-3.5 text-right text-muted-foreground">
+                      Costs*
+                      <div className="mt-0.5 text-[11px] font-normal normal-case leading-snug text-muted-foreground/80">
+                        Fees, ship, duty
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[12%] min-w-[7.5rem] whitespace-nowrap px-4 py-3.5 text-right font-semibold text-foreground">
+                      You&apos;d keep*
+                    </TableHead>
+                    <TableHead className="w-[14%] min-w-[10.5rem] whitespace-nowrap px-4 py-3.5 pr-6 text-right font-medium last:rounded-tr-2xl">
+                      Post listing
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -582,22 +639,22 @@ export default function EstimateReportPage() {
                     return (
                       <Fragment key={`${option.region}-${option.marketplace}-${i}`}>
                         <TableRow className={cn("border-border/40", option.recommended ? "bg-accent/[0.06]" : "")}>
-                          <TableCell className="align-top font-medium">
-                            <div className="flex flex-col gap-1.5">
-                              <span>{option.region}</span>
+                          <TableCell className="align-top px-4 py-4 pl-6 text-sm font-medium leading-snug">
+                            <div className="flex max-w-none flex-col gap-2">
+                              <span className="text-base font-semibold text-foreground">{option.region}</span>
                               {option.recommended ? (
-                                <span className="inline-flex w-fit rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
+                                <span className="inline-flex w-fit rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
                                   Best payout
                                 </span>
                               ) : null}
-                              <p className="text-[11px] font-normal leading-snug text-muted-foreground">{option.demandNote}</p>
+                              <p className="text-[13px] font-normal leading-relaxed text-muted-foreground">{option.demandNote}</p>
                             </div>
                           </TableCell>
-                          <TableCell className="align-top">
-                            <div className="text-sm font-medium">{option.marketplace}</div>
+                          <TableCell className="align-top px-4 py-4 text-sm">
+                            <div className="text-base font-medium leading-snug text-foreground">{option.marketplace}</div>
                             <button
                               type="button"
-                              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
                               onClick={() => setOpenedBreakdownIdx((prev) => (prev === i ? null : i))}
                               aria-expanded={openedBreakdownIdx === i}
                             >
@@ -605,8 +662,8 @@ export default function EstimateReportPage() {
                               <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", openedBreakdownIdx === i && "rotate-180")} />
                             </button>
                           </TableCell>
-                          <TableCell className="text-right align-top tabular-nums text-sm">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
-                          <TableCell className="text-right align-top text-muted-foreground text-sm tabular-nums">
+                          <TableCell className="px-4 py-4 text-right align-top text-base tabular-nums">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
+                          <TableCell className="px-4 py-4 text-right align-top text-base tabular-nums text-muted-foreground">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="cursor-help underline decoration-dotted underline-offset-2">
@@ -629,29 +686,29 @@ export default function EstimateReportPage() {
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
-                          <TableCell className="text-right align-top text-base font-semibold tabular-nums">
+                          <TableCell className="px-4 py-4 text-right align-top text-lg font-semibold tabular-nums">
                             {formatMoney(option.netToSeller, option.currency)}
                           </TableCell>
-                          <TableCell className="align-top text-right">
+                          <TableCell className="px-4 py-4 pr-6 text-right align-top">
                             {postUrl ? (
                               <a
                                 href={postUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 rounded-lg border border-accent/35 bg-accent/10 px-2 py-1.5 text-[11px] font-medium text-accent transition-colors hover:bg-accent/18"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-accent/35 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/18"
                                 data-testid={`arb-${i}-post-link`}
                               >
                                 {PLATFORM_LABEL[slug!] ?? option.marketplace}
-                                <ExternalLink className="h-3 w-3" />
+                                <ExternalLink className="h-3.5 w-3.5" />
                               </a>
                             ) : (
-                              <span className="text-[11px] text-muted-foreground">Add listing manually</span>
+                              <span className="text-xs leading-snug text-muted-foreground">Add listing manually</span>
                             )}
                           </TableCell>
                         </TableRow>
                         {openedBreakdownIdx === i && (
                           <TableRow className="border-t-0 bg-muted/20 hover:bg-muted/25">
-                            <TableCell className="p-4 sm:p-6" colSpan={6}>
+                            <TableCell className="px-4 py-5 pl-6 pr-6 sm:px-6 sm:py-6" colSpan={6}>
                               <ArbitrageVenueFeeBreakdown
                                 option={option}
                                 comparablesAnchors={compAnchorsTop}
@@ -666,8 +723,11 @@ export default function EstimateReportPage() {
                   })}
                 </TableBody>
               </Table>
+              </div>
+              <p className="mt-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                * Figures are estimated. Confirm fees and shipping on each marketplace before you rely on them.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground">* Estimated. Confirm on the marketplace before you rely on these figures.</p>
           </section>
         )}
 
@@ -693,7 +753,20 @@ export default function EstimateReportPage() {
                   <CardHeader className="p-4 pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">{comp.source}</span>
-                      <span className="text-lg font-semibold tabular-nums">{fmt(comp.price)}</span>
+                      {verifiedUrl ? (
+                        <a
+                          href={verifiedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-lg font-semibold tabular-nums text-foreground underline-offset-2 transition-colors hover:text-accent hover:underline"
+                          aria-label={`View source listing or sale record for ${fmt(comp.price)}`}
+                          data-testid={`comp-${i}-price-link`}
+                        >
+                          {fmt(comp.price)}
+                        </a>
+                      ) : (
+                        <span className="text-lg font-semibold tabular-nums">{fmt(comp.price)}</span>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col p-4 pt-2">

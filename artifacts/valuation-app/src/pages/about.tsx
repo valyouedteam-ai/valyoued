@@ -1,5 +1,13 @@
 import { Link } from "wouter";
-import { Sparkles, Camera, BrainCircuit, Globe2, Megaphone } from "lucide-react";
+import {
+  Sparkles,
+  Camera,
+  BrainCircuit,
+  Globe2,
+  Megaphone,
+  Briefcase,
+  ArrowRightLeft,
+} from "lucide-react";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Badge } from "@/components/ui/badge";
 
@@ -49,7 +57,8 @@ export default function AboutPage() {
         </h1>
         <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
           You describe or photograph an asset; we benchmark it against live markets and hand you a structured valuation
-          plus help getting it listed.
+          plus help getting it listed. Keep watches, vehicles, bags, property context, and more alongside each other so
+          you manage holdings in one place instead of juggling notes across apps.
         </p>
       </section>
 
@@ -76,6 +85,49 @@ export default function AboutPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto max-w-5xl px-6 pb-24 md:pb-28">
+        <div className="mb-8 text-center">
+          <Badge
+            variant="outline"
+            className="mb-4 rounded-full border-accent/35 bg-accent/5 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-accent"
+          >
+            Pro highlights
+          </Badge>
+          <div className="text-ui-caps mb-2 tracking-normal text-accent">Portfolio and pricing insight</div>
+          <h2 className="font-sans text-3xl font-semibold text-foreground md:text-4xl">
+            One platform for serious sellers and collectors
+          </h2>
+          <p className="mx-auto mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
+            Everyday valuations stay fast and simple. When you upgrade, ValYoued adds tooling meant for people who track
+            many assets or care where they sell.
+          </p>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm transition-shadow hover:border-accent/40 hover:shadow-md md:p-8">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 ring-1 ring-accent/20">
+              <Briefcase className="h-5 w-5 text-accent" aria-hidden />
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-foreground">Unified portfolio</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Group valuations into workspaces, skim your collection on the portfolio view, and reopen any report or
+              listing draft from the same ledger. The flow supports mixed asset classes so you are not maintaining
+              separate trackers for each hobby or business line.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm transition-shadow hover:border-accent/40 hover:shadow-md md:p-8">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 ring-1 ring-accent/20">
+              <ArrowRightLeft className="h-5 w-5 text-accent" aria-hidden />
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-foreground">Arbitrage on Pro</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Pro valuations expand the regional story into an arbitrage-friendly table that estimates plausible sale
+              prices, fees, shipping, duties, and net to seller across candidate venues. Pair it with comparable links to
+              see why one route might beat another before you ship or list internationally.
+            </p>
+          </div>
         </div>
       </section>
 

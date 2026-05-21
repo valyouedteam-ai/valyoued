@@ -22,6 +22,9 @@
       "path": "../../lib/asset-shelf-tier"
     },
     {
+      "path": "../../lib/curated-asset-ids"
+    },
+    {
       "path": "../../lib/marketplace-regions"
     }
   ]

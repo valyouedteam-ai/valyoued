@@ -98,23 +98,11 @@ This document maps each `id` in `artifacts/api-server/src/lib/assetTypes.ts` to 
 
 **Form fields:** phones/tablets/laptops extended with warrantyRemaining where useful; tablet screenSizeInch; laptop screenSizeInch.
 
-### gaming-console
-
-- Disc vs digital variant, storage, controllers, box.
-
-**Form fields:** existing plus discOrDigital.
-
 ### camera
 
 - Shutter count, mount, bundled glass, sensor size class.
 
 **Form fields:** existing plus sensorFormat.
-
-### audio-hifi
-
-- Form factor, tubes vs solid state for amps, packaging.
-
-**Form fields:** existing plus amplifierTopology (optional for non-amps).
 
 ### drone-uav
 

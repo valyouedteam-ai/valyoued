@@ -37,7 +37,6 @@ const EVERYDAY_ONLY_IDS = new Set<string>([
   "everyday-car",
   "smartphone",
   "laptop",
-  "gaming-console",
   "camera",
   "tablet",
   "bicycle",

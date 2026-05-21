@@ -135,7 +135,7 @@ export default function ListingsPage() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListListingDraftsQueryKey() });
-          toast({ title: "Draft deleted" });
+          toast({ title: "Ad deleted" });
           setConfirmDelete(null);
           if (selected?.id === draft.id) setSelected(null);
         },
@@ -170,7 +170,7 @@ export default function ListingsPage() {
           <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">
             <Megaphone className="h-8 w-8 text-accent" />
           </div>
-          <h3 className="text-2xl font-sans mb-2">No ad drafts yet</h3>
+          <h3 className="text-2xl font-sans mb-2">No ads yet</h3>
           <p className="text-muted-foreground max-w-md mb-6">
             Open any of your valuations and click <span className="font-medium text-foreground">"List for sale"</span> to generate
             a marketplace ad: title, description, photo angles and pricing strategy in one click.
@@ -197,13 +197,13 @@ export default function ListingsPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 text-ui-caps text-accent mb-2">
-            <Megaphone className="h-3 w-3" /> Saved Ad Drafts
+            <Megaphone className="h-3 w-3" /> Saved ads
           </div>
-          <h1 className="text-3xl font-sans font-bold text-foreground">Ad Drafts</h1>
+          <h1 className="text-3xl font-sans font-bold text-foreground">Ads</h1>
           <p className="text-muted-foreground mt-1">
             {filteredDrafts.length === allDrafts.length
-              ? `${allDrafts.length} draft${allDrafts.length === 1 ? "" : "s"} ready to copy and paste into your marketplace.`
-              : `Showing ${filteredDrafts.length} of ${allDrafts.length} draft${allDrafts.length === 1 ? "" : "s"}.`}
+              ? `${allDrafts.length} ad${allDrafts.length === 1 ? "" : "s"} ready to copy and paste into your marketplace.`
+              : `Showing ${filteredDrafts.length} of ${allDrafts.length} ad${allDrafts.length === 1 ? "" : "s"}.`}
           </p>
         </div>
         <Link href="/portfolio">
@@ -252,7 +252,7 @@ export default function ListingsPage() {
             <div className="w-full space-y-2 sm:min-w-[10.5rem]">
               <Label className="text-xs text-muted-foreground">Sort</Label>
               <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-                <SelectTrigger aria-label="Sort drafts" data-testid="draft-sort-select">
+                <SelectTrigger aria-label="Sort ads" data-testid="draft-sort-select">
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
                 <SelectContent>
@@ -278,7 +278,7 @@ export default function ListingsPage() {
 
       {filteredDrafts.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center">
-          <p className="font-medium text-foreground">No drafts match your filters</p>
+          <p className="font-medium text-foreground">No ads match your filters</p>
           <p className="mt-2 text-sm text-muted-foreground">Try a different search phrase or marketplace.</p>
           <Button type="button" variant="outline" size="sm" className="mt-6" onClick={clearFilters}>
             Clear filters
@@ -385,7 +385,7 @@ export default function ListingsPage() {
       <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this draft?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this ad?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes the saved listing for "{confirmDelete?.assetTitle}". You can always regenerate it from the valuation.
             </AlertDialogDescription>
