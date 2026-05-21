@@ -132,6 +132,83 @@ export interface GeneratedListing {
   proTips: string[];
 }
 
+/** Drop tips that rely on vague lifecycle advice unrelated to THIS item/class/platform. */
+function isGenericSellerTip(line: string): boolean {
+  const t = line.toLowerCase().trim();
+  if (t.length < 12) return true;
+  const clichés = [
+    "respond promptly",
+    "build trust",
+    "peak browsing",
+    "late afternoon",
+    "maximize visibility",
+    "maximise visibility",
+    "fair market valuation",
+    "fair market val",
+    "open to reasonable offer",
+    "firm with the asking price",
+    "firm with your asking price",
+    "firm on the asking price",
+    "but be open to reasonable",
+    "during peak browsing",
+    "list on a weekday",
+    "listing on a weekday",
+    "encourage quick sales",
+    "maximize buyer",
+    "maximise buyer",
+  ];
+  if (clichés.some((c) => t.includes(c))) return true;
+  // Obvious filler when two generic moves appear together without item nouns beyond "buyer"
+  if (/buyers?\b/i.test(t) && /weekday|afternoon|visibility|firm with|reasonable offer/i.test(t)) {
+    const hasConcrete =
+      /\b(rolex|cartier|omega|bmw|audi|apple|iphone|ipad|studio|birkin|neverfull|chrono|mileage|box|papers|certificate|dimensions|edition|authenticat|movement|kilomet|serial|sku|mot|tax|duty|ebay|vestiaire|chrono24)\b/i.test(
+        t,
+      );
+    if (!hasConcrete) return true;
+  }
+  return false;
+}
+
+function filterProTips(tips: string[]): string[] {
+  return tips.map((x) => x.trim()).filter((t) => t.length > 0 && !isGenericSellerTip(t));
+}
+
+function valuationHintsForSellingTips(e: EstimateResult): string {
+  const comps = e.comparables?.slice(0, 5) ?? [];
+  const anchorBlock =
+    comps.length === 0
+      ? "  (no comparable sale rows attached to this estimate)"
+      : comps
+          .map(
+            (c, idx) =>
+              `  ${idx + 1}. ${c.source}${c.year != null ? ` ${c.year}` : ""}: ${c.description} at ${Math.round(Number(c.price))} ${e.currency}`,
+          )
+          .join("\n");
+
+  const arbRows = e.arbitrage?.slice(0, 4) ?? [];
+  const arbBlock =
+    arbRows.length === 0
+      ? "  (no cross-region payout rows attached)"
+      : arbRows
+          .map(
+            (r) =>
+              `  - ${r.region} / ${r.marketplace}${r.recommended ? " [model suggests stronger payout]" : ""}: ${r.demandNote}`,
+          )
+          .join("\n");
+
+  return `
+VALUATION SIGNALS FOR SELLING TIPS (context only)
+Use these anchors to write proTips where helpful. Never claim "this identical item sold for X" unless the listing body already states that; phrases like "comps in similar condition often cluster near ..." may reference anchors below together with valuation bands.
+Comparable-style anchors (from the valuation run):
+${anchorBlock}
+
+Regional payout / demand notes (model output; not verbatim listing claims):
+${arbBlock}
+
+Best region hint (headline heuristic only): ${e.bestArbitrageRegion ?? "n/a"}
+`.trim();
+}
+
 export async function generateListingDraft(
   args: GenerateListingArgs,
 ): Promise<GeneratedListing> {
@@ -156,8 +233,8 @@ export async function generateListingDraft(
   const plan = args.stripePlanSlug ?? "none";
   const qualityBlock =
     quality === "basic"
-      ? `\nSTYLE: BASIC (free-tier). Plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype; one short negotiation note in proTips only (no hourly posting analytics). Keep proTips array to exactly 3 short bullets.`
-      : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller: persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, completeness callouts${plan === "professional" ? ", and resale/stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips and 5 proTips unless the platform clearly doesn't suit them.`;
+      ? `\nSTYLE: BASIC (free-tier). Plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype.\nproTips: MUST be an empty JSON array [] (no seller tip bullets).`
+      : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller: persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, completeness callouts${plan === "professional" ? ", and resale/stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips. For proTips follow the SEPARATE proTips RULES section (strict): never generic "life hacks".`;
 
   const conversationalVoice = `
 CONVERSATIONAL draftBody (required for all platforms; still follow platform profile for keywords and length):
@@ -170,6 +247,16 @@ CONVERSATIONAL draftBody (required for all platforms; still follow platform prof
 
   const platformChecklist = prerequisitesBlockForPlatform(args.platform);
   const localeTerms = sellerTerminologyPromptLine(i.currentRegion);
+
+  const researchBlock = valuationHintsForSellingTips(e);
+
+  const proTipsRules =
+    quality === "basic"
+      ? `proTips RULES:\nReturn "proTips": [].`
+      : `proTips RULES (premium only):
+Each bullet MUST either (1) weave in a concrete detail from ITEM (brand, model, year, defects, completeness, authenticity, region) together with HOW buyers evaluate that on ${profile.name}, OR (2) turn one line from VALUATION SIGNALS into a specific listing tactic (pricing band placement, geography, escrow/shipping caveat, authenticity evidence to show buyers) without inventing URLs or sale prices not present in anchors.
+Forbidden patterns (reject yourself; emit [] if nothing good remains): "post/weekday/time of day/browsing/peaks/respond promptly/build trust/quick sales/firm on asking/open to reasonable offers/fair market valuation/maximize visibility" without naming THIS asset class, THIS platform workflow, AND a non-obvious move.
+Prefer 3-5 bullets; use [] rather than fillers.`;
 
   const prompt = `You are a senior copywriter for ${profile.name}. Write a high-converting listing for the item below.
 
@@ -192,6 +279,10 @@ VALUATION CONTEXT (do NOT include in the listing; for your context only)
 - TARGET LIST PRICE for this draft: ${ccy} ${Math.round(targetPrice).toLocaleString()}
 - Pricing strategy: ${STRATEGY_LABEL[args.priceStrategy]}
 ${qualityBlock}
+
+${researchBlock}
+
+${proTipsRules}
 
 ${localeTerms}
 
@@ -220,7 +311,7 @@ OUTPUT: STRICT JSON ONLY (no prose, no markdown fences):
     }
   ],
   "hashtags": [string],    // 0-8 relevant hashtags. Empty array for platforms that don't use hashtags (eBay, AutoTrader, Rightmove).
-  "proTips": [string]      // 3-5 short tactical tips for the seller (best time to post, response speed, negotiation guardrails). Specific to this item & platform.
+  "proTips": [string]      // BASIC: [] only. PREMIUM: see proTips RULES (empty array if unsure).
 }
 
 CRITICAL: include the target price in the body as the asking price. Never invent serial numbers, model years, or specs that weren't given. Use only what's in the ITEM block above. Use realistic shipping/collection wording for the seller's region. Do not sound like a corporate template: keep the voice human and direct.`;
@@ -262,13 +353,16 @@ CRITICAL: include the target price in the body as the asking price. Never invent
     .filter((p): p is { angle: string; description: string } => !!p?.angle && !!p?.description)
     .map((p) => ({ angle: p.angle, description: p.description }));
 
+  const rawProTips = (parsed.proTips ?? []).filter((t) => typeof t === "string" && t.trim() !== "");
+  const proTips = quality === "basic" ? [] : filterProTips(rawProTips);
+
   return {
     draftTitle: parsed.draftTitle?.trim() ?? i.title,
     draftBody: parsed.draftBody?.trim() ?? "",
     suggestedPrice: Math.round(targetPrice),
     photoTips,
     hashtags: (parsed.hashtags ?? []).filter((h) => typeof h === "string" && h.trim() !== ""),
-    proTips: (parsed.proTips ?? []).filter((t) => typeof t === "string" && t.trim() !== ""),
+    proTips,
   };
 }
 

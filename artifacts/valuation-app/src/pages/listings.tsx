@@ -232,7 +232,7 @@ export default function ListingsPage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:w-auto md:flex md:gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-wrap md:items-end md:gap-3">
             <div className="w-full space-y-2 sm:min-w-[10.5rem]">
               <Label className="text-xs text-muted-foreground">Marketplace</Label>
               <Select value={platformFilter} onValueChange={setPlatformFilter}>
@@ -264,16 +264,22 @@ export default function ListingsPage() {
                 </SelectContent>
               </Select>
             </div>
+            {filtersActive ? (
+              <div className="flex w-full sm:col-span-2 md:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-full shrink-0 sm:w-auto md:mt-auto"
+                  onClick={clearFilters}
+                  data-testid="draft-reset-filters"
+                >
+                  Reset filters
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
-        {filtersActive ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3">
-            <p className="text-xs text-muted-foreground">Filters and sort apply on this screen only.</p>
-            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}>
-              Reset filters
-            </Button>
-          </div>
-        ) : null}
       </div>
 
       {filteredDrafts.length === 0 ? (
