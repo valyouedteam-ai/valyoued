@@ -20,7 +20,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   }
   const admins = adminUserIds();
   if (admins.size === 0) {
-    /** Local/auth-stub dev: single synthetic user — allow admin routes without ADMIN_USER_IDS. */
+    /** Local/auth-stub dev: single synthetic user; allow admin routes without ADMIN_USER_IDS. */
     if (isAuthStubMode()) {
       next();
       return;

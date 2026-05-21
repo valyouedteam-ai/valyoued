@@ -1,15 +1,12 @@
 import { lazy, Suspense } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Check, Globe2, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Globe2, ShieldCheck, Zap } from "lucide-react";
+import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Globe = lazy(() => import("@/components/Globe").then((m) => ({ default: m.Globe })));
-
-const BASE = (import.meta as any).env?.BASE_URL ?? "/";
-const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 
 const container = {
   visible: {
@@ -24,80 +21,6 @@ const item = {
   hidden: { opacity: 0, y: 10 },
 };
 
-function PricingSticky() {
-  return (
-    <section className="relative z-10 mx-auto max-w-6xl px-4 pb-10 sm:px-6 lg:sticky lg:top-[4.5rem]">
-      <div className="rounded-3xl border border-border/60 bg-[hsl(40,25%,96%)]/92 p-4 shadow-xl shadow-black/10 backdrop-blur-md dark:bg-card/92">
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-ui-caps text-accent">Straightforward tiers</p>
-            <h2 className="mt-1 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Everyday free caps at five valuations/month. Upgrade removes the leash
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Trials and exact pricing come from Stripe; copy below mirrors the roadmap you wired on the backend.
-            </p>
-          </div>
-          <Badge variant="secondary" className="w-fit shrink-0 border border-border/70">
-            Paid tiers via Stripe
-          </Badge>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            {
-              title: "Everyday · Free",
-              price: "£0",
-              bullets: ["5 valuations / calendar month cap", "Core dashboards + history", "Email when each report completes"],
-              ctaLabel: "Start free valuation",
-              ctaHref: "/start",
-              variant: "outline" as const,
-            },
-            {
-              title: "Everyday+",
-              price: "£7.99/mo",
-              bullets: ["Unlimited valuations policy", "Full arbitrage rows", "Configurable monitor alerts"],
-              ctaLabel: "Plan details",
-              ctaHref: "/welcome",
-              variant: "default" as const,
-            },
-            {
-              title: "Professional",
-              price: "£14.99/mo",
-              bullets: ["Seller-grade listing tone presets", "Pro desk workspaces", "Stripe trial configurable via env"],
-              ctaLabel: "Create professional account",
-              ctaHref: "/welcome",
-              variant: "secondary" as const,
-            },
-          ].map((p) => (
-            <Card
-              key={p.title}
-              className={`border-border/70 bg-card/98 shadow-sm backdrop-blur ${p.title.startsWith("Professional") ? "md:ring-1 md:ring-accent/35" : ""}`}
-            >
-              <CardHeader className="space-y-1 pb-3">
-                <CardTitle className="text-lg font-semibold">{p.title}</CardTitle>
-                <CardDescription className="text-xl font-semibold tabular-nums text-foreground">{p.price}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2">
-                  {p.bullets.map((b) => (
-                    <li key={b} className="flex gap-2 text-sm text-muted-foreground">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button variant={p.variant} className="w-full rounded-xl" size="lg" asChild>
-                  <Link href={p.ctaHref}>{p.ctaLabel}</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function LandingPage() {
   const reduceMotion = useReducedMotion();
 
@@ -108,57 +31,9 @@ export default function LandingPage() {
         <div className="absolute bottom-0 right-0 h-[min(60vh,480px)] w-[55%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(258_45%_55%/0.08),transparent_70%)] blur-3xl" />
       </div>
 
-      <motion.nav
-        initial={reduceMotion ? false : "hidden"}
-        animate={reduceMotion ? false : "visible"}
-        variants={reduceMotion ? undefined : item}
-        className="relative z-10 mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6"
-      >
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-md ring-1 ring-border/80">
-            <img src={LOGO_URL} alt="ValYoued" className="h-7 w-7 object-contain" />
-          </div>
-          <span className="font-brand text-2xl text-foreground">ValYoued</span>
-        </Link>
-        <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-          <Link href="/about">
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground" data-testid="nav-about">
-              How it works
-            </Button>
-          </Link>
-          <Link href="/welcome">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-              Pricing
-            </Button>
-          </Link>
-          <Link href="/sign-in">
-            <Button variant="ghost" className="hidden sm:inline-flex" data-testid="nav-sign-in">
-              Sign in
-            </Button>
-          </Link>
-          <Link href="/sign-up">
-            <Button variant="outline" className="border-border/80 px-4 shadow-sm" data-testid="nav-sign-up">
-              Sign up
-            </Button>
-          </Link>
-          <Link href="/welcome">
-            <Button className="rounded-full shadow-sm gap-2" data-testid="nav-create-account">
-              Create account
-              <Sparkles className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href="/start">
-            <Button variant="secondary" className="rounded-full border border-border/60 shadow-sm gap-2" data-testid="nav-get-started">
-              Start free valuation
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      </motion.nav>
+      <MarketingTopNav variant="light" />
 
-      <PricingSticky />
-
-      <section className="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-16 pt-2 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:pt-2">
+      <section className="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-16 pt-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:pt-8">
         <motion.div
           initial={reduceMotion ? false : "hidden"}
           whileInView={reduceMotion ? undefined : "visible"}
@@ -168,7 +43,7 @@ export default function LandingPage() {
         >
           <motion.div variants={reduceMotion ? undefined : item}>
             <Badge variant="secondary" className="rounded-full border border-border/80 px-3 py-1 text-ui-caps">
-              Multi-asset · AI-assisted
+              Multi-asset valuations
             </Badge>
           </motion.div>
           <motion.h1
@@ -180,7 +55,10 @@ export default function LandingPage() {
           </motion.h1>
           <motion.p variants={reduceMotion ? undefined : item} className="max-w-lg text-lg leading-relaxed text-muted-foreground">
             Structured valuations you can revisit, regional demand shifts, and listing drafts tuned by plan tier:
-            Everyday, Everyday+, and Professional.
+            Everyday, Everyday+, and Professional.{" "}
+            <Link href="/pricing" className="font-medium text-accent underline-offset-4 hover:underline">
+              Compare plans and pricing.
+            </Link>
           </motion.p>
           <motion.div variants={reduceMotion ? undefined : item} className="flex flex-wrap gap-3">
             <Link href="/welcome">
@@ -204,7 +82,7 @@ export default function LandingPage() {
               asset classes
             </div>
             <div>
-              <div className="text-2xl font-semibold tabular-nums text-foreground">Stripe</div>
+              <div className="text-2xl font-semibold tabular-nums text-foreground">Secure</div>
               subscription billing
             </div>
             <div>
@@ -240,18 +118,18 @@ export default function LandingPage() {
           {[
             {
               icon: Globe2,
-              title: "Global price discovery",
-              body: "Regional demand, fees, and friction so you see where net proceeds may land (paid Everyday+ onward).",
+              title: "Compare markets",
+              body: "See how buyers and typical costs differ across regions. Everyday+ unlocks fuller views of those options.",
             },
             {
               icon: Zap,
-              title: "Photo to structured data",
-              body: "Upload once; vision fills matching fields so you spend time on judgment, not typing.",
+              title: "Your photo fills the blanks",
+              body: "Upload a snapshot and we fill matching fields when the picture makes them clear. You finish the judgment calls.",
             },
             {
               icon: ShieldCheck,
-              title: "Listing-ready copy",
-              body: "Platform-aware drafts tighten up with Professional tiers and reseller tone knobs.",
+              title: "Listing drafts you can polish",
+              body: "Get draft posts shaped for popular marketplaces, with sharper seller wording available on Professional plans.",
             },
           ].map((f) => (
             <motion.div
@@ -281,8 +159,8 @@ export default function LandingPage() {
           <Link href="/about" className="transition-colors hover:text-foreground">
             How it works
           </Link>
-          <Link href="/welcome" className="transition-colors hover:text-foreground">
-            Plans
+          <Link href="/pricing" className="transition-colors hover:text-foreground">
+            Pricing
           </Link>
         </div>
       </footer>

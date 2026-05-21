@@ -1,11 +1,9 @@
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, BriefcaseBusiness, Shirt } from "lucide-react";
+import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Button } from "@/components/ui/button";
 import { PERSONA_SESSION_KEY, type SellerPersonaChoice } from "@/hooks/use-persona-sync";
-
-const BASE = (import.meta as any).env?.BASE_URL ?? "/";
-const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 
 function persistPersona(choice: SellerPersonaChoice) {
   try {
@@ -24,19 +22,7 @@ export default function WelcomePersonaPage() {
         <div className="absolute -left-[12%] top-[-10%] h-[min(60vh,420px)] w-[min(56vw,480px)] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(258_42%_55%/0.12),transparent_68%)] blur-3xl" />
       </div>
 
-      <nav className="relative z-10 mx-auto flex max-w-4xl items-center justify-between px-4 py-5 sm:px-6">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-md ring-1 ring-border/80">
-            <img src={LOGO_URL} alt="ValYoued" className="h-7 w-7 object-contain" />
-          </div>
-          <span className="font-brand text-2xl text-foreground">ValYoued</span>
-        </Link>
-        <Link href="/sign-in">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-            Sign in
-          </Button>
-        </Link>
-      </nav>
+      <MarketingTopNav variant="light" />
 
       <main className="relative z-10 mx-auto flex max-w-4xl flex-col gap-10 px-4 pb-24 pt-4 sm:px-6">
         <motion.div
@@ -133,8 +119,11 @@ export default function WelcomePersonaPage() {
         </div>
 
         <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
-          Tip: Everyday free includes five valuations per calendar month. Upgrade anytime for unlimited runs and richer
-          market rows. See Settings after you sign up.
+          Tip: Everyday free includes five valuations per calendar month.{" "}
+          <Link href="/pricing" className="font-medium text-accent underline-offset-4 hover:underline">
+            See the Pricing page for full tiers.
+          </Link>{" "}
+          Upgrade anytime for unlimited runs and richer market rows. See Settings after you sign up.
         </p>
       </main>
     </div>

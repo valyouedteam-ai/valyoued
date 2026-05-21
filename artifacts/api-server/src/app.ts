@@ -30,7 +30,7 @@ app.use(
   }),
 );
 
-// Clerk proxy must be mounted before body parsers — it streams raw bytes.
+// Clerk proxy must be mounted before body parsers: it streams raw bytes.
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
@@ -47,13 +47,13 @@ app.post(
 );
 
 // Allow JSON bodies up to 8MB so a ~5MB photo (base64-inflated to ~6.7MB) fits
-// while bounding payload abuse on the AI endpoints.
+// while bounding abuse on heavier valuation endpoints.
 app.use(express.json({ limit: "8mb" }));
 app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 
 if (isAuthStubMode()) {
   logger.warn(
-    "AUTH_STUB_MODE is on — Clerk auth is bypassed (fixed user id). Do not use in public deployments.",
+    "AUTH_STUB_MODE is on: Clerk auth is bypassed (fixed user id). Do not use in public deployments.",
   );
 } else {
   app.use(clerkMiddleware());

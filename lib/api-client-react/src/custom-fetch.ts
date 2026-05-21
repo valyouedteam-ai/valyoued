@@ -113,9 +113,9 @@ function isTextMediaType(mediaType: string | null): boolean {
 
 // Use strict equality: in browsers, `response.body` is `null` when the
 // response genuinely has no content.  In React Native, `response.body` is
-// always `undefined` because the ReadableStream API is not implemented —
-// even when the response carries a full payload readable via `.text()` or
-// `.json()`.  Loose equality (`== null`) matches both `null` and `undefined`,
+// always `undefined` because the ReadableStream API is not implemented,
+// even when the response carries a full payload readable via `.text()` or `.json()`.
+// Loose equality (`== null`) matches both `null` and `undefined`,
 // which causes every React Native response to be treated as empty.
 function hasNoBody(response: Response, method: string): boolean {
   if (method === "HEAD") return true;
@@ -163,7 +163,7 @@ function buildErrorMessage(response: Response, data: unknown): string {
     getStringField(data, "error_description") ??
     getStringField(data, "error");
 
-  if (title && detail) return `${prefix}: ${title} — ${detail}`;
+  if (title && detail) return `${prefix}: ${title}; ${detail}`;
   if (detail) return `${prefix}: ${detail}`;
   if (message) return `${prefix}: ${message}`;
   if (title) return `${prefix}: ${title}`;

@@ -13,7 +13,7 @@ export const estimatesTable = pgTable("estimates", {
   adjustedMid: doublePrecision("adjusted_mid").notNull(),
   bestArbitrageRegion: text("best_arbitrage_region").notNull(),
   tier: text("tier").notNull(),
-  /** hold | monitor | sell — unset until user picks on report. */
+  /** hold | monitor | sell: unset until user picks on report. */
   intent: text("intent"),
   result: jsonb("result").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

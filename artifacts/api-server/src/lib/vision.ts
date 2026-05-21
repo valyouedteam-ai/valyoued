@@ -16,7 +16,7 @@ export interface VisionExtractOutput {
   detectedAssetTypeId?: string;
 }
 
-// Fields that should NEVER be auto-filled — the user must answer these themselves
+// Fields that should NEVER be auto-filled: the user must answer these themselves
 // because they cannot be reliably determined from a single photograph.
 const NON_VISUAL_KEYS = new Set([
   "year",
@@ -90,7 +90,7 @@ export async function extractAttributesFromPhoto(
       ? "such as 'Bright 3-bed semi, south-facing garden, Guildford GU1'"
       : "such as 'Rolex Submariner Date 116610LN, black dial'";
 
-  const prompt = `You are ValYoued's photo-analysis expert. Look at this photograph of a ${input.assetType.name.toLowerCase()} and extract any attributes you can identify with HIGH confidence.
+  const prompt = `You are ValYoued's specialist for reading product photos. Look at this photograph of a ${input.assetType.name.toLowerCase()} and extract any attributes you can identify with HIGH confidence.
 
 You MUST return STRICT JSON only, with this exact shape:
 {
@@ -100,7 +100,7 @@ You MUST return STRICT JSON only, with this exact shape:
   "suggestedTitle": "A short, marketplace-ready title for this item (${titleExample})"
 }
 
-Available fields you may fill (skip any field where you are not confident — DO NOT GUESS):
+Available fields you may fill (skip any field where you are not confident; DO NOT GUESS):
 ${fieldList}
 
 CRITICAL RULES:
@@ -108,7 +108,7 @@ CRITICAL RULES:
 2. For select fields, the value MUST exactly match one of the listed options (case-sensitive).
 3. For number fields, return a numeric string (use "44" not "44mm").
 4. NEVER include keys that are not in the list above.
-5. NEVER guess year-of-purchase, mileage, or original price — those need owner input.
+5. NEVER guess year-of-purchase, mileage, or original price: those need owner input.
 6. If the photo is blurry, generic, or doesn't clearly show a ${input.assetType.name.toLowerCase()}, return an empty extracted object and set confidence to 0.
 7. The "notes" field should describe condition signals (scratches, wear, completeness) the buyer would care about.
 8. "notes" and "suggestedTitle" MUST be JSON strings (never numbers or null).
@@ -154,7 +154,7 @@ CRITICAL RULES:
     return {
       extracted: {},
       confidence: 0,
-      notes: "Could not analyze the image automatically — please fill the form manually.",
+      notes: "Could not analyze the image automatically; please fill the form manually.",
     };
   }
 
@@ -163,7 +163,7 @@ CRITICAL RULES:
     return {
       extracted: {},
       confidence: 0,
-      notes: "Could not analyze the image automatically — please fill the form manually.",
+      notes: "Could not analyze the image automatically; please fill the form manually.",
     };
   }
 

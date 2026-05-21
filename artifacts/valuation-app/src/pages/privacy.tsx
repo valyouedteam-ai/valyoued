@@ -1,25 +1,10 @@
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-const BASE = (import.meta as any).env?.BASE_URL ?? "/";
-const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
+import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 
 export default function PrivacyPage() {
   return (
     <div className="min-h-[100dvh] bg-[hsl(222,47%,6%)] text-white">
-      <nav className="flex items-center justify-between px-6 py-5 max-w-3xl mx-auto border-b border-white/10">
-        <Link href="/" className="flex items-center gap-3">
-          <img src={LOGO_URL} alt="" className="h-8 w-8 rounded-lg bg-white p-1" />
-          <span className="font-brand font-semibold">ValYoued</span>
-        </Link>
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="gap-2 text-white/80">
-            <ArrowLeft className="h-4 w-4" />
-            Home
-          </Button>
-        </Link>
-      </nav>
+      <MarketingTopNav variant="dark" />
 
       <article className="max-w-3xl mx-auto px-6 py-12 space-y-8 text-white/85 leading-relaxed">
         <div>
@@ -44,15 +29,15 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-2 text-white/80">
             <li>
               Valuation inputs you submit (titles, structured attributes, optional purchase price,
-              photos you upload for vision extraction).
+              photos you upload for automated field extraction).
             </li>
             <li>
-              Derived outputs: estimates, arbitrage tables, AI narratives, listing drafts, and
+              Derived outputs: estimates, arbitrage tables, generated narrative text, listing drafts, and
               coarse analytics events (for example “estimate created” with asset class and numeric
               mid-price, not payment card data).
             </li>
             <li>
-              Billing identifiers from Stripe when you subscribe (customer id, subscription status).
+              Billing identifiers from our payment processor when you subscribe (customer reference, subscription status).
             </li>
           </ul>
         </section>

@@ -3,7 +3,7 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: ValYoued — multi-asset valuation API
+  description: "ValYoued: multi-asset valuation API"
 servers:
   - url: /api
     description: Base API path
@@ -222,7 +222,7 @@ paths:
     post:
       operationId: extractFromPhoto
       tags: [vision]
-      summary: Extract asset attributes from an uploaded photo using Claude Vision
+      summary: Extract asset attributes from an uploaded photo
       requestBody:
         required: true
         content:
@@ -686,7 +686,7 @@ components:
           type: string
           enum: [luxury, everyday, other]
           description: >-
-            Shelf for portfolio grouping — from the seller tier captured on the estimate plus asset-class hints.
+            Shelf for portfolio grouping: from the seller tier captured on the estimate plus asset-class hints.
         createdAt:
           type: string
           format: date-time
@@ -756,18 +756,19 @@ components:
           type: object
           additionalProperties:
             type: string
-          description: Detected attributes keyed by AssetField key (only fields the AI is confident about)
+          description: >-
+            Detected attributes keyed by AssetField key (only fields where inference confidence is sufficient)
         confidence:
           type: number
           description: Overall confidence 0..1
         notes:
           type: string
-          description: Free-form description of what the AI noticed about the item
+          description: Free-form description of notable details inferred from the image
         suggestedTitle:
           type: string
         detectedAssetTypeId:
           type: string
-          description: If the AI thinks the photo is actually a different asset type than the one selected, the suggested asset type id
+          description: If the photo suggests a different asset type than the one selected, the suggested asset type id
     GenerateListingInput:
       type: object
       required: [estimateId, platform]

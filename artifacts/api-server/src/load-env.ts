@@ -29,7 +29,7 @@ function authStubEnabled(): boolean {
 
 /**
  * Clerk middleware needs both keys on **this process** (API server). Frontends on Vercel only
- * receive their own env — they are not passed to Railway/Docker automatically.
+ * receive their own env; they are not passed to Railway/Docker automatically.
  */
 function assertClerkEnvUnlessStub(): void {
   if (authStubEnabled()) return;
@@ -46,7 +46,7 @@ function assertClerkEnvUnlessStub(): void {
   throw new Error(
     `Clerk credentials missing for the valuation API: ${missing.join("; ")}. ` +
       "Add them to this service’s environment (Railway Variables, Fly secrets, Docker -e, etc.). " +
-      "Values from the Vercel project are not available here — use the same keys from https://dashboard.clerk.com → API Keys.",
+      "Values from the Vercel project are not available here: use the same keys from https://dashboard.clerk.com (API Keys).",
   );
 }
 assertClerkEnvUnlessStub();

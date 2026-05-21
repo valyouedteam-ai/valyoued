@@ -1,4 +1,4 @@
-# ValYoued valuation API — Express + Postgres. Run on Railway, Render, Fly, etc.
+# ValYoued valuation API: Express + Postgres. Run on Railway, Render, Fly, etc.
 # Public URL (origin) → set as VITE_API_ORIGIN on your Vercel frontend (no trailing slash).
 #
 # Required env (examples): DATABASE_URL, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY,

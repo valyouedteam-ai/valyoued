@@ -24,7 +24,7 @@ function readStoredPreview(): boolean {
 export type ProTierContextValue = {
   /** Paid subscription or dev preview toggle (see `devProPreview`). */
   isPro: boolean;
-  /** Persisted local flag to unlock Pro UI without Stripe (cleared when toggled off). */
+  /** Persisted local flag to unlock Pro UI without a subscription (cleared when toggled off). */
   devProPreview: boolean;
   setDevProPreview: Dispatch<SetStateAction<boolean>>;
   /** @deprecated Prefer `setDevProPreview`. */

@@ -150,8 +150,8 @@ function AdminDashboardInner({
             <CardHeader>
               <CardTitle>Recent platform events</CardTitle>
               <CardDescription>
-                Structured telemetry for arbitrage, listings, and vision, exportable for offline model
-                pipelines.
+                Structured telemetry for arbitrage, listings, and photo-derived form fields, exportable for offline
+                analysis pipelines.
               </CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto max-h-[420px] overflow-y-auto">

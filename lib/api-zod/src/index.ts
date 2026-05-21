@@ -1,6 +1,6 @@
 /**
  * Zod schemas live in `./generated/api`. Types in `./generated/types`.
- * Orval emits duplicate names (`PatchEstimateBody`, `CreatePortfolioBody`) — use zod exports from `./generated/api` only for those.
+ * Orval emits duplicate names (`PatchEstimateBody`, `CreatePortfolioBody`); use zod exports from `./generated/api` only for those.
  */
 export * from "./generated/api";
 

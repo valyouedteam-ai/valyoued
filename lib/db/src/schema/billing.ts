@@ -6,7 +6,7 @@ export const billingSubscriptionsTable = pgTable("billing_subscriptions", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   status: text("status").notNull().default("inactive"),
-  /** Legacy: derived boolean — paid valuation features active when tier is `pro`. */
+  /** Legacy: derived boolean when paid valuation features active (tier `pro`). */
   tier: text("tier").notNull().default("free"),
   /** `everyday_plus` | `professional` when subscribed; omit when free. */
   planSlug: text("plan_slug"),

@@ -304,7 +304,7 @@ function SettingsPageInner({
         return;
       }
       if (stub) {
-        toast({ title: "Stripe stub", description: "Billing is mocked locally; no real checkout." });
+        toast({ title: "Billing preview", description: "Checkout is mocked locally; no payment is processed." });
       }
       if (url) window.location.href = url;
     } finally {
@@ -321,7 +321,7 @@ function SettingsPageInner({
         return;
       }
       if (stub) {
-        toast({ title: "Stripe stub", description: "Customer portal is mocked locally." });
+        toast({ title: "Billing preview", description: "Customer portal link is mocked locally." });
       }
       if (url) window.location.href = url;
     } finally {
@@ -430,7 +430,7 @@ function SettingsPageInner({
                     <SelectContent>
                       <SelectItem value="everyday_plus">Everyday+: unlimited valuations (£7.99/mo suggested)</SelectItem>
                       <SelectItem value="professional">
-                        Professional: full seller voice (£14.99/mo suggested, trial from Stripe config)
+                        Professional: full seller voice (£14.99/mo suggested; trial configured in billing)
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -449,7 +449,7 @@ function SettingsPageInner({
               disabled={busy !== null || billing?.hasPaidValuationTier}
             >
               <CreditCard className="h-4 w-4" />
-              {busy === "checkout" ? "Redirecting…" : "Checkout with Stripe"}
+              {busy === "checkout" ? "Redirecting…" : "Go to checkout"}
             </Button>
             <Button
               variant="outline"

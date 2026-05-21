@@ -15,7 +15,7 @@ export const PLATFORM_LABEL: Record<string, string> = {
 };
 
 // Direct links to each marketplace's "post a listing" page so the user can
-// jump from the AI-generated draft straight into the form on the actual site.
+// jump from the generated draft straight into the form on the actual site.
 export const PLATFORM_URL: Record<string, string> = {
   "facebook-marketplace": "https://www.facebook.com/marketplace/create/item",
   ebay: "https://www.ebay.com/sl/sell",

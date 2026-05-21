@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "AI Valuation"
+title = "ValYoued valuations"
 version = "1.0.0"
 id = "artifacts/valuation-app"
 router = "path"

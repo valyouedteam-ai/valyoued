@@ -1,4 +1,4 @@
-# Keep image builds fast and reproducible — send source + lockfile, not local tooling output.
+# Keep image builds fast and reproducible: send source + lockfile, not local tooling output.
 .git
 **/.git
 .cursor

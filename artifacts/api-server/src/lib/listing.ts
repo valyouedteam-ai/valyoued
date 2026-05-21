@@ -102,9 +102,9 @@ const PROFILES: Record<Platform, PlatformProfile> = {
 };
 
 const STRATEGY_LABEL: Record<PriceStrategy, string> = {
-  "quick-sale": "Aggressive — price ~10% under the market-adjusted estimate to move it fast",
-  market: "Fair — price at the market-adjusted estimate",
-  premium: "Patient — price ~8% above the market-adjusted estimate to leave room for offers",
+  "quick-sale": "Aggressive: price ~10% under the market-adjusted estimate to move it fast",
+  market: "Fair: price at the market-adjusted estimate",
+  premium: "Patient: price ~8% above the market-adjusted estimate to leave room for offers",
 };
 
 export interface GenerateListingArgs {
@@ -149,8 +149,8 @@ export async function generateListingDraft(
   const plan = args.stripePlanSlug ?? "none";
   const qualityBlock =
     quality === "basic"
-      ? `\nSTYLE: BASIC (free-tier). Conversational seller voice — plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype; one short negotiation note in proTips only (no hourly posting analytics). Keep proTips array to exactly 3 short bullets.`
-      : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller — persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, completeness callouts${plan === "professional" ? ", and resale/stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips and 5 proTips unless the platform clearly doesn't suit them.`;
+      ? `\nSTYLE: BASIC (free-tier). Conversational seller voice: plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype; one short negotiation note in proTips only (no hourly posting analytics). Keep proTips array to exactly 3 short bullets.`
+      : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller: persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, completeness callouts${plan === "professional" ? ", and resale/stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips and 5 proTips unless the platform clearly doesn't suit them.`;
   const prompt = `You are a senior copywriter for ${profile.name}. Write a high-converting listing for the item below.
 
 ITEM
@@ -166,7 +166,7 @@ ITEM
 - Asset details:
 ${extras}
 
-VALUATION CONTEXT (do NOT include in the listing — for your context only)
+VALUATION CONTEXT (do NOT include in the listing; for your context only)
 - Baseline market value: ${ccy} ${Math.round(e.baselineMid).toLocaleString()}
 - Market-adjusted value (today): ${ccy} ${Math.round(e.adjustedMid).toLocaleString()}
 - TARGET LIST PRICE for this draft: ${ccy} ${Math.round(targetPrice).toLocaleString()}
@@ -179,7 +179,7 @@ PLATFORM PROFILE
 - Title rules: ${profile.titleHint}
 - Body rules: ${profile.bodyHint}
 
-OUTPUT — STRICT JSON ONLY (no prose, no markdown fences):
+OUTPUT: STRICT JSON ONLY (no prose, no markdown fences):
 {
   "draftTitle": string,    // ready to copy/paste into the platform's title field
   "draftBody": string,     // ready to copy/paste into the description box. Use \\n for line breaks. NO markdown.
@@ -225,7 +225,7 @@ CRITICAL: include the target price in the body as the asking price. Never invent
     parsed = JSON.parse(cleaned);
   } catch (err) {
     logger.error({ err, raw }, "Failed to parse listing JSON");
-    throw new Error("Could not parse listing draft from AI");
+    throw new Error("Could not parse listing draft response");
   }
 
   const photoTips: PhotoTip[] = (parsed.photoTips ?? [])

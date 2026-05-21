@@ -30,7 +30,7 @@ export const config = (() => {
 
   if (!apiOrigin) {
     console.warn(
-      "[vercel] VITE_API_ORIGIN is unset — /api/* will serve the SPA (broken API calls). " +
+      "[vercel] VITE_API_ORIGIN is unset: /api/* will serve the SPA (broken API calls). " +
         "Set VITE_API_ORIGIN to your API origin on Vercel and redeploy.",
     );
     return {

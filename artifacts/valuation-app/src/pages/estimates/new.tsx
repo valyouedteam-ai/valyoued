@@ -3,28 +3,51 @@ import { useLocation } from "wouter";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import {
-  ArrowRight,
-  BrainCircuit,
+  AlertCircle,
+  Anchor,
+  Armchair,
   ArrowLeft,
-  Watch,
-  ShoppingBag,
+  ArrowRight,
+  Bike,
+  BookMarked,
+  BookOpen,
+  BrainCircuit,
+  Briefcase,
+  Building2,
+  Camera,
   Car,
+  Coins,
+  Cpu,
+  Disc3,
+  Dumbbell,
+  Footprints,
+  Gamepad2,
+  Gem,
+  Guitar,
   Home,
   House,
-  Gem,
-  Cpu,
-  Paintbrush,
-  Sofa,
-  Bike,
-  Briefcase,
-  Sparkles,
-  AlertCircle,
-  Smartphone,
-  Tablet,
   Laptop,
-  Camera,
-  Footprints,
+  Layers,
   type LucideIcon,
+  Mailbox,
+  MapPin,
+  Palette,
+  Paintbrush,
+  Plane,
+  ShoppingBag,
+  Shirt,
+  Smartphone,
+  Sofa,
+  Snowflake,
+  Sparkles,
+  Speaker,
+  SquareStack,
+  Tablet,
+  Tent,
+  Trophy,
+  Wallet,
+  Watch,
+  Wine,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
@@ -160,20 +183,58 @@ function iconForCategory(cat: string): LucideIcon {
   return CATEGORY_ICONS[cat] ?? Sparkles;
 }
 
-const SAAS_MICRO_ID = "saas-micro";
+/** Per concrete asset type inside a category sub-picker (fallback: category chip). */
+const ASSET_TYPE_ICONS: Partial<Record<string, LucideIcon>> = {
+  [GENERAL_ITEM_ASSET_TYPE_ID]: Sparkles,
+  "luxury-watch": Watch,
+  "fine-jewelry": Gem,
+  "vintage-watch": Watch,
+  "pocket-watch": Watch,
+  "designer-handbag": ShoppingBag,
+  "sneakers": Footprints,
+  "streetwear-apparel": Shirt,
+  "designer-accessories": Wallet,
+  "classic-car": Car,
+  "everyday-car": Car,
+  "motorcycle": Bike,
+  "boat-marine": Anchor,
+  "rv-camper": Tent,
+  "smartphone": Smartphone,
+  "laptop": Laptop,
+  "gaming-console": Gamepad2,
+  "camera": Camera,
+  "tablet": Tablet,
+  "audio-hifi": Speaker,
+  "drone-uav": Plane,
+  "residential-property": Home,
+  "commercial-property": Building2,
+  "land-plot": MapPin,
+  "fine-art": Palette,
+  "trading-cards": Layers,
+  "wine-spirits": Wine,
+  "vinyl-records": Disc3,
+  "rare-books": BookMarked,
+  "musical-instrument": Guitar,
+  "designer-furniture": Sofa,
+  "antique": Armchair,
+  "premium-rug": SquareStack,
+  "sports-memorabilia": Trophy,
+  "comic-books": BookOpen,
+  "numismatics": Coins,
+  "philately": Mailbox,
+  "bicycle": Bike,
+  "golf-equipment": Trophy,
+  "winter-sports": Snowflake,
+  "camping-outdoor": Tent,
+  "fitness-equipment": Dumbbell,
+  "saas-micro": Cpu,
+};
 
-const QUICK_VALUE_ASSETS: { id: string; label: string; Icon: LucideIcon }[] = [
-  { id: "smartphone", label: "Smartphone", Icon: Smartphone },
-  { id: "tablet", label: "Tablet", Icon: Tablet },
-  { id: "laptop", label: "Laptop", Icon: Laptop },
-  { id: "luxury-watch", label: "Watches", Icon: Watch },
-  { id: "fine-jewelry", label: "Jewelry", Icon: Gem },
-  { id: "camera", label: "Camera", Icon: Camera },
-  { id: "bicycle", label: "Bike", Icon: Bike },
-  { id: "sneakers", label: "Sneakers", Icon: Footprints },
-  { id: "designer-handbag", label: "Handbag", Icon: ShoppingBag },
-  { id: "everyday-car", label: "Car", Icon: Car },
-];
+function iconForAssetType(typeId: string, category: string): LucideIcon {
+  return ASSET_TYPE_ICONS[typeId] ?? iconForCategory(category);
+}
+
+const SAAS_MICRO_ID = "saas-micro";
 
 type WizardStepId =
   | "tier"
@@ -749,7 +810,7 @@ function NewEstimatePageInner({
           let friendly = capped || "We couldn't generate the report. Please try again.";
           if (!capped && /timeout|timed out|ETIMEDOUT|aborted/i.test(raw)) {
             friendly =
-              "The valuation took too long to come back. The AI service may be busy; please retry in a moment.";
+              "The valuation took too long to come back. Our service may be busy; please retry in a moment.";
           } else if (!capped && /currency|condition|required/i.test(raw)) {
             friendly =
               "Some required details are missing. Make sure you've picked an asset class, a region, and filled in the condition slider before submitting.";
@@ -798,9 +859,18 @@ function NewEstimatePageInner({
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
       <div>
-        <h1 className="text-3xl font-sans font-bold text-foreground">New Estimate</h1>
-        <p className="text-muted-foreground mt-2">
-          Pick what you are selling, tell us where you are, and we will value it in your local currency with global market context.
+        <h1 className="text-3xl font-sans font-bold text-foreground">Start a valuation</h1>
+        <p className="text-muted-foreground mt-2 max-w-xl leading-relaxed">
+          {!authLoaded ? (
+            "Follow the prompts, then submit."
+          ) : authStubMode || isSignedIn ? (
+            "Follow the prompts, then submit."
+          ) : (
+            <>
+              Follow the prompts, then submit. Next we ask for a quick free login so your report saves to your
+              account.
+            </>
+          )}
         </p>
       </div>
 
@@ -886,31 +956,6 @@ function NewEstimatePageInner({
                       : [];
                     return (
                       <FormItem>
-                        <p className="mb-2 text-sm font-medium leading-snug text-foreground">Quick value (common types)</p>
-                        <div className="flex flex-wrap gap-2">
-                          {QUICK_VALUE_ASSETS.map(({ id: qid, label, Icon }) => {
-                            const t = tierFilteredAssetTypes.find((x) => x.id === qid);
-                            if (!t) return null;
-                            return (
-                              <button
-                                type="button"
-                                key={qid}
-                                onClick={() => {
-                                  if (selectedType && selectedType.id !== qid) {
-                                    selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
-                                  }
-                                  setSelectedCategory(t.category);
-                                  field.onChange(qid);
-                                }}
-                                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm transition-colors hover:border-accent"
-                              >
-                                <Icon className="h-4 w-4 text-accent" />
-                                {label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="mb-3 mt-3 text-xs text-muted-foreground">Or browse all categories below.</p>
                         <p className="text-sm font-medium leading-snug text-foreground">
                           {selectedCategory
                             ? `Pick the specific item type in ${selectedCategory}`
@@ -1023,6 +1068,7 @@ function NewEstimatePageInner({
                               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 {currentList.map((type) => {
                                   const active = field.value === type.id;
+                                  const Icon = iconForAssetType(type.id, type.category);
                                   return (
                                     <button
                                       type="button"
@@ -1040,12 +1086,19 @@ function NewEstimatePageInner({
                                           : "border-border bg-background hover:border-accent/50 hover:bg-accent/5"
                                       }`}
                                     >
-                                      <div className="text-sm font-medium">{type.name}</div>
-                                      {type.tagline && (
-                                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                          {type.tagline}
+                                      <div className="flex items-start gap-3">
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
+                                          <Icon className="h-5 w-5" aria-hidden />
                                         </div>
-                                      )}
+                                        <div className="min-w-0 flex-1">
+                                          <div className="text-sm font-medium">{type.name}</div>
+                                          {type.tagline && (
+                                            <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                              {type.tagline}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
                                     </button>
                                   );
                                 })}

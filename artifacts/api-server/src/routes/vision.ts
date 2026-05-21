@@ -13,7 +13,7 @@ const router: IRouter = Router();
 const visionLimit = rateLimit({
   windowMs: 60_000,
   max: 8,
-  message: "Too many photo analyses in a row — please wait a minute and try again.",
+  message: "Too many photo analyses in a row: please wait a minute and try again.",
 });
 
 router.post("/vision/extract", requireAuth, visionLimit, async (req, res): Promise<void> => {
@@ -29,7 +29,7 @@ router.post("/vision/extract", requireAuth, visionLimit, async (req, res): Promi
     return;
   }
 
-  // Sanity check the base64 size — Anthropic vision caps around 5MB per image
+  // Sanity check the base64 size (provider image caps around 5MB per image)
   // and our body cap is 12MB. Reject anything obviously too big with a clear msg.
   if (body.data.imageBase64.length > 8 * 1024 * 1024) {
     res

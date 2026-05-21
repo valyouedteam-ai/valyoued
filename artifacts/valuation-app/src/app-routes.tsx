@@ -4,6 +4,7 @@ import { useListEstimates } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import HomePage from "@/pages/home";
 import LandingPage from "@/pages/landing";
+import PricingPage from "@/pages/pricing";
 import WelcomePersonaPage from "@/pages/welcome";
 import StartPage from "@/pages/start";
 import AboutPage from "@/pages/about";
@@ -57,6 +58,7 @@ function StubFullBleedSwitch() {
       <Route path="/sign-up" component={() => <Redirect to="/dashboard" />} />
       <Route path="/sign-up/*" component={() => <Redirect to="/dashboard" />} />
       <Route path="/start" component={StartPage} />
+      <Route path="/pricing" component={PricingPage} />
       <Route path="/welcome" component={WelcomePersonaPage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />
@@ -93,6 +95,7 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
     location.startsWith("/sign-up") ||
     location.startsWith("/welcome") ||
     location.startsWith("/start") ||
+    location.startsWith("/pricing") ||
     location.startsWith("/about") ||
     location.startsWith("/privacy");
 
@@ -108,6 +111,7 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/sign-up/*" component={SignUpPage} />
         <Route path="/start" component={StartPage} />
+        <Route path="/pricing" component={PricingPage} />
         <Route path="/welcome" component={WelcomePersonaPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/privacy" component={PrivacyPage} />

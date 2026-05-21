@@ -1,6 +1,5 @@
 import { Link } from "wouter";
 import {
-  ArrowLeft,
   ArrowRight,
   Check,
   Sparkles,
@@ -11,11 +10,9 @@ import {
   Megaphone,
   Scale,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Badge } from "@/components/ui/badge";
-
-const BASE = (import.meta as any).env?.BASE_URL ?? "/";
-const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
+import { Button } from "@/components/ui/button";
 
 const STEPS = [
   {
@@ -52,7 +49,7 @@ const PRICING_TIERS = [
       "Baseline and adjusted mid estimate",
       "Regional demand and currency context",
       "Saved reports and portfolio snapshot",
-      "AI listing copy drafts for major marketplaces",
+      "Draft listing copy for major marketplaces",
     ],
     cta: { href: "/start", label: "Start free", variant: "outline" as const },
   },
@@ -60,7 +57,7 @@ const PRICING_TIERS = [
     name: "ValYoued Pro",
     badge: "Subscription",
     priceLine: "Paid plan",
-    cadence: "Recurring billing via Stripe (checkout shows exact price)",
+    cadence: "Recurring subscription; checkout lists exact price",
     blurb:
       "Unlock the full Pro report when you turn Pro on for a new valuation: deeper comparables, live headline context, and a sell-side execution playbook.",
     features: [
@@ -81,32 +78,7 @@ export default function AboutPage() {
         <div className="absolute -bottom-40 right-0 w-[600px] h-[600px] rounded-full bg-cyan-500/10 blur-[120px]" />
       </div>
 
-      <nav className="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="h-9 w-9 rounded-lg bg-white/95 flex items-center justify-center shadow ring-1 ring-accent/40">
-            <img src={LOGO_URL} alt="ValYoued" className="h-6 w-6 object-contain" />
-          </div>
-          <div className="text-xl font-brand font-semibold tracking-tight">ValYoued</div>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link href="/">
-            <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10">
-              <ArrowLeft className="mr-1.5 h-4 w-4" />
-              Home
-            </Button>
-          </Link>
-          <Link href="/sign-in">
-            <Button variant="ghost" className="text-white hover:bg-white/10">
-              Sign in
-            </Button>
-          </Link>
-          <Link href="/start">
-            <Button className="bg-accent hover:bg-accent/90 shadow-[0_0_24px_-6px_hsl(217_91%_60%/0.7)]">
-              Get a free valuation <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      </nav>
+      <MarketingTopNav variant="dark" />
 
       <section className="relative z-10 px-6 pt-12 pb-12 max-w-4xl mx-auto text-center space-y-5">
         <Badge variant="outline" className="inline-flex items-center gap-1.5 border-accent/40 bg-accent/10 text-accent-foreground px-3 py-1 text-ui-caps tracking-normal">
@@ -164,7 +136,10 @@ export default function AboutPage() {
           </h2>
           <p className="text-white/70 max-w-2xl mx-auto leading-relaxed">
             Everyone gets core valuations and listing help. ValYoued Pro is a subscription that pairs with Pro-mode
-            reports you generate in the app; manage billing, invoices, and cancellation from Settings after you sign in.
+            reports you generate in the app; manage billing, invoices, and cancellation from Settings after you sign in.{" "}
+            <Link href="/pricing" className="text-cyan-200 underline-offset-4 hover:underline">
+              See current tier grid and GBP prices on the Pricing page.
+            </Link>
           </p>
         </div>
         <div className="grid gap-5 lg:grid-cols-2">
@@ -222,7 +197,7 @@ export default function AboutPage() {
           ))}
         </div>
         <p className="text-center text-xs text-white/45 max-w-xl mx-auto mt-6 leading-relaxed">
-          Taxes, currency, and final renewal terms depend on Stripe Checkout and your payment method. Free tier features
+          Taxes, currency, and final renewal terms depend on checkout screens and your payment method. Free tier features
           stay available even if you do not subscribe.
         </p>
       </section>

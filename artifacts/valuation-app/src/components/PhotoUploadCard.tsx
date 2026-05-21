@@ -43,7 +43,7 @@ export function PhotoUploadCard({
   }, [assetTypeId]);
 
   // We auto-fire extraction once the file is decoded, but only when the user
-  // has already chosen an asset class, since the vision model needs to know
+  // has already chosen an asset class, since the photo extractor needs to know
   // which fields to populate. If they pick a class later we don't auto-fire
   // (they can press the button manually) to avoid surprise API spend.
   const autoTriggerRef = useRef(false);
@@ -194,7 +194,7 @@ export function PhotoUploadCard({
                 {realEstate ? "Add a property photo" : "Snap or upload a photo"}
               </h3>
               <Badge variant="outline" className="inline-flex items-center gap-1 text-ui-caps tracking-normal border-accent/40 text-accent">
-                <Wand2 className="h-2.5 w-2.5" /> AI auto-fill
+                <Wand2 className="h-2.5 w-2.5" /> Photo auto-fill
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">

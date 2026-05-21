@@ -51,7 +51,7 @@ function buildPrompt(
               `[${i + 1}] ${a.title}\n    source: ${a.source} (${a.publishedAt})\n    url: ${a.url}\n    snippet: ${a.snippet}`,
           )
           .join("\n")
-      : "(no live articles available — fall back to your training knowledge but mark events with sentiment:neutral if uncertain)";
+      : "(no live articles available; fall back to your training knowledge but mark events with sentiment:neutral if uncertain)";
 
   return `You are ValYoued, a senior multi-asset appraiser. Estimate the resale value of an item based on the data below. Use your knowledge of recent (last 24 months) public sales, auction results, and marketplace listings.
 
@@ -69,7 +69,7 @@ Asset-specific details:
 ${extras}
 Free-form notes: ${input.attributes ?? "n/a"}
 
-VALUATION DIRECTION — read carefully:
+VALUATION DIRECTION: read carefully:
 Most everyday assets depreciate (cars, electronics, furniture, ordinary home goods) and
 their adjustedMid should normally sit BELOW the original purchase price.
 However, some LUXURY, COLLECTIBLE, and RARE items can APPRECIATE over time.
@@ -84,9 +84,9 @@ return are recent sales above purchase price AND at least one marketSignals row 
 positive impact (>1.0) supported by a concrete reason (scarcity, discontinued status,
 auction record, cult following). If those conditions are not met, keep adjustedMid at or
 below the purchase price even for items the user labelled "Luxury / Collectible". Do not
-inflate values on a hunch — let the comparables drive the direction.
+inflate values on a hunch; let the comparables drive the direction.
 
-LIVE NEWS HEADLINES (last 30 days, fetched moments ago — use these as the PRIMARY source for the World Events section):
+LIVE NEWS HEADLINES (last 30 days, fetched moments ago; use these as the PRIMARY source for the World Events section):
 ${newsBlock}
 
 Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. ALL prices below in ${currency}:
@@ -100,7 +100,7 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
     "description": string,      // what sold, condition nuance, lot notes (keep short)
     "price": number,            // in ${currency}
     "year": number,             // CALENDAR YEAR of that sale (NOT "model year" of the item unless the sale was in that year)
-    "url"?: string              // ONLY if you know a real public page (sold listing, auction lot result, official auction PDF). Omit if unsure — NEVER invent URLs.
+    "url"?: string              // ONLY if you know a real public page (sold listing, auction lot result, official auction PDF). Omit if unsure. NEVER invent URLs.
   }>,
   "marketSignals": Array<{      // 3-5 current market factors
     "label": string,
@@ -151,17 +151,17 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
 
 Rules:
 - ${arbitrageInstruction}
-- COMPARABLES — recency & verifiability (critical):
+- COMPARABLES: recency & verifiability (critical):
   - Prefer sales from the **last 12–24 months**. At least **two** comparables should be from the last ~18 months when plausible for this asset class.
   - Do **not** lean on ancient sales (e.g. 2010s or earlier) as primary anchors unless the asset is extremely rare and you explicitly say so in the description. If you must cite an older sale, still prioritize newer comps first in the array.
   - Include **Facebook Marketplace** as a plausible source when the asset commonly trades locally (general merchandise, vehicles, furniture, electronics, many collectibles). Name the source accurately (e.g. "Facebook Marketplace", "eBay sold", "Bring a Trailer").
   - **url** field: only real http(s) links a user can open. If you cannot name a specific listing, omit **url** entirely. Never use placeholder or fabricated links.
-- Never wrap report copy or pro insight strings in quotation marks — use plain prose only (no leading/trailing " characters).
+- Never wrap report copy or pro insight strings in quotation marks; use plain prose only (no leading/trailing " characters).
 - World events MUST be GROUNDED in the LIVE NEWS HEADLINES above. Pick the 3-6 most relevant articles, copy their source/url/publishedAt verbatim, and explain in 1-2 sentences how each ONE specifically moves the price of THIS asset for THIS seller. Do NOT invent URLs.
 - If none of the live articles are relevant (rare), you may add ONE training-knowledge entry with source:"General market context" and url:"". All other entries must come from the live list.
-- The worldEventsNarrative should synthesise across the events you cite — keep it practical for the seller and tie each point to price impact.
+- The worldEventsNarrative should synthesise across the events you cite; keep it practical for the seller and tie each point to price impact.
 - All prices in ${currency} as integers (no decimals). Use the currency naturally for the seller's market.
-- Be realistic — if it's a mass-market item with low resale value, say so.
+- Be realistic; if it's a mass-market item with low resale value, say so.
 - Output JSON only.`;
 }
 
@@ -247,19 +247,19 @@ function fallbackCore(
       { label: "Currency", value: "Neutral", impact: 1.0, rationale: "Local currency broadly stable." },
     ],
     worldEvents: [
-      { title: "Live AI feed unavailable", summary: "We could not pull live news context for this asset right now.", sentiment: "neutral", scope: "Global" },
+      { title: "Live news unavailable", summary: "We could not pull live news context for this asset right now.", sentiment: "neutral", scope: "Global" },
     ],
     arbitrage,
     report: {
       headline: `${assetType.name} valued around ${currency} ${mid.toLocaleString()}`,
-      summary: "This is a heuristic estimate based on your inputs while the live AI is unavailable.",
+      summary: "This is a heuristic estimate based on your inputs while live market enrichment is unavailable.",
       baselineNarrative: "Baseline derived from your stated condition and purchase price.",
       marketNarrative: "No live signals available; assuming neutral market.",
       arbitrageNarrative: assetType.internationallyTradeable
         ? "Selling locally usually nets the most after fees and shipping."
         : "This asset is best sold locally.",
-      worldEventsNarrative: "Live news feed unavailable. Try again shortly for a full AI-sourced report.",
-      finalNarrative: "Try again shortly for a fully AI-sourced valuation.",
+      worldEventsNarrative: "Live news feed unavailable. Try again shortly for a fuller report with headlines attached.",
+      finalNarrative: "Try again shortly for a refreshed valuation with full market context.",
     },
     proInsights: {
       negotiationTactics: [
@@ -290,7 +290,7 @@ export async function generateEstimate(
   try {
     core = await callAI(input, assetType, currency, newsArticles);
   } catch (err) {
-    logger.error({ err }, "AI estimate failed, using fallback");
+    logger.error({ err }, "Structured estimate generation failed; using heuristic fallback.");
     core = fallbackCore(input, assetType, currency);
   }
 
@@ -328,7 +328,7 @@ export async function generateEstimate(
     for (const a of arbitrage) if (a.netToSeller > (best?.netToSeller ?? -Infinity)) best = a;
     arbitrage = arbitrage.map((a) => ({ ...a, recommended: a === best }));
   }
-  // Everyday free users: omit international arbitrage — keep a single sensible local/regional comparison row.
+  // Everyday free users: omit international arbitrage; keep a single sensible local/regional comparison row.
   if (tier === "free" && assetType.internationallyTradeable && arbitrage.length > 1) {
     const localRow =
       arbitrage.find((a) => a.region === input.currentRegion) ??

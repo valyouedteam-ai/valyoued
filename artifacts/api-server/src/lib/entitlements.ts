@@ -36,7 +36,7 @@ export interface UserEntitlements {
   canUseInternationalArbitrage: boolean;
   /** Pro insights block + richer selling narration */
   canUseAdvancedSellingReco: boolean;
-  /** Paid + user prefs — callers still check prefs table */
+  /** Paid plus user prefs; callers still check prefs table */
   canUseMonitorEmailAlerts: boolean;
 }
 

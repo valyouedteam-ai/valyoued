@@ -5,4 +5,4 @@ alwaysApply: true
 
 # Copy style
 
-Do not use the em dash character (Unicode U+2014, "—") in user-facing strings, docs, or comments added to this repo. Prefer a period, comma, colon, parentheses, or "and" to connect ideas.
+Do not use the Unicode em dash character (code point U+2014) in user-facing strings, docs, or comments added to this repo. Prefer a period, comma, colon, parentheses, or "and" to connect ideas.

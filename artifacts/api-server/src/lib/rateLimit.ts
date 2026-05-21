@@ -42,7 +42,7 @@ export function rateLimit({ windowMs, max, key, message }: Options) {
       res.status(429).json({
         error:
           message ||
-          `You're going a bit fast — please wait ${retryAfter}s and try again.`,
+          `You're going a bit fast: please wait ${retryAfter}s and try again.`,
       });
       return;
     }
