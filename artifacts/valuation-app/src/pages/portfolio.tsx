@@ -197,7 +197,7 @@ export default function PortfolioPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="w-full space-y-8">
         <Skeleton className="h-12 w-72" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -239,7 +239,7 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16">
+    <div className="w-full space-y-8 pb-16">
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
@@ -374,7 +374,7 @@ export default function PortfolioPage() {
 
       {/* Collection: single grouped view (by valuation track), highest approximate value first */}
       <section className="space-y-8" data-testid="collection-section">
-        <div className="space-y-1.5 max-w-2xl">
+        <div className="w-full space-y-1.5">
           <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Valuations are grouped by the track you chose when you ran them. Within each group, larger holdings

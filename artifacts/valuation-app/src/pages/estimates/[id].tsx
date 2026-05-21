@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ArbitrageOption, Comparable } from "@workspace/api-client-react";
+import type { ArbitrageOption } from "@workspace/api-client-react";
 import {
   useGetEstimate,
   getGetEstimateQueryKey,
@@ -54,12 +54,10 @@ import { safeHttpUrl } from "@/lib/safe-url";
 /** Cost breakdown under each marketplace row. */
 function ArbitrageVenueFeeBreakdown({
   option,
-  comparablesAnchors,
   adjustedMidLabel,
   sellerRegionLabel,
 }: {
   option: ArbitrageOption;
-  comparablesAnchors: Comparable[];
   adjustedMidLabel: string;
   sellerRegionLabel: string;
 }) {
@@ -75,33 +73,15 @@ function ArbitrageVenueFeeBreakdown({
       Math.abs(netDelta / Math.max(option.netToSeller, 1)) <= 0.03);
 
   return (
-    <div className="no-print space-y-4 rounded-2xl border border-border/50 bg-muted/20 p-4 text-sm md:p-5">
-      <p className="font-medium text-foreground">Rough costs for this marketplace</p>
-      <p className="text-muted-foreground leading-relaxed">
-        This row uses your main estimate (<span className="tabular-nums font-medium text-foreground">{adjustedMidLabel}</span>) as a
-        starting point, then guesses what listing in <span className="font-medium text-foreground">{option.marketplace}</span> in{" "}
-        <span className="font-medium text-foreground">{option.region}</span> might look like after typical fees.
+    <div className="no-print space-y-3 rounded-xl border border-border/50 bg-muted/20 p-3 text-sm md:p-4">
+      <p className="font-medium text-foreground">Fee breakdown</p>
+      <p className="text-xs text-muted-foreground leading-snug">
+        From headline estimate{" "}
+        <span className="tabular-nums font-medium text-foreground">{adjustedMidLabel}</span> on{" "}
+        <span className="font-medium text-foreground">{option.marketplace}</span> ({option.region}), after typical friction.
       </p>
 
-      {comparablesAnchors.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Sales we linked to your estimate</p>
-          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-            {comparablesAnchors.map((c, i) => (
-              <li key={i}>
-                <span className="font-medium capitalize text-foreground">{c.source}</span>, {c.year}: {c.description} at{" "}
-                <span className="tabular-nums font-medium text-foreground">{fm(c.price)}</span>.
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <p className="rounded-xl border border-dashed border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-          We could not attach specific sale links here. The numbers still follow from your estimate above and the short note on the row.
-        </p>
-      )}
-
-      <div className="grid gap-3 rounded-xl bg-background/80 p-3 text-xs sm:grid-cols-2">
+      <div className="grid gap-2 rounded-lg bg-background/80 p-2.5 text-xs sm:grid-cols-2">
         <div>
           <p className="font-medium text-foreground">Site fees</p>
           <p className="mt-1 text-muted-foreground">
@@ -132,11 +112,11 @@ function ArbitrageVenueFeeBreakdown({
         </div>
       </div>
 
-      <blockquote className="rounded-xl border border-border/50 bg-card px-3 py-2 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">Demand note:</span> {option.demandNote}
+      <blockquote className="rounded-lg border border-border/50 bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Demand:</span> {option.demandNote}
       </blockquote>
 
-      <dl className="grid gap-2 rounded-xl border border-border/50 bg-card/90 p-3 text-xs tabular-nums md:text-sm">
+      <dl className="grid gap-1.5 rounded-lg border border-border/50 bg-card/90 p-2.5 text-xs tabular-nums md:text-sm">
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground">Typical listing price</dt>
           <dd className="font-medium">{fm(gross)}</dd>
@@ -159,10 +139,8 @@ function ArbitrageVenueFeeBreakdown({
         </div>
       </dl>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Figures are rounded and can drift slightly when the model stacks fees in a different order.
-        {!tallyOk ? " A small gap here is usually rounding." : " This line adds up within a small tolerance."} Check final quotes on
-        the marketplace and with a courier before you commit.
+      <p className="text-[11px] leading-snug text-muted-foreground">
+        Rounded.{!tallyOk ? " Small gaps are usually rounding." : ""} Confirm on the marketplace and with your courier.
       </p>
     </div>
   );
@@ -216,7 +194,7 @@ export default function EstimateReportPage() {
 
   const proInsightsSanitized = useMemo(() => {
     if (!estimate?.proInsights) return null;
-    const p = estimate.proInsights;
+    const { optimalTiming: _unusedOptimalTiming, ...p } = estimate.proInsights;
     const sq = stripRedundantOuterQuotes;
     return {
       ...p,
@@ -227,7 +205,6 @@ export default function EstimateReportPage() {
       talkingPoints: (p.talkingPoints ?? []).map(sq),
       redFlags: (p.redFlags ?? []).map(sq),
       listingTips: (p.listingTips ?? []).map(sq),
-      optimalTiming: sq(p.optimalTiming ?? ""),
     };
   }, [estimate]);
 
@@ -256,11 +233,10 @@ export default function EstimateReportPage() {
     );
   }
 
-  // International marketplace table (where listing might pay best) requires a Pro-generated estimate or an active paid valuation plan. The header Pro preview alone does not unlock it.
+  // Full detail follows the header Pro tier preview, paid plan, or a Pro-generated estimate.
   const savedTierPro = estimate.tier === "pro";
-  const payBestVenuesUnlocked = savedTierPro || billingPaid;
-  const reportBadgePro = savedTierPro || globalPro || billingPaid;
   const showExpandedPro = savedTierPro || globalPro || billingPaid;
+  const reportBadgePro = showExpandedPro;
 
   const uplift = (estimate.netMarketFactor ?? 1) - 1;
   const ccy = estimate.currency ?? "USD";
@@ -282,7 +258,6 @@ export default function EstimateReportPage() {
     marketNarrative: stripQ(partialReport?.marketNarrative ?? ""),
     arbitrageNarrative: stripQ(partialReport?.arbitrageNarrative ?? ""),
     worldEventsNarrative: stripQ(partialReport?.worldEventsNarrative ?? ""),
-    finalNarrative: stripQ(partialReport?.finalNarrative ?? ""),
   };
 
   const arbitrageRows = estimate.arbitrage ?? [];
@@ -290,12 +265,11 @@ export default function EstimateReportPage() {
   const currentYear = new Date().getFullYear();
   const staleSaleBeforeYear = currentYear - 3;
   const fmt = (v: number, compact = false) => formatMoney(v, ccy, compact);
-  const compAnchorsTop = comparables.slice(0, 4);
   const adjustedMidLabel = fmt(estimate.adjustedMid);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-24 pt-2 print:max-w-none print:px-0 print:pb-0 sm:px-6">
-      <div className="no-print mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-2 print:max-w-none print:px-0 print:pb-0 sm:px-6">
+      <div className="no-print mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/estimates">
           <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="mr-2 h-4 w-4" /> All reports
@@ -320,7 +294,7 @@ export default function EstimateReportPage() {
         onOpenChange={setListingOpen}
       />
 
-      <header className="mb-14 space-y-8 print:break-inside-avoid">
+      <header className="mb-8 space-y-5 print:break-inside-avoid">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span className="text-foreground/90">{assetTypeName}</span>
@@ -352,7 +326,7 @@ export default function EstimateReportPage() {
             {report.headline}
           </h1>
           {report.summary ? (
-            <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">{report.summary}</p>
+            <p className="max-w-2xl text-sm leading-snug text-muted-foreground sm:text-base">{report.summary}</p>
           ) : null}
         </div>
 
@@ -383,8 +357,8 @@ export default function EstimateReportPage() {
           </div>
         </section>
 
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm print:border-border print:shadow-none">
-          <div className="border-b border-border/50 bg-gradient-to-br from-accent/[0.07] via-transparent to-transparent p-6 sm:p-8 md:p-10">
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm print:border-border print:shadow-none">
+          <div className="border-b border-border/50 bg-gradient-to-br from-accent/[0.07] via-transparent to-transparent px-5 py-5 sm:px-6 sm:py-6 md:px-8">
             <p className="text-sm font-medium text-muted-foreground">Estimate today</p>
             <p className="mt-2 text-5xl font-semibold tabular-nums tracking-tight text-foreground sm:text-6xl">{fmt(estimate.adjustedMid)}</p>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -403,43 +377,42 @@ export default function EstimateReportPage() {
               </p>
             ) : null}
             {report.marketNarrative ? (
-              <p className="mt-6 max-w-2xl text-sm leading-relaxed text-foreground/85 sm:text-base">{report.marketNarrative}</p>
+              <p className="mt-4 max-w-2xl text-sm leading-snug text-foreground/85">{report.marketNarrative}</p>
             ) : null}
           </div>
           <div className="grid gap-0 sm:grid-cols-2 sm:divide-x sm:divide-border/50">
-            <div className="p-6 sm:p-8">
+            <div className="px-5 py-5 sm:px-6 sm:py-6">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">From similar sales</p>
               <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{fmt(estimate.baselineMid)}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Range {fmt(estimate.baselineLow, true)} to {fmt(estimate.baselineHigh, true)}
               </p>
               {report.baselineNarrative ? (
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{report.baselineNarrative}</p>
+                <p className="mt-3 text-sm leading-snug text-muted-foreground">{report.baselineNarrative}</p>
               ) : null}
             </div>
-            <div className="border-t border-border/50 p-6 sm:border-t-0 sm:p-8">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                The larger number layers news, seasonality, and demand on top of what similar items have sold for. Use the range,
-                not a single figure, when you talk to buyers.
+            <div className="border-t border-border/50 px-5 py-5 sm:border-t-0 sm:px-6 sm:py-6">
+              <p className="text-sm text-muted-foreground leading-snug">
+                The headline layers news and demand on similar sales. Use the range when you talk price.
               </p>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="space-y-16 md:space-y-20">
+      <div className="space-y-8 md:space-y-10">
         {!showExpandedPro && (
-          <section className="print-break-inside-avoid rounded-3xl border border-border/60 bg-muted/15 p-6 sm:p-8">
-            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-              <div className="flex gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+          <section className="print-break-inside-avoid rounded-2xl border border-border/60 bg-muted/15 p-4 sm:p-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="flex gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                   <Sparkles className="h-5 w-5" />
                 </div>
-                <div className="min-w-0 space-y-2">
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                <div className="min-w-0 space-y-1">
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">
                     {savedTierPro ? "Turn on Pro preview to see the rest" : "See the full picture"}
                   </h2>
-                  <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                  <p className="max-w-xl text-sm leading-snug text-muted-foreground">
                     {savedTierPro
                       ? "This report was run with full detail. Flip the Pro switch in the header to show news, similar sales, and seller tips."
                       : "Add news, where to list, similar sales, and step-by-step selling help."}
@@ -456,7 +429,7 @@ export default function EstimateReportPage() {
               ) : null}
             </div>
             {!savedTierPro ? (
-              <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+              <ul className="mt-5 grid gap-2 sm:grid-cols-2">
                 {[
                   { icon: Clock, text: "Good times to list" },
                   { icon: Newspaper, text: "How headlines might change your price" },
@@ -464,7 +437,7 @@ export default function EstimateReportPage() {
                   { icon: Scale, text: "Similar sales you can point to" },
                   { icon: Target, text: "Prices to open with and walk away from" },
                 ].map((f) => (
-                  <li key={f.text} className="flex items-center gap-3 rounded-xl border border-border/40 bg-background/60 px-3 py-2.5 text-sm">
+                  <li key={f.text} className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/60 px-2.5 py-2 text-sm">
                     <f.icon className="h-4 w-4 shrink-0 text-accent" />
                     <span className="text-foreground/90">{f.text}</span>
                   </li>
@@ -476,15 +449,15 @@ export default function EstimateReportPage() {
 
         {/* World Events – PRO ONLY */}
         {showExpandedPro && estimate.worldEvents && estimate.worldEvents.length > 0 && (
-          <section className="space-y-6 print:break-inside-avoid">
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">News that may tilt the price</h2>
+          <section className="space-y-4 print:break-inside-avoid">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">News that may tilt the price</h2>
               {report.worldEventsNarrative ? (
-                <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{report.worldEventsNarrative}</p>
+                <p className="max-w-2xl text-sm leading-snug text-muted-foreground">{report.worldEventsNarrative}</p>
               ) : null}
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {estimate.worldEvents.map((ev, i) => {
                 const tone =
                   ev.sentiment === "positive"
@@ -499,17 +472,17 @@ export default function EstimateReportPage() {
                       ? "text-red-600 dark:text-red-400"
                       : "text-muted-foreground";
                 return (
-                  <article key={i} className={`rounded-2xl border p-5 ${tone}`}>
-                    <div className="flex items-start gap-3">
+                  <article key={i} className={`rounded-xl border p-4 ${tone}`}>
+                    <div className="flex items-start gap-2.5">
                       <CircleDot className={`mt-0.5 h-4 w-4 shrink-0 ${dot}`} aria-hidden />
-                      <div className="min-w-0 flex-1 space-y-2">
+                      <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <h3 className="text-sm font-semibold leading-snug text-foreground">{stripQ(ev.title)}</h3>
                           {ev.scope ? (
                             <span className="shrink-0 text-[11px] text-muted-foreground">{ev.scope}</span>
                           ) : null}
                         </div>
-                        <p className="text-sm leading-relaxed text-muted-foreground">{stripQ(ev.summary)}</p>
+                        <p className="text-sm leading-snug text-muted-foreground">{stripQ(ev.summary)}</p>
                         {(ev.source || ev.url || ev.publishedAt) && (
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                             {ev.source ? <span>{ev.source}</span> : null}
@@ -542,91 +515,41 @@ export default function EstimateReportPage() {
           </section>
         )}
 
-        {/* Where to sell estimates: Pro-tier generation or paid plan */}
-        {showExpandedPro && payBestVenuesUnlocked && arbitrageRows.length > 0 && (
-          <section className="space-y-8 print:break-inside-avoid">
-            <div className="rounded-2xl border border-border/60 bg-muted/15 p-5 sm:p-6">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">
+        {/* Where listing might pay best: same tier preview gate as other full-report sections */}
+        {showExpandedPro && arbitrageRows.length > 0 && (
+          <section className="space-y-4 print:break-inside-avoid">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 {isMobile ? "Where listing might pay best" : "Local sites and payouts"}
               </h2>
-              <ul className="mt-4 max-w-2xl list-none space-y-2.5 text-sm leading-relaxed text-muted-foreground">
-                <li className="flex gap-2">
-                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden />
-                  <span>These rows are rough: list price minus typical fees, shipping, and duties so you can compare destinations side by side.</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden />
-                  <span>Open a row for a fee breakdown and quick notes.</span>
-                </li>
-              </ul>
+              <p className="mt-1 max-w-2xl text-sm leading-snug text-muted-foreground">
+                Estimated list price minus fees, shipping, and duties. Expand a row for the breakdown.
+              </p>
             </div>
 
-            {compAnchorsTop.length > 0 ? (
-              <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 sm:p-6">
-                <p className="text-sm font-medium text-foreground">Sales shaping this estimate</p>
-                <p className="mt-1 text-xs text-muted-foreground">References the model used for your headline range.</p>
-                <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm text-muted-foreground marker:text-muted-foreground/60">
-                  {compAnchorsTop.map((c, idx) => (
-                    <li key={idx} className="pl-0.5">
-                      <span className="font-medium text-foreground">{c.source}</span>, {c.year}: {c.description} at{" "}
-                      <span className="tabular-nums font-medium text-foreground">{fmt(c.price)}</span>.
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="space-y-2 rounded-2xl border border-dashed border-border/60 bg-muted/10 px-4 py-4 sm:px-5 sm:py-5">
-                <p className="text-sm font-medium text-foreground">No matched sold listings</p>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  We could not tie this to specific sold listings.
-                </p>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  The table below still follows from your headline estimate. Open a row for detail.
-                </p>
-              </div>
-            )}
-
-            {report.arbitrageNarrative?.trim() ? (
-              <div className="max-w-2xl space-y-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-4 sm:px-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Regional angle</p>
-                {report.arbitrageNarrative
-                  .trim()
-                  .split(/\n\s*\n/)
-                  .map((block) => block.trim())
-                  .filter(Boolean)
-                  .map((para, i) => (
-                    <p key={i} className="text-sm leading-relaxed text-muted-foreground">
-                      {para}
-                    </p>
-                  ))}
-              </div>
-            ) : null}
-
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Compare destinations</p>
-              <div className="mt-3 overflow-x-auto rounded-2xl border border-border/50 bg-card shadow-sm">
+            <div className="overflow-x-auto rounded-xl border border-border/50 bg-card shadow-sm">
               <Table className="min-w-[58rem] w-full table-fixed lg:min-w-full">
                 <TableHeader className="border-b border-border/50 bg-muted/30">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[26%] min-w-[13rem] whitespace-normal px-4 py-3.5 pl-6 text-left font-medium text-foreground first:rounded-tl-2xl">
+                    <TableHead className="w-[26%] min-w-[13rem] whitespace-normal px-4 py-3 pl-5 text-left text-sm font-medium text-foreground first:rounded-tl-xl">
                       Place
                     </TableHead>
-                    <TableHead className="w-[22%] min-w-[12rem] whitespace-normal px-4 py-3.5 text-left font-medium text-foreground">
+                    <TableHead className="w-[22%] min-w-[12rem] whitespace-normal px-4 py-3 text-left text-sm font-medium text-foreground">
                       Site
                     </TableHead>
-                    <TableHead className="w-[12%] min-w-[7.5rem] whitespace-nowrap px-4 py-3.5 text-right font-medium text-foreground">
-                      List price*
+                    <TableHead className="w-[12%] min-w-[7.5rem] whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground">
+                      List price
                     </TableHead>
-                    <TableHead className="w-[14%] min-w-[8.5rem] whitespace-normal px-4 py-3.5 text-right text-muted-foreground">
-                      Costs*
+                    <TableHead className="w-[14%] min-w-[8.5rem] whitespace-normal px-4 py-3 text-right text-sm text-muted-foreground">
+                      Costs
                       <div className="mt-0.5 text-[11px] font-normal normal-case leading-snug text-muted-foreground/80">
                         Fees, ship, duty
                       </div>
                     </TableHead>
-                    <TableHead className="w-[12%] min-w-[7.5rem] whitespace-nowrap px-4 py-3.5 text-right font-semibold text-foreground">
-                      You&apos;d keep*
+                    <TableHead className="w-[12%] min-w-[7.5rem] whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-foreground">
+                      You keep
                     </TableHead>
-                    <TableHead className="w-[14%] min-w-[10.5rem] whitespace-nowrap px-4 py-3.5 pr-6 text-right font-medium last:rounded-tr-2xl">
+                    <TableHead className="w-[14%] min-w-[10.5rem] whitespace-nowrap px-4 py-3 pr-5 text-right text-sm font-medium last:rounded-tr-xl">
                       Post listing
                     </TableHead>
                   </TableRow>
@@ -639,31 +562,31 @@ export default function EstimateReportPage() {
                     return (
                       <Fragment key={`${option.region}-${option.marketplace}-${i}`}>
                         <TableRow className={cn("border-border/40", option.recommended ? "bg-accent/[0.06]" : "")}>
-                          <TableCell className="align-top px-4 py-4 pl-6 text-sm font-medium leading-snug">
-                            <div className="flex max-w-none flex-col gap-2">
-                              <span className="text-base font-semibold text-foreground">{option.region}</span>
+                          <TableCell className="align-top px-4 py-3 pl-5 text-sm font-medium leading-snug">
+                            <div className="flex max-w-none flex-col gap-1.5">
+                              <span className="text-[15px] font-semibold text-foreground">{option.region}</span>
                               {option.recommended ? (
-                                <span className="inline-flex w-fit rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
+                                <span className="inline-flex w-fit rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
                                   Best payout
                                 </span>
                               ) : null}
-                              <p className="text-[13px] font-normal leading-relaxed text-muted-foreground">{option.demandNote}</p>
+                              <p className="text-xs font-normal leading-snug text-muted-foreground">{option.demandNote}</p>
                             </div>
                           </TableCell>
-                          <TableCell className="align-top px-4 py-4 text-sm">
-                            <div className="text-base font-medium leading-snug text-foreground">{option.marketplace}</div>
+                          <TableCell className="align-top px-4 py-3 text-sm">
+                            <div className="text-[15px] font-medium leading-snug text-foreground">{option.marketplace}</div>
                             <button
                               type="button"
-                              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
                               onClick={() => setOpenedBreakdownIdx((prev) => (prev === i ? null : i))}
                               aria-expanded={openedBreakdownIdx === i}
                             >
-                              {openedBreakdownIdx === i ? "Hide details" : "How we got these numbers"}
+                              {openedBreakdownIdx === i ? "Hide details" : "Breakdown"}
                               <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", openedBreakdownIdx === i && "rotate-180")} />
                             </button>
                           </TableCell>
-                          <TableCell className="px-4 py-4 text-right align-top text-base tabular-nums">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
-                          <TableCell className="px-4 py-4 text-right align-top text-base tabular-nums text-muted-foreground">
+                          <TableCell className="px-4 py-3 text-right align-top text-sm tabular-nums">{formatMoney(option.estimatedSalePrice, option.currency)}</TableCell>
+                          <TableCell className="px-4 py-3 text-right align-top text-sm tabular-nums text-muted-foreground">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="cursor-help underline decoration-dotted underline-offset-2">
@@ -686,16 +609,16 @@ export default function EstimateReportPage() {
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
-                          <TableCell className="px-4 py-4 text-right align-top text-lg font-semibold tabular-nums">
+                          <TableCell className="px-4 py-3 text-right align-top text-base font-semibold tabular-nums">
                             {formatMoney(option.netToSeller, option.currency)}
                           </TableCell>
-                          <TableCell className="px-4 py-4 pr-6 text-right align-top">
+                          <TableCell className="px-4 py-3 pr-5 text-right align-top">
                             {postUrl ? (
                               <a
                                 href={postUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-accent/35 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/18"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-accent/35 bg-accent/10 px-2.5 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/18"
                                 data-testid={`arb-${i}-post-link`}
                               >
                                 {PLATFORM_LABEL[slug!] ?? option.marketplace}
@@ -708,10 +631,9 @@ export default function EstimateReportPage() {
                         </TableRow>
                         {openedBreakdownIdx === i && (
                           <TableRow className="border-t-0 bg-muted/20 hover:bg-muted/25">
-                            <TableCell className="px-4 py-5 pl-6 pr-6 sm:px-6 sm:py-6" colSpan={6}>
+                            <TableCell className="px-4 py-4 pl-5 pr-4 sm:px-5 sm:py-4" colSpan={6}>
                               <ArbitrageVenueFeeBreakdown
                                 option={option}
-                                comparablesAnchors={compAnchorsTop}
                                 adjustedMidLabel={adjustedMidLabel}
                                 sellerRegionLabel={sellerRegion}
                               />
@@ -723,10 +645,6 @@ export default function EstimateReportPage() {
                   })}
                 </TableBody>
               </Table>
-              </div>
-              <p className="mt-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                * Figures are estimated. Confirm fees and shipping on each marketplace before you rely on them.
-              </p>
             </div>
           </section>
         )}
@@ -734,14 +652,14 @@ export default function EstimateReportPage() {
 
         {/* Similar sales */}
         {showExpandedPro && comparables.length > 0 && (
-        <section className="space-y-6 print:break-inside-avoid">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">Similar past sales</h2>
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Use these as reference points. When we have a verifiable source URL for a row you can open it below. Marketplace buttons jump to similar sold results on eBay where we support it, and to live listing search everywhere else.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="space-y-4 print:break-inside-avoid">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">Similar past sales</h2>
+              <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
+                References with links where we have them. Use sold search on supported sites for more comps.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {comparables.map((comp, i) => {
               const livePlatforms = [...new Set(platformsForAssetType(assetTypeName))];
               const searchQuery = `${estimateTitle} ${comp.description}`.slice(0, 90);
@@ -802,7 +720,7 @@ export default function EstimateReportPage() {
                         <span className="text-muted-foreground/80">No link for this row</span>
                       )}
                     </div>
-                    <div className="mt-auto space-y-4 border-t border-border/40 pt-3">
+                    <div className="mt-auto space-y-2 border-t border-border/40 pt-2">
                       <div>
                         <p className="mb-2 text-[11px] font-medium text-muted-foreground">Similar sold listings</p>
                         <div className="flex flex-wrap gap-1.5">
@@ -829,8 +747,8 @@ export default function EstimateReportPage() {
                           })}
                         </div>
                         {!hasSoldShortcut ? (
-                          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                            Sold-search shortcuts are available for eBay on this report. Use live listings below for other marketplaces, or open the verified source link when we have one.
+                          <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                            Sold search on eBay when available; otherwise try live listings or the source link.
                           </p>
                         ) : null}
                       </div>
@@ -865,62 +783,58 @@ export default function EstimateReportPage() {
               );
             })}
           </div>
-        </section>
+          </section>
         )}
 
         {/* Seller playbook – PRO ONLY (estimate must have been generated as pro) */}
         {showExpandedPro && proInsightsSanitized && (
-        <section className="print:break-inside-avoid relative rounded-3xl border border-border/50 bg-card shadow-sm">
-              <div className="border-b border-border/50 px-5 py-6 md:px-8 md:py-7">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent" aria-hidden>
-                      <Lightbulb className="h-5 w-5" strokeWidth={2} />
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">If you&apos;re selling</p>
-                      <h2 id="seller-playbook-heading" className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                        Tips for price, chats, and your listing
-                      </h2>
-                      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                        Starter ask, floor amount, bargaining steps, pitfalls, listing ideas, and timing in one place.
-                      </p>
-                    </div>
+          <section className="print:break-inside-avoid relative rounded-2xl border border-border/50 bg-card shadow-sm">
+            <div className="border-b border-border/50 px-4 py-4 md:px-6 md:py-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent" aria-hidden>
+                    <Lightbulb className="h-5 w-5" strokeWidth={2} />
                   </div>
-                  <Badge variant="secondary" className="shrink-0 self-start border-border/60 font-normal">
-                    Full report only
-                  </Badge>
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">If you&apos;re selling</p>
+                    <h2 id="seller-playbook-heading" className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+                      Price, chats, listing
+                    </h2>
+                    <p className="max-w-xl text-sm leading-snug text-muted-foreground">
+                      Opening ask, walk-away floor, negotiation steps, pitfalls, and listing tweaks.
+                    </p>
+                  </div>
                 </div>
+                <Badge variant="secondary" className="shrink-0 self-start border-border/60 font-normal">
+                  Full report only
+                </Badge>
               </div>
+            </div>
 
-              <div className="space-y-10 p-5 md:p-8">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border/70 bg-muted/15 p-5">
+            <div className="space-y-6 p-4 md:p-6">
+              <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border/70 bg-muted/15 p-4">
                     <p className="text-xs font-medium text-muted-foreground">Strong first price</p>
-                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground">{fmt(proInsightsSanitized.anchorPrice)}</p>
-                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                      A reasonable opening number for your listing or first verbal ask. Buyers often expect some back and forth from here.
-                    </p>
+                    <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground">{fmt(proInsightsSanitized.anchorPrice)}</p>
+                    <p className="mt-2 text-xs leading-snug text-muted-foreground">Reasonable opening ask before typical haggling.</p>
                   </div>
-                  <div className="rounded-xl border border-destructive/25 bg-destructive/[0.04] p-5 dark:bg-destructive/[0.07]">
+                  <div className="rounded-lg border border-destructive/25 bg-destructive/[0.04] p-4 dark:bg-destructive/[0.07]">
                     <p className="text-xs font-medium text-muted-foreground">Lowest worth accepting</p>
-                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-destructive">{fmt(proInsightsSanitized.walkAwayPrice)}</p>
-                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                      Below this payout, pause or decline. Helps you avoid saying yes in the moment and regretting it later.
-                    </p>
+                    <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-destructive">{fmt(proInsightsSanitized.walkAwayPrice)}</p>
+                    <p className="mt-2 text-xs leading-snug text-muted-foreground">Below this, pause or walk away.</p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center gap-2 text-foreground">
                     <Handshake className="h-4 w-4 text-accent shrink-0" aria-hidden />
                     <h4 className="text-base font-semibold">When someone bargains</h4>
                   </div>
-                  <ol className="space-y-3">
+                  <ol className="space-y-2">
                     {proInsightsSanitized.negotiationTactics.map((tactic, i) => (
                       <li
                         key={i}
-                        className="flex gap-4 rounded-xl border border-border/50 bg-background/60 px-4 py-3.5 md:px-5 md:py-4"
+                        className="flex gap-3 rounded-lg border border-border/50 bg-background/60 px-3 py-2.5 md:px-4 md:py-3"
                       >
                         <span
                           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums text-foreground ring-1 ring-border/70"
@@ -930,36 +844,36 @@ export default function EstimateReportPage() {
                         </span>
                         <div className="min-w-0 space-y-1">
                           <p className="font-medium leading-snug text-foreground">{tactic.title}</p>
-                          <p className="text-sm leading-relaxed text-muted-foreground">{tactic.detail}</p>
+                          <p className="text-sm leading-snug text-muted-foreground">{tactic.detail}</p>
                         </div>
                       </li>
                     ))}
                   </ol>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-xl border border-border/60 bg-muted/10 p-5 md:p-6">
-                    <div className="mb-4 flex items-center gap-2">
+              <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-lg border border-border/60 bg-muted/10 p-4 md:p-5">
+                    <div className="mb-2 flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />
                       <h4 className="text-base font-semibold text-foreground">Watch out for</h4>
                     </div>
-                    <ul className="space-y-3">
+                    <ul className="space-y-2">
                       {proInsightsSanitized.redFlags.map((flag, i) => (
-                        <li key={i} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+                        <li key={i} className="flex gap-2 text-sm leading-snug text-muted-foreground">
                           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive/70" aria-hidden />
                           <span>{flag}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/10 p-5 md:p-6">
-                    <div className="mb-4 flex items-center gap-2">
+                  <div className="rounded-lg border border-border/60 bg-muted/10 p-4 md:p-5">
+                    <div className="mb-2 flex items-center gap-2">
                       <Megaphone className="h-4 w-4 text-accent shrink-0" aria-hidden />
                       <h4 className="text-base font-semibold text-foreground">Make the listing clearer</h4>
                     </div>
-                    <ul className="space-y-3">
+                    <ul className="space-y-2">
                       {proInsightsSanitized.listingTips.map((tip, i) => (
-                        <li key={i} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+                        <li key={i} className="flex gap-2 text-sm leading-snug text-muted-foreground">
                           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent/70" aria-hidden />
                           <span>{tip}</span>
                         </li>
@@ -967,36 +881,8 @@ export default function EstimateReportPage() {
                     </ul>
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-5 rounded-xl border border-border/60 bg-gradient-to-br from-muted/40 via-background to-background p-5 md:flex-row md:items-center md:justify-between md:gap-8 md:p-6">
-                  <div className="flex gap-4 min-w-0">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/12 text-accent"
-                      aria-hidden
-                    >
-                      <Clock className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 space-y-2">
-                      <h4 className="text-base font-semibold text-foreground">Best window to list</h4>
-                      <p className="text-sm leading-relaxed text-muted-foreground">{proInsightsSanitized.optimalTiming}</p>
-                    </div>
-                  </div>
-                  <div className="shrink-0 space-y-2 md:max-w-xs md:text-right">
-                    <Button
-                      size="sm"
-                      onClick={() => setListingOpen(true)}
-                      className="w-full bg-accent text-accent-foreground hover:bg-accent/90 md:w-auto"
-                      data-testid="when-to-sell-list-btn"
-                    >
-                      <Megaphone className="h-4 w-4 mr-2" aria-hidden /> Draft listing copy
-                    </Button>
-                    <p className="text-xs leading-snug text-muted-foreground md:text-right">
-                      Uses this valuation to suggest wording you can paste into a marketplace.
-                    </p>
-                  </div>
-                </div>
-              </div>
-        </section>
+            </div>
+          </section>
         )}
 
         {/* If user has Pro mode on but the estimate was generated as Free, prompt re-run */}
@@ -1019,20 +905,9 @@ export default function EstimateReportPage() {
           </section>
         )}
 
-        <footer className="mt-20 border-t border-border/60 pt-10 pb-12 text-center">
-          {report.finalNarrative ? (
-            <blockquote className="mx-auto mb-8 max-w-2xl text-pretty text-lg font-normal leading-relaxed text-foreground sm:text-xl">
-              {report.finalNarrative}
-            </blockquote>
-          ) : null}
-          <div className="mx-auto flex max-w-md flex-col gap-2 text-xs text-muted-foreground">
-            <span className="text-sm font-medium text-foreground">ValYoued</span>
-            <time dateTime={estimate.createdAt}>{formatDate(estimate.createdAt)}</time>
-            <p className="mt-4 leading-relaxed">
-              Estimate only, not formal advice. Pricing changes with the market.
-            </p>
-          </div>
-        </footer>
+        <p className="mt-8 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground">
+          Estimate only, not formal advice. Pricing changes with the market.
+        </p>
       </div>
     </div>
   );
