@@ -214,6 +214,34 @@ export const CreateEstimateResponse = zod.object({
       price: zod.number().describe("Price in the result currency"),
       year: zod.number(),
       url: zod.string().optional(),
+      conditionCue: zod
+        .string()
+        .optional()
+        .describe(
+          "Condition \/ completeness shorthand for this comp (not the seller copy)",
+        ),
+      locationOrChannel: zod
+        .string()
+        .optional()
+        .describe(
+          "Geography or outlet shorthand (EU consignment, US auction floor, Japan Yahoo, etc.)",
+        ),
+      transactionTypeGuess: zod
+        .enum(["sold_estimate", "asking_price", "unknown"])
+        .optional(),
+      relevanceExplanation: zod
+        .string()
+        .optional()
+        .describe(
+          "One concise line tying this comp to the wizard inputs or tier hint",
+        ),
+      matchTier: zod.enum(["strong", "moderate", "broadAnalogue"]).optional(),
+      imageUrl: zod
+        .string()
+        .optional()
+        .describe(
+          "Optional HTTPS thumbnail when the cited evidence page has a stable image URL",
+        ),
     }),
   ),
   marketSignals: zod.array(
@@ -368,6 +396,34 @@ export const GetEstimateResponse = zod.object({
       price: zod.number().describe("Price in the result currency"),
       year: zod.number(),
       url: zod.string().optional(),
+      conditionCue: zod
+        .string()
+        .optional()
+        .describe(
+          "Condition \/ completeness shorthand for this comp (not the seller copy)",
+        ),
+      locationOrChannel: zod
+        .string()
+        .optional()
+        .describe(
+          "Geography or outlet shorthand (EU consignment, US auction floor, Japan Yahoo, etc.)",
+        ),
+      transactionTypeGuess: zod
+        .enum(["sold_estimate", "asking_price", "unknown"])
+        .optional(),
+      relevanceExplanation: zod
+        .string()
+        .optional()
+        .describe(
+          "One concise line tying this comp to the wizard inputs or tier hint",
+        ),
+      matchTier: zod.enum(["strong", "moderate", "broadAnalogue"]).optional(),
+      imageUrl: zod
+        .string()
+        .optional()
+        .describe(
+          "Optional HTTPS thumbnail when the cited evidence page has a stable image URL",
+        ),
     }),
   ),
   marketSignals: zod.array(
@@ -526,6 +582,34 @@ export const PatchEstimateResponse = zod.object({
       price: zod.number().describe("Price in the result currency"),
       year: zod.number(),
       url: zod.string().optional(),
+      conditionCue: zod
+        .string()
+        .optional()
+        .describe(
+          "Condition \/ completeness shorthand for this comp (not the seller copy)",
+        ),
+      locationOrChannel: zod
+        .string()
+        .optional()
+        .describe(
+          "Geography or outlet shorthand (EU consignment, US auction floor, Japan Yahoo, etc.)",
+        ),
+      transactionTypeGuess: zod
+        .enum(["sold_estimate", "asking_price", "unknown"])
+        .optional(),
+      relevanceExplanation: zod
+        .string()
+        .optional()
+        .describe(
+          "One concise line tying this comp to the wizard inputs or tier hint",
+        ),
+      matchTier: zod.enum(["strong", "moderate", "broadAnalogue"]).optional(),
+      imageUrl: zod
+        .string()
+        .optional()
+        .describe(
+          "Optional HTTPS thumbnail when the cited evidence page has a stable image URL",
+        ),
     }),
   ),
   marketSignals: zod.array(
@@ -621,7 +705,7 @@ export const ListPortfoliosResponse = zod.array(ListPortfoliosResponseItem);
  * @summary Create extra workspace (Professional trading desk)
  */
 export const CreatePortfolioBody = zod.object({
-  purpose: zod.enum(["pro_board"]),
+  purpose: zod.enum(["pro_board", "inheritance"]),
   label: zod.string().optional(),
 });
 

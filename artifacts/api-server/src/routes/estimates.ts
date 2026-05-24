@@ -21,7 +21,6 @@ import { sanitizeComparables } from "../lib/comparables";
 import { requireAuth, getUserId, type AuthedRequest } from "../middlewares/requireAuth";
 import { recordPlatformEvent } from "../lib/platformEvents";
 import { getFxRateSnapshot } from "../lib/fxRates";
-import { convertToUsdApprox } from "@workspace/fx-usd";
 import { portfolioShelfFromEstimate, readAttributesFromStoredResult } from "@workspace/asset-shelf-tier";
 import { logger } from "../lib/logger";
 import { notifyEstimateReadyEmail } from "../lib/estimateReadyEmail";
@@ -33,6 +32,7 @@ import {
   includeSellerPlaybookInEstimate,
 } from "../lib/entitlements";
 import { getPortfolioByIdForUser, resolveDefaultPortfolioId } from "../lib/portfoliosService";
+import { computeEstimateStatsFromRows } from "../lib/estimateStatsRollup";
 
 const router: IRouter = Router();
 
@@ -246,54 +246,18 @@ router.get("/estimates/stats", async (req, res): Promise<void> => {
     : [];
   const fx = await getFxRateSnapshot();
   const mult = fx.rates;
-  const count = rows.length;
-  const averageBaselineUsd = count
-    ? rows.reduce((s, r) => s + convertToUsdApprox(r.baselineMid, r.currency, mult), 0) / count
-    : 0;
-  const averageAdjustedUsd = count
-    ? rows.reduce((s, r) => s + convertToUsdApprox(r.adjustedMid, r.currency, mult), 0) / count
-    : 0;
-  const averageUplift = count
-    ? rows.reduce(
-        (s, r) => s + (r.baselineMid > 0 ? r.adjustedMid / r.baselineMid - 1 : 0),
-        0,
-      ) / count
-    : 0;
-
-  const byTypeMap = new Map<string, { count: number; totalAdjustedUsd: number }>();
-  for (const r of rows) {
-    const cur = byTypeMap.get(r.assetTypeName) ?? { count: 0, totalAdjustedUsd: 0 };
-    cur.count += 1;
-    cur.totalAdjustedUsd += convertToUsdApprox(r.adjustedMid, r.currency, mult);
-    byTypeMap.set(r.assetTypeName, cur);
-  }
-  const byAssetType = Array.from(byTypeMap.entries()).map(([assetTypeName, v]) => ({
-    assetTypeName,
-    count: v.count,
-    averageAdjustedUsd: v.totalAdjustedUsd / v.count,
-  }));
-
-  const regionMap = new Map<string, number>();
-  for (const r of rows) {
-    const reg = r.bestArbitrageRegion?.trim();
-    if (!reg) continue;
-    regionMap.set(reg, (regionMap.get(reg) ?? 0) + 1);
-  }
-  const topArbitrageRegions = Array.from(regionMap.entries())
-    .map(([region, count]) => ({ region, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  res.json(
-    GetEstimateStatsResponse.parse({
-      count,
-      averageBaselineUsd,
-      averageAdjustedUsd,
-      averageUplift,
-      byAssetType,
-      topArbitrageRegions,
-    }),
+  const statsPayload = computeEstimateStatsFromRows(
+    rows.map((r) => ({
+      baselineMid: r.baselineMid,
+      adjustedMid: r.adjustedMid,
+      currency: r.currency,
+      assetTypeName: r.assetTypeName,
+      bestArbitrageRegion: r.bestArbitrageRegion,
+    })),
+    mult,
   );
+
+  res.json(GetEstimateStatsResponse.parse(statsPayload));
 });
 
 router.post("/estimates", requireAuth, async (req, res): Promise<void> => {

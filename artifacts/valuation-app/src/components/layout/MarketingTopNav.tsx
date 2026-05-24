@@ -77,22 +77,24 @@ export function MarketingTopNav({ variant }: { variant: MarketingTopNavVariant }
             Sign in
           </Button>
         </Link>
-        <Link href="/welcome">
+        <Link href="/sign-up">
           <Button
             className={cn(
-              "rounded-full px-5 shadow-sm",
+              "rounded-full px-6 font-semibold shadow-md shadow-black/10",
               isDark && "bg-accent text-accent-foreground hover:bg-accent/90",
             )}
             data-testid="nav-sign-up"
           >
-            Create account
+            Sign up free
           </Button>
         </Link>
         <Link href="/start">
           <Button
             variant="secondary"
             className={
-              isDark ? "rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20" : "rounded-full border border-border/60 shadow-sm gap-2"
+              isDark
+                ? "rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 gap-2"
+                : "rounded-full border border-border/60 shadow-sm gap-2"
             }
             data-testid="nav-get-started"
           >

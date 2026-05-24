@@ -95,12 +95,18 @@ Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. A
   "baselineLow": number,        // conservative resale value
   "baselineMid": number,        // most likely resale value
   "baselineHigh": number,       // optimistic resale value
-  "comparables": Array<{        // 3-5 realistic comparable SALES (prefer sold / completed transactions)
+  "comparables": Array<{        // 3-5 realistic comparable SALES or firm asks (prioritize sold/completed transactions)
     "source": string,           // e.g. eBay, Chrono24, Bring a Trailer, Facebook Marketplace, auction house name
     "description": string,      // what sold, condition nuance, lot notes (keep short)
     "price": number,            // in ${currency}
-    "year": number,             // CALENDAR YEAR of that sale (NOT "model year" of the item unless the sale was in that year)
-    "url"?: string              // Permalink to a specific sale evidence page ONLY: eBay /itm/ item, Bring a Trailer /listing/, Chrono24 offer, auction PDF, or news article quoting the sale. OMIT if unsure. NEVER invent URLs.
+    "year": number,             // CALENDAR YEAR of that sale or listing (NOT model year unless the transaction was in that year)
+    "url"?: string,              // Permalink to a specific sale evidence page ONLY: eBay /itm/ item, Bring a Trailer /listing/, Chrono24 offer, auction PDF, or news article quoting the sale. OMIT if unsure. NEVER invent URLs.
+    "conditionCue"?: string,     // one short phrase on how condition differs from seller item (better/worse, missing accessory, boxed, etc.)
+    "locationOrChannel"?: string, // region/channel shorthand (London consignment, US auction pit, BAT, Facebook local)
+    "transactionTypeGuess"?: "sold_estimate" | "asking_price" | "unknown",
+    "relevanceExplanation"?: string, // ONE sentence tying this comp to TITLE/BRAND/YEAR/Seller notes/constraints explicitly
+    "matchTier"?: "strong" | "moderate" | "broadAnalogue",
+    "imageUrl"?: string           // OPTIONAL: only HTTPS URL of a thumbnail that already exists on that evidence page/host; NEVER guess or hallucinate URLs
   }>,
   "marketSignals": Array<{      // 3-5 current market factors
     "label": string,
@@ -159,6 +165,12 @@ Rules:
     - Must be a **permalink** to that specific sale or lot: e.g. eBay **"/itm/"** item pages, Bring a Trailer **"/listing/"** (or equivalent auction URL), Chrono24 offer page, auction house lot page, or a reputable article that states the realized price with this URL.
     - **Never** use marketplace **search or browse** URLs: no eBay **"/sch/"** search results, no **"?_nkw="** keyword-only hubs, no Google **"/search"**, no **"facebook.com/.../marketplace/search"**, no generic category browse pages. If you only have a search URL, **omit url entirely** rather than paste it.
     - Never use placeholder or fabricated links.
+  - **Trust metadata (required mindset)**:
+    - Every comparable SHOULD include relevanceExplanation tying it explicitly to TITLE, CONDITION numeric score, ATTRIBUTE notes or tier hints the seller gave.
+    - Use matchTier: strong only when condition/year band/category clearly align with the seller inputs; moderate for close substitutes; broadAnalogue when only directionally informative.
+    - transactionTypeGuess: sold_estimate when clearly a realised sale/hammer/market-complete evidence; asking_price when plainly an active listing; unknown when unclear.
+    - conditionCue summarizes the biggest difference versus the seller stated condition or completeness.
+    - imageUrl only when copying a credible existing HTTPS thumbnail from that evidence ecosystem; NEVER fabricate hosts or paths (often omit entirely).
 - Never wrap report copy or pro insight strings in quotation marks; use plain prose only (no leading/trailing " characters).
 - World events MUST be GROUNDED in the LIVE NEWS HEADLINES above. Pick the 3-6 most relevant articles, copy their source/url/publishedAt verbatim, and explain in 1-2 sentences how each ONE specifically moves the price of THIS asset for THIS seller. Do NOT invent URLs.
 - If none of the live articles are relevant (rare), you may add ONE training-knowledge entry with source:"General market context" and url:"". All other entries must come from the live list.
@@ -241,9 +253,35 @@ function fallbackCore(
     baselineMid: mid,
     baselineHigh: high,
     comparables: [
-      { source: "eBay", description: `Similar ${assetType.name} sold recently`, price: mid, year: new Date().getFullYear() },
-      { source: "Marketplace", description: "Comparable listing in good condition", price: Math.round(mid * 1.05), year: new Date().getFullYear() },
-      { source: "Auction house", description: "Recent hammer price", price: Math.round(mid * 0.95), year: new Date().getFullYear() - 1 },
+      {
+        source: "eBay",
+        description: `Similar ${assetType.name} sold recently`,
+        price: mid,
+        year: new Date().getFullYear(),
+        relevanceExplanation: `Bands near your condition score inside this category for ${region}.`,
+        matchTier: "moderate",
+        transactionTypeGuess: "sold_estimate",
+        conditionCue: `Typical wear you described at condition ${input.condition}/10.`,
+        locationOrChannel: region,
+      },
+      {
+        source: "Marketplace",
+        description: "Comparable listing in good condition",
+        price: Math.round(mid * 1.05),
+        year: new Date().getFullYear(),
+        relevanceExplanation: "Acts as optimistic ceiling versus your baseline when demand is upbeat.",
+        matchTier: "broadAnalogue",
+        transactionTypeGuess: "asking_price",
+      },
+      {
+        source: "Auction house",
+        description: "Recent hammer price",
+        price: Math.round(mid * 0.95),
+        year: new Date().getFullYear() - 1,
+        relevanceExplanation: "Anchors cautious buyers when liquidity thins versus retail channels.",
+        matchTier: "strong",
+        transactionTypeGuess: "sold_estimate",
+      },
     ],
     marketSignals: [
       { label: "Category demand", value: "Stable", impact: 1.0, rationale: "Demand is steady; no major catalysts." },

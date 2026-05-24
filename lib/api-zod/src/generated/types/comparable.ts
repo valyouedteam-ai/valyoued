@@ -5,6 +5,8 @@
  * ValYoued: multi-asset valuation API
  * OpenAPI spec version: 0.1.0
  */
+import type { ComparableMatchTier } from "./comparableMatchTier";
+import type { ComparableTransactionTypeGuess } from "./comparableTransactionTypeGuess";
 
 export interface Comparable {
   source: string;
@@ -13,4 +15,14 @@ export interface Comparable {
   price: number;
   year: number;
   url?: string;
+  /** Condition / completeness shorthand for this comp (not the seller copy) */
+  conditionCue?: string;
+  /** Geography or outlet shorthand (EU consignment, US auction floor, Japan Yahoo, etc.) */
+  locationOrChannel?: string;
+  transactionTypeGuess?: ComparableTransactionTypeGuess;
+  /** One concise line tying this comp to the wizard inputs or tier hint */
+  relevanceExplanation?: string;
+  matchTier?: ComparableMatchTier;
+  /** Optional HTTPS thumbnail when the cited evidence page has a stable image URL */
+  imageUrl?: string;
 }

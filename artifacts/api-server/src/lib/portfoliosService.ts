@@ -42,8 +42,36 @@ export async function getPortfolioByIdForUser(
   return row ?? null;
 }
 
+export async function ensureInheritancePortfolio(userId: string): Promise<Portfolio> {
+  const rows = await listPortfoliosForUser(userId);
+  const inh = rows.find((r) => r.purpose === INHERITANCE_PURPOSE);
+  if (inh) return inh;
+  const [created] = await db
+    .insert(portfoliosTable)
+    .values({
+      userId,
+      purpose: INHERITANCE_PURPOSE,
+      label: "Inheritance portfolio",
+      themeKey: "inheritance_twilight",
+    })
+    .returning();
+  return created!;
+}
+
 /**
- * Inheritance workspaces are no longer supported: move any estimates to primary and delete those portfolios.
+ * Primary always exists first. Inheritance workspaces exist only while the Stripe add-on is active.
+ */
+export async function reconcilePortfoliosForBilling(userId: string, hasInheritanceAddon: boolean): Promise<void> {
+  await ensurePrimaryPortfolio(userId);
+  if (hasInheritanceAddon) {
+    await ensureInheritancePortfolio(userId);
+  } else {
+    await retireInheritancePortfoliosForUser(userId);
+  }
+}
+
+/**
+ * Moves inheritance estimates onto primary then deletes stale inheritance portfolios (add-on canceled).
  */
 export async function retireInheritancePortfoliosForUser(userId: string): Promise<void> {
   const rows = await listPortfoliosForUser(userId);
@@ -67,4 +95,4 @@ export async function portfolioExistsForPurpose(userId: string, purpose: string)
   return rows.some((r) => r.purpose === purpose);
 }
 
-export { PRIMARY_PURPOSE };
+export { PRIMARY_PURPOSE, INHERITANCE_PURPOSE };

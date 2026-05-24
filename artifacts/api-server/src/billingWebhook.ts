@@ -4,28 +4,50 @@ import { eq } from "drizzle-orm";
 import { db, billingSubscriptionsTable } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { isStripeStubMode } from "./lib/stripeStub";
-import { classifyStripePriceId } from "./lib/entitlements";
+import {
+  classifyInheritanceAddonPrice,
+  classifyStripePriceId,
+} from "./lib/entitlements";
 
 const ACTIVE = new Set(["active", "trialing", "past_due"]);
 
+function priceIdOf(it: Stripe.SubscriptionItem): string | undefined {
+  return typeof it.price === "object" ? it.price?.id : undefined;
+}
+
 function summarizeStripeLineItems(items: Stripe.SubscriptionItem[]): {
   planSlug: "everyday_plus" | "professional" | null;
+  hasInheritancePrice: boolean;
+  hasValuationPlanPrice: boolean;
 } {
   let hasProfessional = false;
   let hasEveryday = false;
+  let hasInheritancePrice = false;
 
   for (const it of items) {
-    const pid = typeof it.price === "object" ? it.price?.id : undefined;
+    const pid = priceIdOf(it);
     if (!pid) continue;
+    if (classifyInheritanceAddonPrice(pid)) {
+      hasInheritancePrice = true;
+      continue;
+    }
     const tag = classifyStripePriceId(pid);
     if (!tag) continue;
     if (tag === "professional") hasProfessional = true;
     if (tag === "everyday_plus") hasEveryday = true;
   }
 
-  const planSlug: "everyday_plus" | "professional" | null = hasProfessional ? "professional" : hasEveryday ? "everyday_plus" : null;
+  const planSlug: "everyday_plus" | "professional" | null = hasProfessional
+    ? "professional"
+    : hasEveryday
+      ? "everyday_plus"
+      : null;
 
-  return { planSlug };
+  return {
+    planSlug,
+    hasInheritancePrice,
+    hasValuationPlanPrice: hasProfessional || hasEveryday,
+  };
 }
 
 async function resolveUserIdFromCustomer(customerId: string | undefined): Promise<string | undefined> {
@@ -37,39 +59,62 @@ async function resolveUserIdFromCustomer(customerId: string | undefined): Promis
   return row?.userId;
 }
 
-async function upsertBillingSnapshot(args: {
+type BillingRow = typeof billingSubscriptionsTable.$inferSelect;
+
+async function selectBillingRow(userId: string): Promise<BillingRow | null> {
+  const [row] = await db.select().from(billingSubscriptionsTable).where(eq(billingSubscriptionsTable.userId, userId));
+  return row ?? null;
+}
+
+function mergeStripeSubscriptionIntoRow(params: {
+  existing: BillingRow | null;
   userId: string;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
-  status: string;
-  tierDerived: "free" | "pro";
-  planSlug: "everyday_plus" | "professional" | null;
-  hasInheritanceAddon: boolean;
-}): Promise<void> {
-  await db
-    .insert(billingSubscriptionsTable)
-    .values({
-      userId: args.userId,
-      stripeCustomerId: args.stripeCustomerId,
-      stripeSubscriptionId: args.stripeSubscriptionId,
-      status: args.status,
-      tier: args.tierDerived,
-      planSlug: args.planSlug,
-      hasInheritanceAddon: args.hasInheritanceAddon,
+  stripeCustomerId: string;
+  sub: Stripe.Subscription;
+}): typeof billingSubscriptionsTable.$inferInsert {
+  const { existing, userId, stripeCustomerId, sub } = params;
+  const items = sub.items?.data ?? [];
+  const summarized = summarizeStripeLineItems(items);
+  const active = ACTIVE.has(sub.status);
+
+  const standaloneInheritance =
+    summarized.hasInheritancePrice && !summarized.hasValuationPlanPrice;
+
+  if (standaloneInheritance) {
+    return {
+      userId,
+      stripeCustomerId,
+      stripeSubscriptionId: existing?.stripeSubscriptionId ?? null,
+      stripeInheritanceSubscriptionId: active ? sub.id : null,
+      status: existing?.status ?? "inactive",
+      tier: existing?.tier ?? "free",
+      planSlug: existing?.planSlug ?? null,
+      hasInheritanceAddon: Boolean(active && summarized.hasInheritancePrice),
       updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: billingSubscriptionsTable.userId,
-      set: {
-        stripeCustomerId: args.stripeCustomerId,
-        stripeSubscriptionId: args.stripeSubscriptionId,
-        status: args.status,
-        tier: args.tierDerived,
-        planSlug: args.planSlug,
-        hasInheritanceAddon: args.hasInheritanceAddon,
-        updatedAt: new Date(),
-      },
-    });
+    };
+  }
+
+  const valuationActive = summarized.hasValuationPlanPrice && active;
+  let hasInheritanceAddon = existing?.hasInheritanceAddon ?? false;
+  if (summarized.hasInheritancePrice) {
+    /** Bundled inheritance line on the valuation subscription (same Stripe object). */
+    hasInheritanceAddon = active && summarized.hasInheritancePrice;
+  }
+
+  const tierDerived: "free" | "pro" = valuationActive ? "pro" : "free";
+  const planSlug = valuationActive ? summarized.planSlug : null;
+
+  return {
+    userId,
+    stripeCustomerId,
+    stripeSubscriptionId: sub.id,
+    stripeInheritanceSubscriptionId: existing?.stripeInheritanceSubscriptionId ?? null,
+    status: sub.status,
+    tier: tierDerived,
+    planSlug,
+    hasInheritanceAddon,
+    updatedAt: new Date(),
+  };
 }
 
 async function applyStripeSubscription(sub: Stripe.Subscription): Promise<void> {
@@ -82,21 +127,30 @@ async function applyStripeSubscription(sub: Stripe.Subscription): Promise<void> 
     return;
   }
 
-  const items = sub.items?.data ?? [];
-  const summarized = summarizeStripeLineItems(items);
-  const tierDerived: "free" | "pro" = ACTIVE.has(sub.status) ? "pro" : "free";
+  const existing = await selectBillingRow(userId);
+  const merged = mergeStripeSubscriptionIntoRow({ existing, userId, stripeCustomerId: customerId, sub });
 
-  await upsertBillingSnapshot({
-    userId,
-    stripeCustomerId: customerId,
-    stripeSubscriptionId: sub.id,
-    status: sub.status,
-    tierDerived,
-    planSlug: ACTIVE.has(sub.status) ? summarized.planSlug : null,
-    hasInheritanceAddon: false,
-  });
+  await db
+    .insert(billingSubscriptionsTable)
+    .values(merged)
+    .onConflictDoUpdate({
+      target: billingSubscriptionsTable.userId,
+      set: {
+        stripeCustomerId: merged.stripeCustomerId,
+        stripeSubscriptionId: merged.stripeSubscriptionId,
+        stripeInheritanceSubscriptionId: merged.stripeInheritanceSubscriptionId,
+        status: merged.status,
+        tier: merged.tier,
+        planSlug: merged.planSlug,
+        hasInheritanceAddon: merged.hasInheritanceAddon,
+        updatedAt: new Date(),
+      },
+    });
 
-  logger.info({ userId, subStatus: sub.status, planSlug: summarized.planSlug }, "billingSubscriptions synced");
+  logger.info(
+    { userId, subStatus: sub.status, planSlug: merged.planSlug, inh: merged.hasInheritanceAddon },
+    "billingSubscriptions synced",
+  );
 }
 
 async function hydrateSubscription(client: Stripe, subId: string): Promise<Stripe.Subscription> {
@@ -146,32 +200,72 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         const subIdRaw = session.subscription;
         const subId = typeof subIdRaw === "string" ? subIdRaw : subIdRaw?.id;
         if (!userId || !customerId) break;
+        if (session.metadata?.checkoutKind === "inheritance_addon" && subId) {
+          try {
+            const full = await hydrateSubscription(stripe, subId);
+            await applyStripeSubscription(full);
+          } catch (err) {
+            logger.error({ err, subId }, "inheritance checkout hydrate failed");
+            const existing = await selectBillingRow(userId);
+            await db
+              .insert(billingSubscriptionsTable)
+              .values({
+                userId,
+                stripeCustomerId: customerId,
+                stripeSubscriptionId: existing?.stripeSubscriptionId ?? null,
+                stripeInheritanceSubscriptionId: subId ?? null,
+                status: existing?.status ?? "inactive",
+                tier: existing?.tier ?? "free",
+                planSlug: existing?.planSlug ?? null,
+                hasInheritanceAddon: true,
+                updatedAt: new Date(),
+              })
+              .onConflictDoUpdate({
+                target: billingSubscriptionsTable.userId,
+                set: {
+                  stripeCustomerId: customerId,
+                  stripeInheritanceSubscriptionId: subId ?? null,
+                  hasInheritanceAddon: true,
+                  updatedAt: new Date(),
+                },
+              });
+          }
+          break;
+        }
         if (subId) {
           try {
             const full = await hydrateSubscription(stripe, subId);
             await applyStripeSubscription(full);
           } catch (err) {
             logger.error({ err, subId }, "Could not hydrate subscription after checkout");
-            await upsertBillingSnapshot({
-              userId,
-              stripeCustomerId: customerId,
-              stripeSubscriptionId: subId ?? null,
-              status: "active",
-              tierDerived: "pro",
-              planSlug: session.metadata?.planSlug === "professional" ? "professional" : "everyday_plus",
-              hasInheritanceAddon: false,
-            });
+            const existing = await selectBillingRow(userId);
+            const planSlugGuess =
+              session.metadata?.planSlug === "professional" ? "professional" : "everyday_plus";
+            await db
+              .insert(billingSubscriptionsTable)
+              .values({
+                userId,
+                stripeCustomerId: customerId,
+                stripeSubscriptionId: subId ?? null,
+                stripeInheritanceSubscriptionId: existing?.stripeInheritanceSubscriptionId ?? null,
+                status: "active",
+                tier: "pro",
+                planSlug: planSlugGuess,
+                hasInheritanceAddon: existing?.hasInheritanceAddon ?? false,
+                updatedAt: new Date(),
+              })
+              .onConflictDoUpdate({
+                target: billingSubscriptionsTable.userId,
+                set: {
+                  stripeCustomerId: customerId,
+                  stripeSubscriptionId: subId ?? null,
+                  status: "active",
+                  tier: "pro",
+                  planSlug: planSlugGuess,
+                  updatedAt: new Date(),
+                },
+              });
           }
-        } else {
-          await upsertBillingSnapshot({
-            userId,
-            stripeCustomerId: customerId,
-            stripeSubscriptionId: null,
-            status: "active",
-            tierDerived: "pro",
-            planSlug: session.metadata?.planSlug === "professional" ? "professional" : "everyday_plus",
-            hasInheritanceAddon: false,
-          });
         }
         break;
       }

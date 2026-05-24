@@ -1,6 +1,7 @@
 import { logger } from "./logger";
 import { isAuthStubMode } from "./authStub";
 import { getUserAlertPrefs } from "./userAlertPrefs";
+import { resolveUserEntitlements } from "./entitlements";
 import {
   getClerkPrimaryEmail,
   isEmailDeliveryConfigured,
@@ -14,6 +15,8 @@ export async function notifyEstimateReadyEmail(
 ): Promise<void> {
   if (isAuthStubMode()) return;
   if (!isEmailDeliveryConfigured()) return;
+  const ent = await resolveUserEntitlements(userId);
+  if (!ent.hasPaidValuationTier) return;
   const prefs = await getUserAlertPrefs(userId);
   if (!prefs.estimateReadyEmail) return;
   const to = await getClerkPrimaryEmail(userId);

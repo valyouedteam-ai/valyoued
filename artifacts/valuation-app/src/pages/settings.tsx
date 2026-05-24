@@ -40,6 +40,7 @@ type BillingInfo = {
   valuationsMonthLimit?: number | null;
   valuationsRemainingFree?: number | null;
   hasPaidValuationTier?: boolean;
+  hasInheritanceAddon?: boolean;
 };
 
 type EmailAlertsInfo = {
@@ -329,6 +330,28 @@ function SettingsPageInner({
     }
   };
 
+  const checkoutInheritanceAddon = async () => {
+    setBusy("inheritance-addon");
+    try {
+      const { url, error, stub } = await postBilling("checkout-session-inheritance-addon", getToken, {});
+      if (error) {
+        toast({ title: "Inheritance checkout unavailable", description: error, variant: "destructive" });
+        return;
+      }
+      if (stub) {
+        toast({
+          title: "Billing preview",
+          description: "Inheritance addon checkout is mocked locally; no payment is processed.",
+        });
+      }
+      if (url) window.location.href = url;
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const emailAlertsPaidOnly = billing == null ? true : !billing.hasPaidValuationTier;
+
   return (
     <div className="space-y-8 pb-16">
       <div className="flex items-center gap-4">
@@ -367,7 +390,7 @@ function SettingsPageInner({
               <Switch
                 id="alert-estimate-ready"
                 checked={emailAlerts?.estimateReadyEmail ?? false}
-                disabled={emailAlerts == null || busy !== null}
+                disabled={emailAlerts == null || busy !== null || emailAlertsPaidOnly}
                 onCheckedChange={(v) => void patchEmailAlert({ estimateReadyEmail: v })}
               />
             </div>
@@ -381,7 +404,7 @@ function SettingsPageInner({
               <Switch
                 id="alert-product"
                 checked={emailAlerts?.productUpdatesEmail ?? false}
-                disabled={emailAlerts == null || busy !== null}
+                disabled={emailAlerts == null || busy !== null || emailAlertsPaidOnly}
                 onCheckedChange={(v) => void patchEmailAlert({ productUpdatesEmail: v })}
               />
             </div>
@@ -389,17 +412,15 @@ function SettingsPageInner({
               <div className="space-y-0.5">
                 <Label htmlFor="alert-monitor-value">Portfolio value‑change monitors</Label>
                 <p className="text-xs text-muted-foreground">
-                  When an item intent is “monitor”, we&apos;ll ping you after material re-pricing (runs when the
-                  background job fires). Everyday+ / Professional only.
+                  When an item intent is monitor, pings fire after meaningful re-pricing. Requires Everyday+ or Professional alongside
+                  the other email alerts above.
                 </p>
               </div>
               <Switch
                 id="alert-monitor-value"
                 checked={emailAlerts?.monitorValueChangeEmail ?? false}
                 disabled={
-                  emailAlerts == null ||
-                  busy !== null ||
-                  (billing != null && !billing.hasPaidValuationTier)
+                  emailAlerts == null || busy !== null || emailAlertsPaidOnly
                 }
                 onCheckedChange={(v) => void patchEmailAlert({ monitorValueChangeEmail: v })}
               />
@@ -607,6 +628,30 @@ function SettingsPageInner({
             >
               Manage subscription / invoices
             </Button>
+            {!billing?.hasInheritanceAddon && billing?.planSlug !== "professional" ? (
+              <div className="rounded-xl border border-dashed border-accent/35 bg-accent/5 p-4 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Inheritance add-on ledger</p>
+                <p className="mt-2 leading-relaxed">
+                  Spins up a tinted workspace beside your everyday portfolio once Stripe confirms the addon subscription.
+                  Use it for estate rehearsal, heirloom tracking, or a second household ledger.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3 w-full gap-2"
+                  onClick={() => void checkoutInheritanceAddon()}
+                  disabled={busy !== null}
+                >
+                  <CreditCard className="h-4 w-4" />
+                  {busy === "inheritance-addon" ? "Opening checkout…" : "Start inheritance add-on"}
+                </Button>
+              </div>
+            ) : billing?.hasInheritanceAddon ? (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Inheritance workspace billing is active. Switch between ledgers using the pills on Home, then valuations save into
+                whichever workspace you select.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       </div>

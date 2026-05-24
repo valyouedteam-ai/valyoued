@@ -26,7 +26,7 @@ export interface UserEntitlements {
   /** `none` when free; `everyday_plus` (£7.99) or `professional` (£14.99) when subscribed. */
   planSlug: PlanSlug;
   subscriptionStatus: string;
-  /** Deprecated: always false (inheritance add-on removed). */
+  /** Inheritance workspace add-on Stripe subscription snapshot (standalone line item supported). */
   hasInheritanceAddon: boolean;
   /** Valuations created this UTC month */
   valuationsThisMonth: number;
@@ -43,6 +43,11 @@ export interface UserEntitlements {
   canUseAdvancedSellingReco: boolean;
   /** Portfolio value-change alerts: Everyday+ or Professional. */
   canUseMonitorEmailAlerts: boolean;
+}
+
+export function classifyInheritanceAddonPrice(priceId: string): boolean {
+  const inh = process.env.STRIPE_PRICE_INHERITANCE_ADDON?.trim();
+  return inh != null && inh === priceId;
 }
 
 export function classifyStripePriceId(priceId: string): "everyday_plus" | "professional" | null {
@@ -134,7 +139,7 @@ export async function resolveUserEntitlements(userId: string): Promise<UserEntit
     tier: hasPaidValuationTier ? "pro" : "free",
     planSlug,
     subscriptionStatus: status,
-    hasInheritanceAddon: false,
+    hasInheritanceAddon: row?.hasInheritanceAddon ?? false,
     valuationsThisMonth,
     valuationsMonthLimit,
     valuationsRemainingFree,

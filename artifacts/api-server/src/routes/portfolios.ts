@@ -5,10 +5,9 @@ import { CreatePortfolioBody, ListPortfoliosResponse, ListPortfoliosResponseItem
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
 import { resolveUserEntitlements } from "../lib/entitlements";
 import {
-  ensurePrimaryPortfolio,
+  reconcilePortfoliosForBilling,
   listPortfoliosForUser,
-  portfolioExistsForPurpose,
-  retireInheritancePortfoliosForUser,
+  ensureInheritancePortfolio,
 } from "../lib/portfoliosService";
 
 const router: IRouter = Router();
@@ -26,8 +25,8 @@ function toApiPortfolio(row: typeof portfoliosTable.$inferSelect) {
 
 router.get("/portfolios", requireAuth, async (_req, res): Promise<void> => {
   const userId = (_req as AuthedRequest).userId!;
-  await ensurePrimaryPortfolio(userId);
-  await retireInheritancePortfoliosForUser(userId);
+  const ent = await resolveUserEntitlements(userId);
+  await reconcilePortfoliosForBilling(userId, ent.hasInheritanceAddon);
   const rows = await listPortfoliosForUser(userId);
   res.json(ListPortfoliosResponse.parse(rows.map(toApiPortfolio)));
 });
@@ -40,6 +39,16 @@ router.post("/portfolios", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const ent = await resolveUserEntitlements(userId);
+
+  if (body.data.purpose === "inheritance") {
+    if (!ent.hasInheritanceAddon) {
+      res.status(403).json({ error: "Inheritance workspace billing is not active for this account." });
+      return;
+    }
+    const created = await ensureInheritancePortfolio(userId);
+    res.json(toApiPortfolio(created));
+    return;
+  }
 
   if (body.data.purpose === "pro_board") {
     if (ent.planSlug !== "professional") {

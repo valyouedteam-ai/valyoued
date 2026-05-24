@@ -441,7 +441,7 @@ components:
           type: string
         purpose:
           type: string
-          description: primary or pro_board workspace
+          description: primary, pro_board desk, or inheritance add-on workspace
         label:
           type: string
         themeKey:
@@ -456,7 +456,7 @@ components:
       properties:
         purpose:
           type: string
-          enum: [pro_board]
+          enum: [pro_board, inheritance]
         label:
           type: string
     Comparable:
@@ -474,6 +474,24 @@ components:
           type: integer
         url:
           type: string
+        conditionCue:
+          type: string
+          description: Condition / completeness shorthand for this comp (not the seller copy)
+        locationOrChannel:
+          type: string
+          description: Geography or outlet shorthand (EU consignment, US auction floor, Japan Yahoo, etc.)
+        transactionTypeGuess:
+          type: string
+          enum: [sold_estimate, asking_price, unknown]
+        relevanceExplanation:
+          type: string
+          description: One concise line tying this comp to the wizard inputs or tier hint
+        matchTier:
+          type: string
+          enum: [strong, moderate, broadAnalogue]
+        imageUrl:
+          type: string
+          description: Optional HTTPS thumbnail when the cited evidence page has a stable image URL
     MarketSignal:
       type: object
       required: [label, value, impact, rationale]

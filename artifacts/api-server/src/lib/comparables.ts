@@ -1,5 +1,42 @@
 import type { Comparable } from "@workspace/api-zod";
 
+const MATCH_TIERS = ["strong", "moderate", "broadAnalogue"] as const;
+
+const TRANSACTION_GUESSES = ["sold_estimate", "asking_price", "unknown"] as const;
+
+/** @internal */
+export function coerceMatchTier(raw: unknown): (typeof MATCH_TIERS)[number] | undefined {
+  return MATCH_TIERS.includes(raw as (typeof MATCH_TIERS)[number]) ? (raw as (typeof MATCH_TIERS)[number]) : undefined;
+}
+
+/** @internal */
+export function coerceTransactionTypeGuess(
+  raw: unknown,
+): (typeof TRANSACTION_GUESSES)[number] | undefined {
+  return TRANSACTION_GUESSES.includes(raw as (typeof TRANSACTION_GUESSES)[number])
+    ? (raw as (typeof TRANSACTION_GUESSES)[number])
+    : undefined;
+}
+
+function truncateField(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1).trim()}…`;
+}
+
+function finalizeImageUrl(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim();
+  if (!t) return undefined;
+  try {
+    const u = new URL(t);
+    if (u.protocol !== "https:") return undefined;
+    return u.href;
+  } catch {
+    return undefined;
+  }
+}
+
 export function safeComparableUrl(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
   const t = raw.trim();
@@ -78,14 +115,33 @@ function finalizeComparableUrl(raw: unknown): string | undefined {
 export function sanitizeComparables(comps: Comparable[] | undefined): Comparable[] {
   const list = Array.isArray(comps) ? [...comps] : [];
   const yNow = new Date().getFullYear();
-  const normalized = list.map((c) => ({
-    ...c,
-    year:
-      typeof c.year === "number" && Number.isFinite(c.year)
-        ? Math.min(yNow + 1, Math.max(1990, Math.round(c.year)))
-        : yNow,
-    url: finalizeComparableUrl(c.url),
-  }));
+  const normalized = list.map((c) => {
+    const url = finalizeComparableUrl(c.url);
+    const imageUrl = finalizeImageUrl(c.imageUrl);
+    const matchTier = coerceMatchTier(c.matchTier);
+    const transactionTypeGuess = coerceTransactionTypeGuess(c.transactionTypeGuess);
+    const conditionCue =
+      typeof c.conditionCue === "string" ? truncateField(c.conditionCue, 220) || undefined : undefined;
+    const locationOrChannel =
+      typeof c.locationOrChannel === "string" ? truncateField(c.locationOrChannel, 160) || undefined : undefined;
+    const relevanceExplanation =
+      typeof c.relevanceExplanation === "string" ? truncateField(c.relevanceExplanation, 360) || undefined : undefined;
+
+    return {
+      ...c,
+      year:
+        typeof c.year === "number" && Number.isFinite(c.year)
+          ? Math.min(yNow + 1, Math.max(1990, Math.round(c.year)))
+          : yNow,
+      url,
+      imageUrl,
+      matchTier,
+      transactionTypeGuess,
+      conditionCue,
+      locationOrChannel,
+      relevanceExplanation,
+    };
+  });
   normalized.sort((a, b) => b.year - a.year);
   return normalized;
 }

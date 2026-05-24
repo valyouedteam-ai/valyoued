@@ -34,6 +34,7 @@ import {
   mergePortfolioHref,
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
+import { useSellerPersona } from "@/hooks/use-seller-persona";
 
 type PortfolioItem = EstimateSummary & {
   liveValue: number;
@@ -112,7 +113,11 @@ function portfolioWorkspaceSubtitle(
     if (norm === "my portfolio" || norm === "portfolio") return null;
     return trimmed;
   }
-  return active.purpose === "pro_board" ? "Professional board" : "Primary";
+  return active.purpose === "pro_board"
+    ? "Professional board"
+    : active.purpose === "inheritance"
+      ? "Inheritance workspace"
+      : "Primary";
 }
 
 const PALETTE = [
@@ -122,6 +127,7 @@ const PALETTE = [
 
 export default function PortfolioPage() {
   const { code: displayCcy } = useDisplayCurrency();
+  const { isProfessional } = useSellerPersona();
   const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
 
   const { data: estimates, isLoading } = useListEstimates({
@@ -260,6 +266,11 @@ export default function PortfolioPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+            {isProfessional
+              ? "Desk view for resale stock lanes, valuations, and high-value rotations."
+              : "Personal holdings view with shelf mix helpers and shortcuts into monitors."}
+          </p>
           {portfolioHeaderSubtitle ? (
             <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{portfolioHeaderSubtitle}</p>
           ) : null}

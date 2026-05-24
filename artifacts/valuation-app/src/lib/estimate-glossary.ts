@@ -244,8 +244,13 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     body: "Many hi-fi amps are tube (valve) or solid state. Each has its own buyers and price bands. Pick what matches your unit.",
   },
   gem_certificate: {
-    title: "Stone certificate",
-    body: "GIA, IGI, AGS, and HRD are common labs. A report gives cut, color, clarity, and carat so buyers trust the stone. None is fine for fashion or uncerted pieces.",
+    title: "Stone certificate vs carats",
+    body: "Labs such as GIA, IGI, AGS, and HRD print cut, color, clarity, and carat-weight for stones. Gem carats are a weight measure. Gold purity uses karats spelled with a \"k\". None is fine for fashion pieces or heirloom jewelry without certs.",
+    icon: Gem,
+  },
+  jewelry_metal_hint: {
+    title: "Metal fineness cues",
+    body: "18k alloys mix gold with other metals for strength. Platinum is heavier and hypoallergenic. Sterling silver stamped 925 still tarnishes differently than plated fashion metal. Mention what you saw on the hallmark.",
     icon: Gem,
   },
   fill_level_wine: {
@@ -478,7 +483,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   jewelry_metal_gem: {
     title: "Metal type",
-    body: "Yellow, rose, or white gold, platinum, and silver sit in different price bands. Plated fashion pieces are separate.",
+    body: "Yellow, rose, or white gold, platinum, and silver sit in different price bands than plated fashion pieces. 18k alloys mix pure gold with strengtheners for daily wear and often show hallmark stamps.",
     icon: Gem,
   },
 };
@@ -499,6 +504,7 @@ export const FIELD_GLOSSARY_KEYS: Record<string, string> = {
   ogBox: "deadstock_og",
   wearSummary: "deadstock_og",
   serialOrDateCode: "handbag_codes",
+  authenticityVerifierReferenceId: "authentication_tiers",
   originality: "originality",
   tenure: "property_tenure",
   epcRating: "epc_rating_gb",

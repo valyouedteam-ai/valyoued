@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { useSellerPersona } from "@/hooks/use-seller-persona";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -170,6 +171,7 @@ function UserMenu({ compact }: { compact?: boolean }) {
 
 function PlanBrief({ className, block }: { className?: string; block?: boolean }) {
   const { data } = useBillingSummary();
+  const { persona, isProfessional } = useSellerPersona();
   const paidApi = Boolean(data?.hasPaidValuationTier);
   const uiLabel = paidApi ? "Pro valuation access" : "Free valuation plan";
   const remaining = !paidApi ? data?.valuationsRemainingFree : null;
@@ -190,6 +192,11 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
       <Sparkles className={cn("h-4 w-4 shrink-0", paidApi ? "text-accent" : "text-muted-foreground")} />
       <div className="flex min-w-0 flex-col text-left leading-tight">
         <span className="text-xs font-medium text-foreground">{uiLabel}</span>
+        {persona ? (
+          <span className="text-[10px] text-muted-foreground">
+            Track: {isProfessional ? "Professional desk" : "Everyday steward"}
+          </span>
+        ) : null}
         {!paidApi && remaining != null ? (
           <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
             {remaining} valuations left · upgrade

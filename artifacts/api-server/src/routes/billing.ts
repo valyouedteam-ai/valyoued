@@ -86,6 +86,8 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
       .values({
         userId,
         stripeCustomerId: customerId,
+        stripeSubscriptionId: null,
+        stripeInheritanceSubscriptionId: null,
         status: "inactive",
         tier: "free",
         planSlug: null,
@@ -124,6 +126,80 @@ router.post("/billing/checkout-session", requireAuth, async (req, res): Promise<
   } catch (err) {
     logger.error({ err }, "Stripe checkout session failed");
     res.status(502).json({ error: "Could not start checkout. Try again shortly." });
+  }
+});
+
+router.post("/billing/checkout-session-inheritance-addon", requireAuth, async (req, res): Promise<void> => {
+  const baseUrl = billingBaseUrl();
+  if (isStripeStubMode()) {
+    res.json({
+      url: `${baseUrl.replace(/\/$/, "")}/settings?checkout=stub&addon=inheritance`,
+      stub: true,
+    });
+    return;
+  }
+
+  const stripe = getStripe();
+  const inh = process.env.STRIPE_PRICE_INHERITANCE_ADDON?.trim();
+
+  if (!stripe || !inh) {
+    res.status(503).json({
+      error:
+        "Inheritance Stripe price is missing. Configure STRIPE_PRICE_INHERITANCE_ADDON alongside Stripe keys.",
+    });
+    return;
+  }
+
+  const userId = (req as AuthedRequest).userId!;
+  const [existing] = await db
+    .select()
+    .from(billingSubscriptionsTable)
+    .where(eq(billingSubscriptionsTable.userId, userId));
+
+  let customerId = existing?.stripeCustomerId ?? undefined;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      metadata: { clerkUserId: userId },
+    });
+    customerId = customer.id;
+    await db
+      .insert(billingSubscriptionsTable)
+      .values({
+        userId,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: null,
+        stripeInheritanceSubscriptionId: null,
+        status: "inactive",
+        tier: "free",
+        planSlug: null,
+        hasInheritanceAddon: false,
+      })
+      .onConflictDoUpdate({
+        target: billingSubscriptionsTable.userId,
+        set: { stripeCustomerId: customerId, updatedAt: new Date() },
+      });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: inh, quantity: 1 }],
+      success_url: `${baseUrl.replace(/\/$/, "")}/settings?checkout=success`,
+      cancel_url: `${baseUrl.replace(/\/$/, "")}/settings?checkout=cancel`,
+      metadata: { clerkUserId: userId, checkoutKind: "inheritance_addon", planSlug: "inheritance_addon" },
+      subscription_data: {
+        metadata: { clerkUserId: userId, checkoutKind: "inheritance_addon", planSlug: "inheritance_addon" },
+      },
+    });
+    if (!session.url) {
+      res.status(502).json({ error: "Stripe did not return a checkout URL." });
+      return;
+    }
+    res.json({ url: session.url });
+  } catch (err) {
+    logger.error({ err }, "Stripe inheritance checkout session failed");
+    res.status(502).json({ error: "Could not start inheritance checkout. Try again shortly." });
   }
 });
 

@@ -13,6 +13,10 @@ export type MeBillingResponse = {
   valuationsMonthLimit: number | null;
   valuationsRemainingFree: number | null;
   hasPaidValuationTier: boolean;
+  /** Separate inheritance ledger billing (standalone Stripe subscription). */
+  hasInheritanceAddon?: boolean;
+  /** comparable grid: preview shows first two comps for unsubscribed Everyday accounts on free-tier snapshots. */
+  comparableUiMode?: "full" | "preview";
 };
 
 /** Server-backed billing + entitlement snapshot. Uses the shared Bearer token getter. */

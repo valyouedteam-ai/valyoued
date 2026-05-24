@@ -49,19 +49,29 @@ router.patch("/me/email-alerts", requireAuth, async (req, res): Promise<void> =>
     res.status(400).json({ error: parsed.error.issues.map((e) => e.message).join("; ") });
     return;
   }
-  if (parsed.data.monitorValueChangeEmail === true) {
+
+  const current = await getUserAlertPrefs(userId);
+  const next = {
+    estimateReadyEmail: parsed.data.estimateReadyEmail ?? current.estimateReadyEmail,
+    productUpdatesEmail: parsed.data.productUpdatesEmail ?? current.productUpdatesEmail,
+    monitorValueChangeEmail: parsed.data.monitorValueChangeEmail ?? current.monitorValueChangeEmail,
+  };
+  const wantsAnyEmailToggleOn =
+    next.estimateReadyEmail || next.productUpdatesEmail || next.monitorValueChangeEmail;
+  if (wantsAnyEmailToggleOn) {
     const ent = await resolveUserEntitlements(userId);
-    if (!ent.canUseMonitorEmailAlerts) {
+    if (!ent.hasPaidValuationTier) {
       res.status(403).json({
-        error: "Portfolio value‑change alerts are available on Everyday+ and Professional plans.",
+        error:
+          "Email-powered alerts stay off on Everyday Free. Upgrade via Settings to enable estimate-ready pings, monitors, or product emails.",
       });
       return;
     }
   }
 
-  const next = await upsertUserAlertPrefs(userId, parsed.data);
+  const persisted = await upsertUserAlertPrefs(userId, parsed.data);
   res.json({
-    ...next,
+    ...persisted,
     deliveryEnabled: isEmailDeliveryConfigured(),
   });
 });
@@ -109,11 +119,12 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
       stripeCustomerId: null,
       stripeStub: isStripeStubMode(),
       planSlug: paid ? "everyday_plus" : "none",
-      hasInheritanceAddon: false,
+      hasInheritanceAddon: process.env.AUTH_STUB_INHERITANCE_ADDON?.trim() === "1",
       valuationsThisMonth: ent.valuationsThisMonth,
       valuationsMonthLimit: paid ? null : ent.valuationsMonthLimit,
       valuationsRemainingFree: paid ? null : ent.valuationsRemainingFree,
       hasPaidValuationTier: paid,
+      comparableUiMode: paid ? ("full" as const) : ("preview" as const),
     });
     return;
   }
@@ -128,11 +139,12 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
     stripeCustomerId: sub?.stripeCustomerId ?? null,
     stripeStub: isStripeStubMode(),
     planSlug: ent.planSlug,
-    hasInheritanceAddon: false,
+    hasInheritanceAddon: Boolean(sub?.hasInheritanceAddon),
     valuationsThisMonth: ent.valuationsThisMonth,
     valuationsMonthLimit: ent.valuationsMonthLimit,
     valuationsRemainingFree: ent.valuationsRemainingFree,
     hasPaidValuationTier: ent.hasPaidValuationTier,
+    comparableUiMode: ent.hasPaidValuationTier ? ("full" as const) : ("preview" as const),
   });
 });
 

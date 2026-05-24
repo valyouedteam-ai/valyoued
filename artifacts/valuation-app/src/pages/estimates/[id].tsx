@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ArbitrageOption } from "@workspace/api-client-react";
+import type { ArbitrageOption, Comparable } from "@workspace/api-client-react";
 import {
   useGetEstimate,
   getGetEstimateQueryKey,
@@ -42,6 +42,15 @@ import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { useToast } from "@/hooks/use-toast";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   PLATFORM_LABEL,
   PLATFORM_URL,
   matchPlatformSlug,
@@ -49,6 +58,27 @@ import {
   platformsForAssetType,
 } from "@/lib/platforms";
 import { safeHttpUrl } from "@/lib/safe-url";
+
+/** Free Everyday snapshots show this many comparable cards without a paid subscription. */
+const FREE_COMP_GRID_PREVIEW = 2;
+
+const SHOW_COMP_THUMBNAILS =
+  import.meta.env.VITE_SHOW_COMP_THUMBNAILS === "1" ||
+  import.meta.env.VITE_SHOW_COMP_THUMBNAILS === "true";
+
+function compMatchTierLabel(t: Comparable["matchTier"] | undefined): string | null {
+  if (t === "strong") return "Strong match";
+  if (t === "moderate") return "Close match";
+  if (t === "broadAnalogue") return "Broad analogue";
+  return null;
+}
+
+function transactionGuessLabel(t: Comparable["transactionTypeGuess"] | undefined): string | null {
+  if (t === "sold_estimate") return "Sold signal";
+  if (t === "asking_price") return "Asking / listing";
+  if (t === "unknown") return "Type unclear";
+  return null;
+}
 
 /** Cost breakdown under each marketplace row. */
 function ArbitrageVenueFeeBreakdown({
@@ -153,6 +183,7 @@ export default function EstimateReportPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [listingOpen, setListingOpen] = useState(false);
+  const [intentCoachOpen, setIntentCoachOpen] = useState(false);
   const [openedBreakdownIdx, setOpenedBreakdownIdx] = useState<number | null>(null);
 
   const patchIntent = usePatchEstimate({
@@ -176,6 +207,19 @@ export default function EstimateReportPage() {
     query: { enabled: !!id, queryKey: getGetEstimateQueryKey(id) },
   });
 
+  function commitIntentFromCoach(intent: "hold" | "monitor" | "sell") {
+    if (!estimate) return;
+    patchIntent.mutate(
+      { id: estimate.id, data: { intent } },
+      {
+        onSuccess: () => {
+          setIntentCoachOpen(false);
+          if (intent === "sell") setListingOpen(true);
+        },
+      },
+    );
+  }
+
   useEffect(() => {
     setOpenedBreakdownIdx(null);
   }, [id]);
@@ -189,6 +233,20 @@ export default function EstimateReportPage() {
       return rec >= 0 ? rec : null;
     });
   }, [estimate?.arbitrage]);
+
+  useEffect(() => {
+    if (!estimate || estimate.intent) return;
+    try {
+      const key = `valyoued.firstIntentCoach.${estimate.id}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      const timer = window.setTimeout(() => setIntentCoachOpen(true), 450);
+      return () => window.clearTimeout(timer);
+    } catch {
+      const timer = window.setTimeout(() => setIntentCoachOpen(true), 450);
+      return () => window.clearTimeout(timer);
+    }
+  }, [estimate]);
 
   const proInsightsSanitized = useMemo(() => {
     if (!estimate?.proInsights) return null;
@@ -259,6 +317,9 @@ export default function EstimateReportPage() {
 
   const arbitrageRows = estimate.arbitrage ?? [];
   const comparables = estimate.comparables ?? [];
+  const visibleComps =
+    showExpandedPro ? comparables : comparables.slice(0, Math.min(FREE_COMP_GRID_PREVIEW, comparables.length));
+  const lockedCompCount = Math.max(0, comparables.length - visibleComps.length);
   const currentYear = new Date().getFullYear();
   const staleSaleBeforeYear = currentYear - 3;
   const fmt = (v: number, compact = false) => formatMoney(v, ccy, compact);
@@ -290,6 +351,49 @@ export default function EstimateReportPage() {
         open={listingOpen}
         onOpenChange={setListingOpen}
       />
+
+      <AlertDialog open={intentCoachOpen} onOpenChange={setIntentCoachOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>What&apos;s next for this item?</AlertDialogTitle>
+            <AlertDialogDescription className="text-left leading-relaxed">
+              <strong className="font-medium text-foreground">Hold</strong> saves a quiet baseline.{" "}
+              <strong className="font-medium text-foreground">Monitor</strong> keeps it on your watch list for value prompts on your plan.{" "}
+              <strong className="font-medium text-foreground">Sell</strong> opens a listing draft wired to this valuation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:flex-col sm:space-x-0">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={patchIntent.isPending}
+                onClick={() => commitIntentFromCoach("hold")}
+              >
+                Hold
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full sm:w-auto"
+                disabled={patchIntent.isPending}
+                onClick={() => commitIntentFromCoach("monitor")}
+              >
+                Monitor
+              </Button>
+              <Button
+                className="w-full bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"
+                disabled={patchIntent.isPending}
+                onClick={() => commitIntentFromCoach("sell")}
+              >
+                Sell
+              </Button>
+            </div>
+            <AlertDialogCancel className="w-full sm:w-auto" disabled={patchIntent.isPending}>
+              Decide later
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <header className="mb-8 space-y-5 print:break-inside-avoid">
         <div className="space-y-3">
@@ -408,8 +512,14 @@ export default function EstimateReportPage() {
                     See the full picture
                   </h2>
                   <p className="max-w-xl text-sm leading-snug text-muted-foreground">
-                    Subscribe for news, payouts by venue, similar sales, and the seller playbook. This summary stays
-                    here until billing is active or you open a valuation generated on Pro.
+                    Subscribe for news, payouts by venue, the full comparable grid, and the seller playbook. This summary
+                    stays here until billing is active or you open a valuation generated on Pro.
+                    {comparables.length > 0 ? (
+                      <>
+                        {" "}
+                        Comparable evidence still appears below so you can sanity-check similar sales.
+                      </>
+                    ) : null}
                   </p>
                 </div>
               </div>
@@ -641,16 +751,55 @@ export default function EstimateReportPage() {
 
 
         {/* Similar sales */}
-        {showExpandedPro && comparables.length > 0 && (
+        {comparables.length > 0 ? (
           <section className="space-y-4 print:break-inside-avoid">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">Similar past sales</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">Similar sales and why they matter</h2>
               <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
-                References with links where we have them. Use sold search on supported sites for more comps.
+                Each row ties back to your wizard notes. Open permalinks when present, or jump to sold and live searches on
+                the marketplaces we cover.
               </p>
             </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-border/50 bg-muted/10 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Your item</p>
+                <p className="mt-1 font-medium text-foreground">{estimateTitle}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Condition {estimate.input?.condition != null ? `${estimate.input.condition}/10` : "n/a"}
+                  {sellerRegion ? ` · ${sellerRegion}` : ""}
+                </p>
+                {estimate.input?.attributes ? (
+                  <p className="mt-2 line-clamp-3 text-xs leading-snug text-muted-foreground">{estimate.input.attributes}</p>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Add richer attributes on the next valuation to sharpen how comps line up.
+                  </p>
+                )}
+              </div>
+              <div className="rounded-xl border border-border/50 bg-card/60 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Evidence context</p>
+                <p className="mt-1 text-sm leading-snug text-muted-foreground">
+                  Strong matches align on condition and specs. Broad analogues are still useful for direction but should not
+                  be read as identical sales.
+                </p>
+              </div>
+            </div>
+
+            {lockedCompCount > 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-accent/30 bg-accent/[0.06] px-4 py-3 text-sm text-muted-foreground">
+                <span>
+                  Showing {visibleComps.length} of {comparables.length} comparable rows on this snapshot. Unlock the full
+                  grid with Everyday+.
+                </span>
+                <Link href="/settings" className="shrink-0 text-sm font-medium text-accent hover:underline">
+                  Upgrade in settings
+                </Link>
+              </div>
+            ) : null}
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {comparables.map((comp, i) => {
+              {visibleComps.map((comp, i) => {
               const livePlatforms = [...new Set(platformsForAssetType(assetTypeName))];
               const searchQuery = `${estimateTitle} ${comp.description}`.slice(0, 90);
               const platformSearchContext = {
@@ -665,13 +814,39 @@ export default function EstimateReportPage() {
                   }) != null,
               );
               const verifiedUrl = safeHttpUrl(comp.url);
+              const thumbUrl = SHOW_COMP_THUMBNAILS ? safeHttpUrl(comp.imageUrl) : undefined;
               const saleYear = typeof comp.year === "number" && Number.isFinite(comp.year) ? comp.year : null;
               const isStaleSale = saleYear != null && saleYear < staleSaleBeforeYear;
+              const matchTier = compMatchTierLabel(comp.matchTier);
+              const txGuess = transactionGuessLabel(comp.transactionTypeGuess);
               return (
-                <Card key={i} className="flex flex-col overflow-hidden rounded-2xl border-border/50 bg-card shadow-sm">
+                <Card key={`${comp.source}-${comp.price}-${i}`} className="flex flex-col overflow-hidden rounded-2xl border-border/50 bg-card shadow-sm">
+                  {thumbUrl ? (
+                    <div className="relative h-36 w-full overflow-hidden bg-muted/40">
+                      <img
+                        src={thumbUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  ) : null}
                   <CardHeader className="p-4 pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">{comp.source}</span>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">{comp.source}</span>
+                        {matchTier ? (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            {matchTier}
+                          </Badge>
+                        ) : null}
+                        {txGuess ? (
+                          <Badge variant="secondary" className="text-[10px] font-normal">
+                            {txGuess}
+                          </Badge>
+                        ) : null}
+                      </div>
                       {verifiedUrl ? (
                         <a
                           href={verifiedUrl}
@@ -687,14 +862,21 @@ export default function EstimateReportPage() {
                         <span className="text-lg font-semibold tabular-nums">{fmt(comp.price)}</span>
                       )}
                     </div>
+                    {comp.relevanceExplanation ? (
+                      <p className="mt-2 text-xs font-medium leading-snug text-accent">{stripQ(comp.relevanceExplanation)}</p>
+                    ) : null}
                   </CardHeader>
-                  <CardContent className="flex flex-1 flex-col p-4 pt-2">
-                    <p className="line-clamp-3 text-sm leading-snug text-foreground">{comp.description}</p>
-                    <div className="mb-3 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span className="tabular-nums">{saleYear != null ? `Sold ${saleYear}` : "Year unknown"}</span>
+                  <CardContent className="flex flex-1 flex-col p-4 pt-0">
+                    <p className="line-clamp-3 text-sm leading-snug text-foreground">{stripQ(comp.description)}</p>
+                    <div className="mb-2 mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                      {comp.conditionCue ? <span className="rounded bg-muted/60 px-1.5 py-0.5">{stripQ(comp.conditionCue)}</span> : null}
+                      {comp.locationOrChannel ? <span className="rounded bg-muted/60 px-1.5 py-0.5">{stripQ(comp.locationOrChannel)}</span> : null}
+                      <span className="tabular-nums">{saleYear != null ? `Sale year ${saleYear}` : "Year unknown"}</span>
                       {isStaleSale ? (
-                        <span className="rounded bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground">Older sale</span>
+                        <span className="rounded bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground">Older row</span>
                       ) : null}
+                    </div>
+                    <div className="mb-3 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {verifiedUrl ? (
                         <a
                           href={verifiedUrl}
@@ -707,7 +889,7 @@ export default function EstimateReportPage() {
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       ) : (
-                        <span className="text-muted-foreground/80">No link for this row</span>
+                        <span className="text-muted-foreground/80">No permalink for this row</span>
                       )}
                     </div>
                     <div className="mt-auto space-y-2 border-t border-border/40 pt-2">
@@ -774,7 +956,7 @@ export default function EstimateReportPage() {
             })}
           </div>
           </section>
-        )}
+        ) : null}
 
         {/* Seller playbook – PRO ONLY (estimate must have been generated as pro) */}
         {showExpandedPro && proInsightsSanitized && (

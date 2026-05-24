@@ -11,6 +11,8 @@ export * from "./assetField";
 export * from "./assetFieldType";
 export * from "./assetType";
 export * from "./comparable";
+export * from "./comparableMatchTier";
+export * from "./comparableTransactionTypeGuess";
 export * from "./createEstimate429";
 export * from "./createPortfolio403";
 export * from "./createPortfolioBody";

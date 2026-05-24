@@ -74,7 +74,8 @@ export const ASSET_TYPES: AssetType[] = [
         type: "text",
         required: false,
         placeholder: "~1.2 ct center diamond",
-        help: "Rough total carats for centerpiece stones helps calibrate comps when certificates are fuzzy.",
+        help:
+          "Gem carats measure stone weight (each carat is roughly 200 mg). That is different from gold karats, which describe purity. A rough total still helps when you lack a lab report.",
       },
       {
         key: "metal",
@@ -175,6 +176,14 @@ export const ASSET_TYPES: AssetType[] = [
         required: false,
         placeholder: "Stamped blind stamp, heat stamp…",
         help: "Hermès stamps, Chanel cards, LV date codes — helps age the piece for buyers.",
+      },
+      {
+        key: "authenticityVerifierReferenceId",
+        label: "Verifier reference number",
+        type: "text",
+        required: false,
+        placeholder: "AUTH-849302 / Entrupy certificate ID…",
+        help: "Drop the alphanumeric reference your authenticity partner emailed so comps line up when you revisit the case.",
       },
       {
         key: "authenticityServiceUrl",
