@@ -53,7 +53,7 @@ const FOLDER_DEFS: Array<{
   {
     id: "hold",
     title: "Hold",
-    blurb: "Long-term keepers; let them appreciate.",
+    blurb: "Long-term keepers you are happy to tuck away.",
     Icon: TrendingUp,
     stripe: "border-l-emerald-500/80",
     iconMuted: "text-emerald-600/85 dark:text-emerald-400/90",

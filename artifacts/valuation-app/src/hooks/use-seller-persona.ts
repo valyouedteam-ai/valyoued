@@ -6,7 +6,7 @@ import { peekSessionSellerPersona } from "@/hooks/use-persona-sync";
 export type SellerPersonaResolved = SellerPersonaChoice | null;
 
 /**
- * Mirrors `/welcome`: prefers Clerk unsafeMetadata once loaded, then sessionStorage persona from landing funnel.
+ * Prefers Clerk unsafeMetadata once loaded, then sessionStorage from `/welcome` or legacy hints.
  */
 export function useSellerPersona(): {
   persona: SellerPersonaResolved;

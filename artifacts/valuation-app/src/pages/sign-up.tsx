@@ -19,7 +19,7 @@ export default function SignUpPage() {
   const heading = resumedGuestFlow ? "Your valuation is ready" : "Create your free account";
   const blurb = resumedGuestFlow
     ? "Create a free account to unlock your full valuation report, save it to your portfolio, and get listing drafts for marketplaces worldwide."
-    : "Use email or a social login to secure your valuations. Right after signup we confirm how you steward assets, then you land on Home.";
+    : "Use email or a social login to secure your valuations. After this screen you land on a short guided tour inside the product.";
 
   return (
     <div className="mesh-bg relative flex min-h-[100dvh] flex-col overflow-hidden">

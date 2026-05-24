@@ -12,7 +12,7 @@ export type ClerkUserPersonaWritable = {
   }) => Promise<unknown>;
 };
 
-/** Read persona from session (set on /welcome) before Clerk metadata catches up after sign-up. */
+/** Read persona from session (set from `/welcome` or legacy funnel hints) before Clerk metadata catches up after sign-up. */
 export function peekSessionSellerPersona(): SellerPersonaChoice | undefined {
   try {
     const raw = sessionStorage.getItem(PERSONA_SESSION_KEY);

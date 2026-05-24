@@ -1,8 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Globe2, ShieldCheck, Zap } from "lucide-react";
-import { MarketingPlanCards } from "@/components/marketing/MarketingPlanCards";
 import { LandingIntroOverlay } from "@/components/marketing/LandingIntroOverlay";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Badge } from "@/components/ui/badge";
@@ -25,11 +24,25 @@ const item = {
 
 export default function LandingPage() {
   const reduceMotion = useReducedMotion();
+  const landingIntroSentinelRef = useRef<HTMLDivElement | null>(null);
+  const [landingIntroUnlocked, setLandingIntroUnlocked] = useState(false);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const el = landingIntroSentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setLandingIntroUnlocked(true);
+      },
+      { root: null, rootMargin: "0px 0px -8% 0px", threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [reduceMotion]);
 
   return (
     <div className="min-h-[100dvh] bg-[hsl(40,20%,97%)] text-foreground">
-      <LandingIntroOverlay />
-
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-[20%] top-0 h-[min(70vh,520px)] w-[70%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(175_45%_45%/0.12),transparent_70%)] blur-3xl" />
         <div className="absolute bottom-0 right-0 h-[min(60vh,480px)] w-[55%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(258_45%_55%/0.08),transparent_70%)] blur-3xl" />
@@ -37,12 +50,7 @@ export default function LandingPage() {
 
       <MarketingTopNav variant="light" />
 
-      <MarketingPlanCards
-        layout="band"
-        className="relative z-10 mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-6 lg:pb-14"
-      />
-
-      <section className="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-10 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:pb-14 lg:pt-2">
+      <section className="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-10 pt-3 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:pb-14 lg:pt-2">
         <motion.div
           initial={reduceMotion ? false : "hidden"}
           animate={reduceMotion ? undefined : "visible"}
@@ -62,8 +70,12 @@ export default function LandingPage() {
             <span className="brand-gradient">sell when the window is right.</span>
           </motion.h1>
           <motion.p variants={reduceMotion ? undefined : item} className="max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Structured valuations, portfolio buckets, listing drafts tuned for everyday collectors and resale desks alike. Scan the
-            plan strip above, then jump straight into onboarding or guest workflow.
+            Structured valuations, portfolio buckets, listing drafts tuned for everyday collectors and resale desks alike. Full tier
+            detail lives on{" "}
+            <Link href="/pricing#plans" className="font-medium text-accent underline-offset-4 hover:underline">
+              Pricing
+            </Link>
+            . Then jump into onboarding or a guest valuation below.
           </motion.p>
           <motion.div
             variants={reduceMotion ? undefined : item}
@@ -144,6 +156,9 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
+      {/* The intro overlay only arms after viewers scroll toward the story strip below so the headline and Globe stay first-run. */}
+      <div ref={landingIntroSentinelRef} className="h-px w-full max-w-6xl mx-auto shrink-0" aria-hidden />
+
       <section className="relative z-10 mx-auto max-w-6xl px-4 pb-24 sm:px-6">
         <div className="grid gap-5 md:grid-cols-3">
           {[
@@ -190,11 +205,13 @@ export default function LandingPage() {
           <Link href="/about" className="transition-colors hover:text-foreground">
             How it works
           </Link>
-          <Link href="/pricing" className="transition-colors hover:text-foreground">
+          <Link href="/pricing#plans" className="transition-colors hover:text-foreground">
             Pricing details
           </Link>
         </div>
       </footer>
+
+      <LandingIntroOverlay unlocked={landingIntroUnlocked} />
     </div>
   );
 }

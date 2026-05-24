@@ -3,7 +3,7 @@ export type SellerTier = "everyday" | "luxury";
 export type PortfolioShelf = "luxury" | "everyday" | "other";
 
 /**
- * Collectibles / appreciation narrative, shown only when the seller picks the luxury track.
+ * Collectible / specialty asset types surfaced on the luxury track.
  */
 const LUXURY_ONLY_IDS = new Set<string>([
   "luxury-watch",
@@ -32,7 +32,7 @@ const LUXURY_ONLY_IDS = new Set<string>([
 ]);
 
 /**
- * Mass-market / depreciating consumer goods, shown only on the everyday track.
+ * Mass-market consumer goods surfaced on the everyday track.
  */
 const EVERYDAY_ONLY_IDS = new Set<string>([
   "smartphone",

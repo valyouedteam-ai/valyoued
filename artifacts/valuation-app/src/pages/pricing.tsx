@@ -1,8 +1,20 @@
-import { Link } from "wouter";
+import { useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { MarketingPlanCards } from "@/components/marketing/MarketingPlanCards";
 
 export default function PricingPage() {
+  const [pathname] = useLocation();
+
+  useEffect(() => {
+    if (pathname !== "/pricing") return;
+    if (window.location.hash !== "#plans") return;
+    const t = window.setTimeout(() => {
+      document.getElementById("plans")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [pathname]);
+
   return (
     <div className="min-h-[100dvh] bg-[hsl(40,20%,97%)] text-foreground">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -12,7 +24,7 @@ export default function PricingPage() {
 
       <MarketingTopNav variant="light" />
 
-      <MarketingPlanCards layout="page" />
+      <MarketingPlanCards />
 
       <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-border/70 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:px-6">
         <span>© {new Date().getFullYear()} ValYoued</span>

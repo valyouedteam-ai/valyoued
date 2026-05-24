@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, BriefcaseBusiness, Shirt } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, LogIn, Shirt } from "lucide-react";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Button } from "@/components/ui/button";
 import { PERSONA_SESSION_KEY, type SellerPersonaChoice } from "@/hooks/use-persona-sync";
@@ -13,6 +13,9 @@ function persistPersona(choice: SellerPersonaChoice) {
   }
 }
 
+/**
+ * Pre-signup track snapshot (session hints + guided welcome continues after signup).
+ */
 export default function WelcomePersonaPage() {
   const reduceMotion = useReducedMotion();
 
@@ -29,16 +32,33 @@ export default function WelcomePersonaPage() {
           initial={reduceMotion ? undefined : { opacity: 0, y: 12 }}
           animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="space-y-3"
+          className="space-y-3 text-center sm:text-left"
         >
           <p className="text-ui-caps text-accent">Tailor ValYoued</p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Choose how you use your portfolio. You can mix both anytime.
+            Choose how you use your portfolio
           </h1>
           <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            We remember this lightly to tune copy on your dashboard. It stays on-device until registration,
-            then maps to your account profile during the brief welcome step after sign-up or on first sign-in.
+            Right after signup a short tour shows what saves where. Use either card below to tune language before signup, jump into a guest
+            valuation first, or open signup from the top navigation anytime. Flip your track later under Profile.
           </p>
+          <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
+            If you pick a track while logged out, your browser only keeps it until you finish signing up, then welcome carries it so wording
+            lines up.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 pt-2 sm:justify-start">
+            <Link href="/sign-in">
+              <Button size="lg" variant="outline" className="rounded-2xl gap-2">
+                <LogIn className="h-5 w-5" aria-hidden />
+                Already have an account?
+              </Button>
+            </Link>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-4 border-t border-border/60 pt-6 text-sm sm:justify-start">
+            <Link href="/pricing#plans">
+              <span className="font-medium text-accent underline-offset-4 hover:underline">Compare subscription tiers</span>
+            </Link>
+          </div>
         </motion.div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -51,28 +71,19 @@ export default function WelcomePersonaPage() {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15 text-accent">
               <Shirt className="h-6 w-6" aria-hidden />
             </div>
-            <h2 className="text-lg font-semibold tracking-tight">Everyday steward</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Everyday steward</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Personal collections, wardrobes, resale side-hustles, and single big-ticket buys you want monitored.
             </p>
             <div className="mt-6 flex flex-col gap-2">
               <Link href="/sign-up">
-                <Button
-                  size="lg"
-                  className="w-full rounded-2xl"
-                  onClick={() => persistPersona("everyday")}
-                >
+                <Button size="lg" className="w-full rounded-2xl" onClick={() => persistPersona("everyday")}>
                   Continue to sign-up · Everyday track
                   <ArrowRight className="ml-2 h-5 w-5" aria-hidden />
                 </Button>
               </Link>
               <Link href="/start">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full rounded-2xl"
-                  onClick={() => persistPersona("everyday")}
-                >
+                <Button size="lg" variant="outline" className="w-full rounded-2xl" onClick={() => persistPersona("everyday")}>
                   Start free valuation first
                 </Button>
               </Link>
@@ -88,29 +99,19 @@ export default function WelcomePersonaPage() {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-card text-accent">
               <BriefcaseBusiness className="h-6 w-6" aria-hidden />
             </div>
-            <h2 className="text-lg font-semibold tracking-tight">Professional desks</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Professional desks</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Brokers, heirs, boutiques, desks that need sharper arbitrage wording, workspace separation, and listing-heavy
-              flows.
+              Brokers, heirs, boutiques, desks that need sharper arbitrage wording, workspace separation, and listing-heavy flows.
             </p>
             <div className="mt-6 flex flex-col gap-2">
               <Link href="/sign-up">
-                <Button
-                  size="lg"
-                  className="w-full rounded-2xl shadow-md"
-                  onClick={() => persistPersona("professional")}
-                >
+                <Button size="lg" className="w-full rounded-2xl shadow-md" onClick={() => persistPersona("professional")}>
                   Continue to sign-up · Professional track
                   <ArrowRight className="ml-2 h-5 w-5" aria-hidden />
                 </Button>
               </Link>
               <Link href="/start">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="w-full rounded-2xl"
-                  onClick={() => persistPersona("professional")}
-                >
+                <Button size="lg" variant="secondary" className="w-full rounded-2xl" onClick={() => persistPersona("professional")}>
                   Start free valuation first
                 </Button>
               </Link>
@@ -118,12 +119,12 @@ export default function WelcomePersonaPage() {
           </motion.div>
         </div>
 
-        <p className="w-full max-w-none text-pretty text-sm leading-relaxed text-muted-foreground">
-          Tip: Everyday free includes five valuations per calendar month.{" "}
-          <Link href="/pricing" className="font-medium text-accent underline-offset-4 hover:underline">
-            See the Pricing page for full tiers.
+        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+          Everyday free covers five valuations per calendar month until you subscribe.{" "}
+          <Link href="/pricing#plans" className="font-medium text-accent underline-offset-4 hover:underline">
+            Pricing
           </Link>{" "}
-          Upgrade anytime for unlimited runs and richer market rows. See Settings after you sign up.
+          has the full tiers.
         </p>
       </main>
     </div>

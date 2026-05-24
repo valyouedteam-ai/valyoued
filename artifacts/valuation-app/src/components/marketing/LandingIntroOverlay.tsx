@@ -1,43 +1,49 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, BriefcaseBusiness, Shirt } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  PERSONA_SESSION_KEY,
-  type SellerPersonaChoice,
-} from "@/hooks/use-persona-sync";
 
 const INTRO_STORAGE_KEY = "valyoued.landingIntroSeen";
 
-function persistPersona(choice: SellerPersonaChoice) {
-  try {
-    sessionStorage.setItem(PERSONA_SESSION_KEY, choice);
-  } catch {
-    /* ignore */
-  }
-}
+/** Min time before the overlay can arm so hero and Globe paint first. */
+const LANDING_INTRO_ARM_DELAY_MS = 1400;
+
+type LandingIntroOverlayProps = {
+  /**
+   * When true, the observer (or landing page) considers the viewer far enough along to show the opener.
+   * Typically flips once the sentinel between hero and feature cards crosses into view after a short dwell.
+   */
+  unlocked: boolean;
+};
 
 /**
- * Runs once per tab after first landing visit: personalised opener then track snapshot.
+ * One-time per-tab splash plus signup framing. Designed to mount after unlock so the headline and Globe render first.
  */
-export function LandingIntroOverlay() {
+export function LandingIntroOverlay({ unlocked }: LandingIntroOverlayProps) {
   const reduceMotion = useReducedMotion();
-  const [phase, setPhase] = useState<"splash" | "persona" | "done">("done");
+  const [armed, setArmed] = useState(false);
+  const [phase, setPhase] = useState<"splash" | "cta" | "done">("done");
+
+  /** Arm splash only after landing has had a beat to settle; never block first paint above the fold. */
+  useEffect(() => {
+    if (reduceMotion || !unlocked) return;
+    const t = window.setTimeout(() => setArmed(true), LANDING_INTRO_ARM_DELAY_MS);
+    return () => window.clearTimeout(t);
+  }, [reduceMotion, unlocked]);
 
   useEffect(() => {
-    if (reduceMotion) return;
+    if (reduceMotion || !armed) return;
     try {
       const seen = sessionStorage.getItem(INTRO_STORAGE_KEY);
       if (!seen) setPhase("splash");
     } catch {
       setPhase("done");
     }
-  }, [reduceMotion]);
+  }, [reduceMotion, armed]);
 
   useEffect(() => {
     if (phase !== "splash" || reduceMotion) return;
-    const t = window.setTimeout(() => setPhase("persona"), 1200);
+    const t = window.setTimeout(() => setPhase("cta"), 1200);
     return () => window.clearTimeout(t);
   }, [phase, reduceMotion]);
 
@@ -48,11 +54,6 @@ export function LandingIntroOverlay() {
       /* ignore */
     }
     setPhase("done");
-  }
-
-  function pickTrack(choice: SellerPersonaChoice) {
-    persistPersona(choice);
-    dismissToLanding();
   }
 
   if (reduceMotion || phase === "done") return null;
@@ -81,67 +82,34 @@ export function LandingIntroOverlay() {
               <p id="landing-intro-title" className="font-brand text-4xl font-semibold tracking-tight text-foreground">
                 ValYoued
               </p>
-              <p className="text-sm text-muted-foreground">Personal net worth desks and resale timing in one place.</p>
+              <p className="text-sm text-muted-foreground">
+                Understand what you own, follow value when you want it, draft listings without starting from scratch.
+              </p>
             </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="w-full space-y-4"
+              className="w-full space-y-5"
             >
-              <p id="landing-intro-persona-heading" className="text-xl font-semibold tracking-tight text-foreground">
-                Tell us where you&apos;re headed first
-              </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                We lighten the onboarding path you see after sign-up. Switch tracks anytime inside your profile.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <motion.button
-                  type="button"
-                  className="flex flex-col items-start rounded-2xl border border-border/70 bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40"
-                  onClick={() => pickTrack("everyday")}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                  aria-describedby="landing-intro-persona-heading"
-                >
-                  <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent">
-                    <Shirt className="h-5 w-5" aria-hidden />
-                  </span>
-                  <span className="font-semibold text-foreground">Everyday steward</span>
-                  <span className="mt-2 text-xs text-muted-foreground">Portfolio building, wardrobes, collectible wins.</span>
-                  <ArrowRight className="mt-4 h-4 w-4 shrink-0 text-accent" aria-hidden />
-                </motion.button>
-                <motion.button
-                  type="button"
-                  className="flex flex-col items-start rounded-2xl border border-accent/40 bg-accent/10 p-4 text-left shadow-md ring-1 ring-accent/25 transition-colors hover:bg-accent/15"
-                  onClick={() => pickTrack("professional")}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  aria-describedby="landing-intro-persona-heading"
-                >
-                  <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-card text-accent">
-                    <BriefcaseBusiness className="h-5 w-5" aria-hidden />
-                  </span>
-                  <span className="font-semibold text-foreground">Professional desk</span>
-                  <span className="mt-2 text-xs text-muted-foreground">Multiple boards, sharper listings, stock lanes.</span>
-                  <ArrowRight className="mt-4 h-4 w-4 shrink-0 text-accent" aria-hidden />
-                </motion.button>
+              <div className="space-y-3">
+                <p className="text-xl font-semibold tracking-tight text-foreground">What happens next</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Create a free account when you&apos;re ready. Right after signup we explain the basics in plain language and ask
+                  how you&apos;ll mostly use ValYoued. Nothing here locks you into a paid plan.
+                </p>
               </div>
-              <button
-                type="button"
-                className="w-full rounded-full px-4 py-2 text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
-                onClick={() => dismissToLanding()}
-              >
-                Skip for now and explore the homepage
-              </button>
-              <Link href="/sign-up" className="block pt-2" onClick={dismissToLanding}>
-                <Button variant="default" size="lg" className="w-full rounded-full">
-                  Sign up free
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Button type="button" variant="outline" size="lg" className="w-full rounded-full sm:w-auto" onClick={dismissToLanding}>
+                  Continue browsing
                 </Button>
-              </Link>
+                <Link href="/sign-up" className="w-full sm:w-auto" onClick={dismissToLanding}>
+                  <Button variant="default" size="lg" className="w-full rounded-full">
+                    Create free account
+                  </Button>
+                </Link>
+              </div>
             </motion.div>
           )}
         </div>

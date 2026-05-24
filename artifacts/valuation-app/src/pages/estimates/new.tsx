@@ -1030,13 +1030,13 @@ function NewEstimatePageInner({
                           {
                             value: "everyday" as const,
                             label: "Everyday asset",
-                            desc: "Cars, electronics, furniture, ordinary home goods. Usually depreciates over time.",
+                            desc: "Cars, electronics, furniture, and ordinary household items. Matches typical mass-market resale comps.",
                             Icon: House,
                           },
                           {
                             value: "luxury" as const,
                             label: "Luxury / Collectible",
-                            desc: "Vintage watches, rare wines, classic Mini Coopers, designer bags, limited art. Often appreciates.",
+                            desc: "Vintage watches, rare wines, classic cars, designer bags, trading cards, art, and other specialty collectible markets.",
                             Icon: Gem,
                           },
                         ].map((opt) => {

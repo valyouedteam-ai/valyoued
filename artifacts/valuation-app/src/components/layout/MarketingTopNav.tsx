@@ -18,13 +18,14 @@ export function MarketingTopNav({ variant }: { variant: MarketingTopNavVariant }
   return (
     <nav
       className={cn(
-        "sticky top-0 z-50 mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 backdrop-blur-md sm:px-6",
+        "sticky top-0 z-50 w-full border-b backdrop-blur-md",
         isDark
-          ? "border-b border-white/10 bg-[hsl(222,47%,8%)]/90 text-white"
-          : "border-b border-border/50 bg-[hsl(40,25%,96%)]/92 text-foreground dark:bg-background/92",
+          ? "border-white/10 bg-[hsl(222,47%,8%)]/90 text-white"
+          : "border-border/50 bg-[hsl(40,25%,96%)]/92 text-foreground dark:bg-background/92",
       )}
       aria-label="Site"
     >
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
       <Link href="/" className="flex items-center gap-3">
         <div
           className={cn(
@@ -51,7 +52,7 @@ export function MarketingTopNav({ variant }: { variant: MarketingTopNavVariant }
             How it works
           </Button>
         </Link>
-        <Link href="/pricing">
+        <Link href="/pricing#plans">
           <Button
             variant="ghost"
             className={
@@ -102,6 +103,7 @@ export function MarketingTopNav({ variant }: { variant: MarketingTopNavVariant }
             <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
+      </div>
       </div>
     </nav>
   );

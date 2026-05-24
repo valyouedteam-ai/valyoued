@@ -70,9 +70,12 @@ ${extras}
 Free-form notes: ${input.attributes ?? "n/a"}
 
 VALUATION DIRECTION: read carefully:
-Most everyday assets depreciate (cars, electronics, furniture, ordinary home goods) and
-their adjustedMid should normally sit BELOW the original purchase price.
-However, some LUXURY, COLLECTIBLE, and RARE items can APPRECIATE over time.
+Everyday-category items (cars, electronics, furniture, ordinary home goods) usually price off
+recent comparable resale or asking levels; adjustedMid should follow those comps closely and respect
+purchase price as context unless the evidence clearly supports stepping above it.
+Luxury / collectible framing (tier hint may flag this) spans watches, marquee bags, vintages,
+classic trims, sneakers, comics, trading cards, art, and similarly thin markets where scarcity or
+auction records matter. Anchor to realized sales and credible asks instead of labeling direction.
 Examples include discontinued Mini Cooper trims, vintage Rolex/Patek/Omega, first-generation Hermès,
 limited-run sneakers, rare wine vintages, classic cars, comic books, trading cards, and art.
 Use the asset class, brand, model, year, condition, and free-form notes (which may include

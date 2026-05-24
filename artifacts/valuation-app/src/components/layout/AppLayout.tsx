@@ -295,7 +295,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
   return (
     <div className="no-print flex min-h-[100dvh] flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4">
+        <div className="flex w-full items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4">
           <Link
             href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}
             className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition-opacity hover:opacity-90"

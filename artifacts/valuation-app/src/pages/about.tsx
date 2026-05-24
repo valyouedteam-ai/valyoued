@@ -134,7 +134,7 @@ export default function AboutPage() {
       <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-border/70 px-6 py-10 text-sm text-muted-foreground sm:flex-row">
         <span>© {new Date().getFullYear()} ValYoued</span>
         <div className="flex gap-8">
-          <Link href="/pricing" className="transition-colors hover:text-foreground">
+          <Link href="/pricing#plans" className="transition-colors hover:text-foreground">
             Pricing
           </Link>
           <Link href="/privacy" className="transition-colors hover:text-foreground">

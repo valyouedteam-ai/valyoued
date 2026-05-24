@@ -8,12 +8,9 @@ import type { MarketingPlanCardDef } from "@/lib/marketing-plan-tiers";
 import {
   MAIN_PLAN_CARDS,
   INHERITANCE_ADDON_CARD,
-  PROFESSIONAL_TRIAL_DAYS_DEFAULT,
 } from "@/lib/marketing-plan-tiers";
 
 export type MarketingPlanCardsProps = {
-  /** When true (pricing page), show full header block. Landing uses slim band. */
-  layout?: "page" | "band";
   className?: string;
   /** Defaults to MAIN + inheritance add-on strip */
   cards?: MarketingPlanCardDef[];
@@ -21,56 +18,38 @@ export type MarketingPlanCardsProps = {
 };
 
 export function MarketingPlanCards({
-  layout = "page",
   cards = MAIN_PLAN_CARDS,
   addon = INHERITANCE_ADDON_CARD,
   className,
 }: MarketingPlanCardsProps) {
-  const showAddon = addon != null && layout === "page";
+  const showAddon = addon != null;
 
   return (
     <section
       id="plans"
       className={cn(
-        layout === "page" ? "relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-4 sm:px-6" : "relative z-10 w-full",
+        "relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-4 sm:px-6",
         className,
       )}
     >
       <div
         className={cn(
-          "rounded-3xl border border-border/60 bg-[hsl(40,25%,96%)]/92 shadow-xl shadow-black/10 backdrop-blur-md dark:bg-card/92",
-          layout === "band" ? "p-5 sm:p-6" : "p-4",
+          "rounded-3xl border border-border/60 bg-[hsl(40,25%,96%)]/92 p-4 shadow-xl shadow-black/10 backdrop-blur-md dark:bg-card/92",
         )}
       >
-        {layout === "page" ? (
-          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-ui-caps text-accent">Straightforward tiers</p>
-              <h2 className="mt-1 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Everyday free stays honest: five valuations a month plus basics. Everyday+ lifts limits and unlocks richer
-                market rows.
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                Trial length for Professional defaults to about {PROFESSIONAL_TRIAL_DAYS_DEFAULT} days at Stripe checkout unless
-                your deployment overrides it with STRIPE_PROFESSIONAL_TRIAL_DAYS.
-              </p>
-            </div>
-            <Badge variant="secondary" className="w-fit shrink-0 border border-border/70">
-              Paid subscriptions
-            </Badge>
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-ui-caps text-accent">Straightforward tiers</p>
+            <h2 className="mt-1 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Free tier for light use. Everyday+ and Professional add more when you need it.
+            </h2>
           </div>
-        ) : (
-          <div className="mb-5 space-y-1 text-center sm:text-left">
-            <p className="text-ui-caps text-accent">Plans at a glance</p>
-            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Pick the runway that fits you</h2>
-            <p className="text-sm text-muted-foreground">
-              Free Everyday keeps you experimenting. Everyday+ expands tooling. Professional adds trials, desks, and seller-grade
-              copy.
-            </p>
-          </div>
-        )}
+          <Badge variant="secondary" className="w-fit shrink-0 border border-border/70">
+            Paid subscriptions
+          </Badge>
+        </div>
 
-        <div className={`grid gap-4 ${layout === "band" ? "md:grid-cols-3" : "md:grid-cols-3"}`}>
+        <div className="grid gap-4 md:grid-cols-3">
           {cards.map((p) => (
             <PlanCardRow key={p.title} card={p} />
           ))}
@@ -82,15 +61,6 @@ export function MarketingPlanCards({
             <div className="grid gap-4 md:max-w-md">
               <PlanCardRow card={addon} />
             </div>
-          </div>
-        ) : layout === "band" && addon ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{addon.title}.</span>{" "}
-            {addon.bullets.slice(0, 2).join(" ")}{" "}
-            <Link href="/pricing#plans" className="font-medium text-accent underline-offset-4 hover:underline">
-              Read full pricing
-            </Link>
-            .
           </div>
         ) : null}
       </div>
