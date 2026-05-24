@@ -1,6 +1,8 @@
+import { useAuth } from "@clerk/react";
 import { Link } from "wouter";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +12,16 @@ import {
   INHERITANCE_ADDON_CARD,
 } from "@/lib/marketing-plan-tiers";
 
+function resolveAddonForAuth(card: MarketingPlanCardDef | null | undefined, isSignedIn: boolean): MarketingPlanCardDef | null | undefined {
+  if (!card) return card;
+  if (!isSignedIn || !card.authenticatedCta) return card;
+  return {
+    ...card,
+    ctaLabel: card.authenticatedCta.label,
+    ctaHref: card.authenticatedCta.href,
+  };
+}
+
 export type MarketingPlanCardsProps = {
   className?: string;
   /** Defaults to MAIN + inheritance add-on strip */
@@ -17,12 +29,14 @@ export type MarketingPlanCardsProps = {
   addon?: MarketingPlanCardDef | null;
 };
 
-export function MarketingPlanCards({
+function MarketingPlanCardsInner({
   cards = MAIN_PLAN_CARDS,
   addon = INHERITANCE_ADDON_CARD,
   className,
-}: MarketingPlanCardsProps) {
+  isSignedIn,
+}: MarketingPlanCardsProps & { isSignedIn: boolean }) {
   const showAddon = addon != null;
+  const addonShown = resolveAddonForAuth(addon, isSignedIn);
 
   return (
     <section
@@ -55,17 +69,29 @@ export function MarketingPlanCards({
           ))}
         </div>
 
-        {showAddon && addon ? (
+        {showAddon && addonShown ? (
           <div className="mt-6 border-t border-border/60 pt-6">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Optional add-on</p>
             <div className="grid gap-4 md:max-w-md">
-              <PlanCardRow card={addon} />
+              <PlanCardRow card={addonShown} />
             </div>
           </div>
         ) : null}
       </div>
     </section>
   );
+}
+
+function MarketingPlanCardsWithClerk(props: MarketingPlanCardsProps) {
+  const { isSignedIn } = useAuth();
+  return <MarketingPlanCardsInner {...props} isSignedIn={Boolean(isSignedIn)} />;
+}
+
+export function MarketingPlanCards(props: MarketingPlanCardsProps) {
+  if (AUTH_STUB_MODE) {
+    return <MarketingPlanCardsInner {...props} isSignedIn={false} />;
+  }
+  return <MarketingPlanCardsWithClerk {...props} />;
 }
 
 function PlanCardRow({ card: p }: { card: MarketingPlanCardDef }) {

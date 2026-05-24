@@ -10,6 +10,8 @@ export type MarketingPlanCardDef = {
   ctaHref: string;
   variant: PlanCardVariant;
   highlight?: boolean;
+  /** Signed-in shoppers (pricing while logged in) alternate CTA, e.g. deep link Billing. */
+  authenticatedCta?: { label: string; href: string };
 };
 
 export const PROFESSIONAL_TRIAL_DAYS_DEFAULT = 14;
@@ -71,7 +73,11 @@ export const INHERITANCE_ADDON_CARD: MarketingPlanCardDef = {
     "Pick which portfolio each valuation saves into",
     "Adds on alongside Everyday Free or Everyday+ billing",
   ],
-  ctaLabel: "Tailor signup and ask about inheritance",
-  ctaHref: "/welcome",
+  ctaLabel: "Sign up, then add inheritance in Billing",
+  ctaHref: "/sign-up",
+  authenticatedCta: {
+    label: "Open inheritance workspace in Billing",
+    href: "/settings#inheritance-addon",
+  },
   variant: "outline",
 };

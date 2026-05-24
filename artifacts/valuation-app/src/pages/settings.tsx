@@ -265,6 +265,18 @@ function SettingsPageInner({
     void refreshBilling();
   }, [refreshBilling]);
 
+  /** Deep link from `/settings#inheritance-addon` once billing section has rendered. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = window.location.hash.replace(/^#/, "");
+    if (id !== "inheritance-addon") return;
+    const run = () => {
+      document.getElementById("inheritance-addon")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    const t = window.setTimeout(run, 150);
+    return () => window.clearTimeout(t);
+  }, [billing]);
+
   const exportData = async () => {
     setBusy("export");
     try {
@@ -629,7 +641,10 @@ function SettingsPageInner({
               Manage subscription / invoices
             </Button>
             {!billing?.hasInheritanceAddon && billing?.planSlug !== "professional" ? (
-              <div className="rounded-xl border border-dashed border-accent/35 bg-accent/5 p-4 text-sm text-muted-foreground">
+              <div
+                id="inheritance-addon"
+                className="scroll-mt-28 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-4 text-sm text-muted-foreground"
+              >
                 <p className="font-medium text-foreground">Inheritance add-on ledger</p>
                 <p className="mt-2 leading-relaxed">
                   Spins up a tinted workspace beside your everyday portfolio once Stripe confirms the addon subscription.
@@ -647,10 +662,12 @@ function SettingsPageInner({
                 </Button>
               </div>
             ) : billing?.hasInheritanceAddon ? (
+              <div id="inheritance-addon" className="scroll-mt-28">
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Inheritance workspace billing is active. Switch between ledgers using the pills on Home, then valuations save into
                 whichever workspace you select.
               </p>
+              </div>
             ) : null}
           </CardContent>
         </Card>
