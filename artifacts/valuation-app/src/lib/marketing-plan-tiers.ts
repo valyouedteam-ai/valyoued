@@ -39,7 +39,7 @@ export const MAIN_PLAN_CARDS: MarketingPlanCardDef[] = [
       "Unlimited valuations policy once subscribed",
       "Full international arbitrage rows on valuation reports",
       "Configure monitor alerts for holdings (including email)",
-      "Stronger comps grid and Everyday+ tooling in the app",
+      "Stronger comps grid",
     ],
     ctaLabel: "Sign up and choose Everyday+",
     ctaHref: "/welcome",
@@ -69,7 +69,7 @@ export const INHERITANCE_ADDON_CARD: MarketingPlanCardDef = {
   price: "Billed monthly at checkout",
   bullets: [
     "Optional portfolio workspace separate from your main holdings",
-    "Colour-tinted workspace switcher keeps estate items visually distinct",
+    "Easier inheritance management with a workspace split out from your main portfolio",
     "Pick which portfolio each valuation saves into",
     "Adds on alongside Everyday Free or Everyday+ billing",
   ],

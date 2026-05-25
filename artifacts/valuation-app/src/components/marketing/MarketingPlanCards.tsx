@@ -51,14 +51,14 @@ function MarketingPlanCardsInner({
           "rounded-3xl border border-border/60 bg-[hsl(40,25%,96%)]/92 p-4 shadow-xl shadow-black/10 backdrop-blur-md dark:bg-card/92",
         )}
       >
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="w-full min-w-0 flex-1 space-y-2">
             <p className="text-ui-caps text-accent">Straightforward tiers</p>
-            <h2 className="mt-1 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            <h2 className="mt-1 w-full max-w-none text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               Free tier for light use. Everyday+ and Professional add more when you need it.
             </h2>
           </div>
-          <Badge variant="secondary" className="w-fit shrink-0 border border-border/70">
+          <Badge variant="secondary" className="w-fit shrink-0 self-start border border-border/70 sm:self-end">
             Paid subscriptions
           </Badge>
         </div>

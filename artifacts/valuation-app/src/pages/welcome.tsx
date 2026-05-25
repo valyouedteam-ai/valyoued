@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, BriefcaseBusiness, LogIn, Shirt } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Shirt } from "lucide-react";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Button } from "@/components/ui/button";
 import { PERSONA_SESSION_KEY, type SellerPersonaChoice } from "@/hooks/use-persona-sync";
@@ -38,23 +38,7 @@ export default function WelcomePersonaPage() {
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             Choose how you use your portfolio
           </h1>
-          <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            Right after signup a short tour shows what saves where. Use either card below to tune language before signup, jump into a guest
-            valuation first, or open signup from the top navigation anytime. Flip your track later under Profile.
-          </p>
-          <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            If you pick a track while logged out, your browser only keeps it until you finish signing up, then welcome carries it so wording
-            lines up.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3 pt-2 sm:justify-start">
-            <Link href="/sign-in">
-              <Button size="lg" variant="outline" className="rounded-2xl gap-2">
-                <LogIn className="h-5 w-5" aria-hidden />
-                Already have an account?
-              </Button>
-            </Link>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-4 border-t border-border/60 pt-6 text-sm sm:justify-start">
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-sm sm:justify-start">
             <Link href="/pricing#plans">
               <span className="font-medium text-accent underline-offset-4 hover:underline">Compare subscription tiers</span>
             </Link>

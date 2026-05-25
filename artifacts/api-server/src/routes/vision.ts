@@ -4,20 +4,21 @@ import { getAssetType } from "../lib/assetTypes";
 import { extractAttributesFromPhoto } from "../lib/vision";
 import { logger } from "../lib/logger";
 import { rateLimit } from "../lib/rateLimit";
-import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
+import { getUserId } from "../middlewares/requireAuth";
 import { recordPlatformEvent } from "../lib/platformEvents";
 
 const router: IRouter = Router();
 
 // Vision calls are expensive (Anthropic image input). Cap at 8 per minute per IP.
+// Open to signed-out guests (e.g. /start) so photo auto-fill works before sign-up; authenticated userId is logged when present.
 const visionLimit = rateLimit({
   windowMs: 60_000,
   max: 8,
   message: "Too many photo analyses in a row: please wait a minute and try again.",
 });
 
-router.post("/vision/extract", requireAuth, visionLimit, async (req, res): Promise<void> => {
-  const userId = (req as AuthedRequest).userId!;
+router.post("/vision/extract", visionLimit, async (req, res): Promise<void> => {
+  const userId = getUserId(req);
   const body = ExtractFromPhotoBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
