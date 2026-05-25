@@ -10,9 +10,11 @@ import adminRouter from "./admin";
 import meRouter from "./me";
 import billingRouter from "./billing";
 import deskRouter from "./desk";
+import { stubBillingPlanAlsMiddleware } from "../lib/authStubBillingPlan";
 
 const router: IRouter = Router();
 
+router.use(stubBillingPlanAlsMiddleware);
 router.use(healthRouter);
 router.use(geoRouter);
 router.use(fxRouter);

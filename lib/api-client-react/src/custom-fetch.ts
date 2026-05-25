@@ -18,6 +18,18 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
+type ExtraRequestHeadersGetter = () => HeadersInit | undefined;
+
+let _extraRequestHeadersGetter: ExtraRequestHeadersGetter | null = null;
+
+/**
+ * Optional headers merged into every request (after explicit `headers`, before Bearer attachment).
+ * Use for local tooling such as AUTH_STUB billing plan previews; clear with `null` on unmount.
+ */
+export function setExtraRequestHeadersGetter(getter: ExtraRequestHeadersGetter | null): void {
+  _extraRequestHeadersGetter = getter;
+}
+
 /**
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).
@@ -352,7 +364,11 @@ export async function customFetch<T = unknown>(
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
   }
 
-  const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+  const headers = mergeHeaders(
+    isRequest(input) ? input.headers : undefined,
+    headersInit,
+    _extraRequestHeadersGetter?.() ?? undefined,
+  );
 
   if (
     typeof init.body === "string" &&

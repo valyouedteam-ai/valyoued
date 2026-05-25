@@ -244,6 +244,41 @@ export default function HomePage() {
         ) : null}
       </header>
 
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {quickLinks.map(({ href, title, description, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className={cn(
+              "group rounded-2xl border border-border/60 bg-card/55 p-4 shadow-sm backdrop-blur-sm transition-colors",
+              "hover:border-accent/35 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+            )}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                <Icon className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-1 font-medium leading-tight">
+                  {title}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+                <p className="text-xs leading-snug text-muted-foreground">{description}</p>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </section>
+
+      {showingInheritanceUpsell ? (
+        <PaidFeatureTeaser
+          eyebrow="Everyday steward boost"
+          title="Separate inheritance ledger"
+          description="Activate the add-on in Settings to spin up a second workspace for estate rehearsal, heirs, or heirloom tracking."
+          href="/settings"
+        />
+      ) : null}
+
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -296,41 +331,6 @@ export default function HomePage() {
             );
           })}
         </div>
-      </section>
-
-      {showingInheritanceUpsell ? (
-        <PaidFeatureTeaser
-          eyebrow="Everyday steward boost"
-          title="Separate inheritance ledger"
-          description="Activate the add-on in Settings to spin up a second workspace for estate rehearsal, heirs, or heirloom tracking."
-          href="/settings"
-        />
-      ) : null}
-
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {quickLinks.map(({ href, title, description, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "group rounded-2xl border border-border/60 bg-card/55 p-4 shadow-sm backdrop-blur-sm transition-colors",
-              "hover:border-accent/35 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                <Icon className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-1 font-medium leading-tight">
-                  {title}
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                </div>
-                <p className="text-xs leading-snug text-muted-foreground">{description}</p>
-              </div>
-            </div>
-          </Link>
-        ))}
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">

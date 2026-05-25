@@ -2,6 +2,7 @@ import { Router as WouterRouter, useLocation } from "wouter";
 import { useEffect, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, useAuth } from "@clerk/react";
+import { StubBillingPlanDevProvider } from "@/context/StubBillingPlanDevContext";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -208,8 +209,10 @@ function App() {
             <GeoCurrencyBootstrap />
             {AUTH_STUB_MODE ? (
               <AuthStubContext.Provider value={true}>
-                <StubApiBridge />
-                <AppRoutes authStub />
+                <StubBillingPlanDevProvider>
+                  <StubApiBridge />
+                  <AppRoutes authStub />
+                </StubBillingPlanDevProvider>
               </AuthStubContext.Provider>
             ) : (
               <AuthStubContext.Provider value={false}>

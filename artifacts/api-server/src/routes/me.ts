@@ -110,21 +110,19 @@ router.post("/me/email-alerts/test", requireAuth, async (req, res): Promise<void
 router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
   const ent = await resolveUserEntitlements(userId);
-  const stubTier = process.env.AUTH_STUB_BILLING_TIER?.trim();
-  if (isAuthStubMode() && (stubTier === "pro" || stubTier === "free")) {
-    const paid = stubTier === "pro";
+  if (isAuthStubMode()) {
     res.json({
-      tier: stubTier,
-      status: paid ? "stub_active" : "inactive",
+      tier: ent.tier,
+      status: ent.hasPaidValuationTier ? "stub_active" : "inactive",
       stripeCustomerId: null,
       stripeStub: isStripeStubMode(),
-      planSlug: paid ? "everyday_plus" : "none",
-      hasInheritanceAddon: process.env.AUTH_STUB_INHERITANCE_ADDON?.trim() === "1",
+      planSlug: ent.planSlug === "none" ? "none" : ent.planSlug,
+      hasInheritanceAddon: Boolean(ent.hasInheritanceAddon),
       valuationsThisMonth: ent.valuationsThisMonth,
-      valuationsMonthLimit: paid ? null : ent.valuationsMonthLimit,
-      valuationsRemainingFree: paid ? null : ent.valuationsRemainingFree,
-      hasPaidValuationTier: paid,
-      comparableUiMode: paid ? ("full" as const) : ("preview" as const),
+      valuationsMonthLimit: ent.valuationsMonthLimit,
+      valuationsRemainingFree: ent.valuationsRemainingFree,
+      hasPaidValuationTier: ent.hasPaidValuationTier,
+      comparableUiMode: ent.hasPaidValuationTier ? ("full" as const) : ("preview" as const),
     });
     return;
   }

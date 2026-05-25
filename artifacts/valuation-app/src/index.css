@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 @layer theme, base, clerk, components, utilities;
 
@@ -124,7 +124,7 @@
   --sidebar-ring: 175 55% 40%;
 
   --app-font-sans: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
-  --app-font-serif: "Instrument Serif", "Georgia", serif;
+  --app-font-serif: var(--app-font-sans);
   --app-font-mono: var(--app-font-sans);
   --app-font-display: var(--app-font-sans);
 
@@ -204,9 +204,9 @@
 
 @layer utilities {
   .font-brand {
-    font-family: var(--app-font-serif);
-    letter-spacing: -0.02em;
-    font-weight: 400;
+    font-family: var(--app-font-sans);
+    letter-spacing: -0.035em;
+    font-weight: 650;
   }
 
   .text-ui-caps {

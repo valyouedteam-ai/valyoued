@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
-import { useSellerPersona } from "@/hooks/use-seller-persona";
+import { SellerPersonaProvider, useSellerPersona } from "@/hooks/use-seller-persona";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
+import { StubBillingPlanSwitcher } from "@/components/dev/StubBillingPlanSwitcher";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -37,6 +39,9 @@ import {
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 const SHOW_DEV_PRO_CHROME_PREVIEW = import.meta.env.DEV;
+
+/** Auth stub rotates real API entitlements; hide the purely cosmetic Clerk-only Pro chrome while stubbed. */
+const SHOW_STUB_PLAN_TOGGLE = AUTH_STUB_MODE && import.meta.env.DEV;
 
 type NavItem = { href: string; label: string; icon: typeof LibrarySquare };
 
@@ -321,7 +326,13 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {SHOW_DEV_PRO_CHROME_PREVIEW && !isMobile ? <ProPreviewToggle /> : null}
+            {!isMobile ? (
+              SHOW_STUB_PLAN_TOGGLE ? (
+                <StubBillingPlanSwitcher />
+              ) : SHOW_DEV_PRO_CHROME_PREVIEW ? (
+                <ProPreviewToggle />
+              ) : null
+            ) : null}
             {!isMobile ? <PlanBrief className="hidden lg:flex" /> : null}
             <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
               <Button
@@ -347,7 +358,11 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         </div>
         {isMobile ? (
           <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle compact /> : null}
+            {SHOW_STUB_PLAN_TOGGLE ? (
+              <StubBillingPlanSwitcher compact />
+            ) : SHOW_DEV_PRO_CHROME_PREVIEW ? (
+              <ProPreviewToggle compact />
+            ) : null}
             <PlanBrief />
           </div>
         ) : null}
@@ -366,7 +381,9 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <PortfolioWorkspaceProvider>
-      <AppLayoutShell>{children}</AppLayoutShell>
+      <SellerPersonaProvider>
+        <AppLayoutShell>{children}</AppLayoutShell>
+      </SellerPersonaProvider>
     </PortfolioWorkspaceProvider>
   );
 }

@@ -6,7 +6,14 @@ import {
   estimateUsageMonthlyTable,
 } from "@workspace/db";
 
+import { isAuthStubMode } from "./authStub";
+import { currentAuthStubBillingPlanSlug } from "./authStubBillingPlan";
+
 const FREE_MONTHLY_VALUATION_CAP = 5;
+
+function stubInheritanceAddonFromEnv(): boolean {
+  return process.env.AUTH_STUB_INHERITANCE_ADDON?.trim() === "1";
+}
 
 const ACTIVE_SUB_STATUSES = new Set(["active", "trialing", "past_due"]);
 
@@ -117,7 +124,35 @@ export async function incrementMonthlyEstimateUsage(userId: string): Promise<voi
     });
 }
 
+async function resolveAuthStubBillingEntitlements(userId: string, planSlug: PlanSlug): Promise<UserEntitlements> {
+  const valuationsThisMonth = await getValuationsUsedThisMonth(userId);
+  const hasPaidValuationTier = planSlug !== "none";
+  const valuationsMonthLimit = hasPaidValuationTier ? null : FREE_MONTHLY_VALUATION_CAP;
+  const valuationsRemainingFree =
+    valuationsMonthLimit == null ? null : Math.max(0, valuationsMonthLimit - valuationsThisMonth);
+
+  return {
+    tier: hasPaidValuationTier ? "pro" : "free",
+    planSlug,
+    subscriptionStatus: hasPaidValuationTier ? "stub_active" : "inactive",
+    hasInheritanceAddon: stubInheritanceAddonFromEnv(),
+    valuationsThisMonth,
+    valuationsMonthLimit,
+    valuationsRemainingFree,
+    hasPaidValuationTier,
+    listingQuality: planSlug === "professional" ? "premium" : "basic",
+    canUseInternationalArbitrage: hasPaidValuationTier,
+    canUseAdvancedSellingReco: planSlug === "professional",
+    canUseMonitorEmailAlerts: hasPaidValuationTier,
+  };
+}
+
 export async function resolveUserEntitlements(userId: string): Promise<UserEntitlements> {
+  if (isAuthStubMode()) {
+    const planSlug = currentAuthStubBillingPlanSlug();
+    return await resolveAuthStubBillingEntitlements(userId, planSlug);
+  }
+
   const row = await billingRow(userId);
   const status = row?.status ?? "inactive";
   const activePaid =
