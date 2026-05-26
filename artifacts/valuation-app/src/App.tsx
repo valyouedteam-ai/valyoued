@@ -200,6 +200,12 @@ function ClerkProviderWithRouter() {
   );
 }
 
+/** Lets the nav-tier toggle run in real Clerk dev: billing is simulated client-side; auth stub sends `X-Stub-Billing-Plan`. */
+function DevStubBillingShell({ children }: { children: ReactNode }) {
+  if (import.meta.env.DEV) return <StubBillingPlanDevProvider>{children}</StubBillingPlanDevProvider>;
+  return children;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -207,18 +213,18 @@ function App() {
         <WouterRouter base={basePath}>
           <ProTierProvider>
             <GeoCurrencyBootstrap />
-            {AUTH_STUB_MODE ? (
-              <AuthStubContext.Provider value={true}>
-                <StubBillingPlanDevProvider>
+            <DevStubBillingShell>
+              {AUTH_STUB_MODE ? (
+                <AuthStubContext.Provider value={true}>
                   <StubApiBridge />
                   <AppRoutes authStub />
-                </StubBillingPlanDevProvider>
-              </AuthStubContext.Provider>
-            ) : (
-              <AuthStubContext.Provider value={false}>
-                <ClerkProviderWithRouter />
-              </AuthStubContext.Provider>
-            )}
+                </AuthStubContext.Provider>
+              ) : (
+                <AuthStubContext.Provider value={false}>
+                  <ClerkProviderWithRouter />
+                </AuthStubContext.Provider>
+              )}
+            </DevStubBillingShell>
           </ProTierProvider>
         </WouterRouter>
         <Toaster />

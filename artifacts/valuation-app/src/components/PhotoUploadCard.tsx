@@ -17,19 +17,45 @@ interface Props {
   /** Top-level category from asset type (e.g. "Real Estate"). Adjusts instructional copy. */
   assetCategory?: string;
   onAutoFill: (extracted: Record<string, string>, suggestedTitle?: string) => void;
-  /** True on /start before sign-up: avoids sending Authorization so Clerk middleware does not 401 anonymous requests. */
-  guestVisionExtract?: boolean;
 }
 
 const ALLOWED_TYPES: VisionExtractInputMimeType[] = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB raw file (becomes ~6.7MB base64)
+
+function inferMimeFromFilename(name: string): VisionExtractInputMimeType | null {
+  const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+  switch (ext) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".webp":
+      return "image/webp";
+    case ".gif":
+      return "image/gif";
+    default:
+      return null;
+  }
+}
+
+/** Some browsers report `image/jpg` or an empty `type`; Zod only allows a fixed enum. */
+function normalizeUploadedMime(file: File): VisionExtractInputMimeType | null {
+  let raw = (file.type ?? "").trim().toLowerCase();
+  if (raw === "image/jpg" || raw === "image/pjpeg" || raw === "image/x-citrix-jpeg") {
+    raw = "image/jpeg";
+  }
+  if (ALLOWED_TYPES.includes(raw as VisionExtractInputMimeType)) {
+    return raw as VisionExtractInputMimeType;
+  }
+  return inferMimeFromFilename(file.name);
+}
 
 export function PhotoUploadCard({
   assetTypeId,
   assetTypeName,
   assetCategory,
   onAutoFill,
-  guestVisionExtract = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -39,7 +65,7 @@ export function PhotoUploadCard({
   const [result, setResult] = useState<VisionExtractResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const { toast } = useToast();
-  const extract = useExtractFromPhoto(guestVisionExtract ? { request: { attachAuthToken: false } } : undefined);
+  const extract = useExtractFromPhoto({ request: { attachAuthToken: false } });
   const realEstate = assetCategory === "Real Estate";
 
   // Bumped on each new file or asset-type change so we can drop stale responses.
@@ -65,7 +91,8 @@ export function PhotoUploadCard({
 
   const handleFile = async (file: File) => {
     requestTokenRef.current += 1;
-    if (!ALLOWED_TYPES.includes(file.type as VisionExtractInputMimeType)) {
+    const normalizedMime = normalizeUploadedMime(file);
+    if (!normalizedMime) {
       toast({
         title: "Unsupported file type",
         description: "Please upload a JPG, PNG, WebP or GIF photo.",
@@ -83,7 +110,7 @@ export function PhotoUploadCard({
     }
 
     setFilename(file.name);
-    setMimeType(file.type as VisionExtractInputMimeType);
+    setMimeType(normalizedMime);
     setResult(null);
     // Mark this upload as eligible for auto-extraction. The effect will pick it
     // up once base64 + assetTypeId are both ready.
@@ -171,14 +198,23 @@ export function PhotoUploadCard({
         },
         onError: (err: unknown) => {
           if (token !== requestTokenRef.current) return;
-          if (err instanceof ApiError && err.status === 503) {
-            const data = err.data as { code?: string; error?: string } | null | undefined;
-            if (data?.code === "VISION_LLM_NOT_CONFIGURED") {
+          if (err instanceof ApiError) {
+            const payload = err.data as { code?: string; error?: string } | null | undefined;
+            if (err.status === 503 && payload?.code === "VISION_LLM_NOT_CONFIGURED") {
               toast({
                 title: "Photo auto-fill unavailable",
                 description:
-                  data.error ??
+                  payload.error ??
                   "This deployment has no AI key configured. Continue with the form manually, or ask the operator to set ANTHROPIC_API_KEY or OPENAI_API_KEY on the API service.",
+                variant: "destructive",
+              });
+              return;
+            }
+            const fromApi = typeof payload?.error === "string" ? payload.error.trim() : "";
+            if (fromApi.length > 0 && fromApi.length <= 220) {
+              toast({
+                title: "Couldn't analyse the photo",
+                description: fromApi,
                 variant: "destructive",
               });
               return;

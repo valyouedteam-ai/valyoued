@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { SellerPersonaProvider, useSellerPersona } from "@/hooks/use-seller-persona";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
@@ -40,8 +39,8 @@ const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 const SHOW_DEV_PRO_CHROME_PREVIEW = import.meta.env.DEV;
 
-/** Auth stub rotates real API entitlements; hide the purely cosmetic Clerk-only Pro chrome while stubbed. */
-const SHOW_STUB_PLAN_TOGGLE = AUTH_STUB_MODE && import.meta.env.DEV;
+/** Dev-only: Free / Everyday+ / Pro tier toggle (auth stub sends `X-Stub-Billing-Plan`; Clerk dev simulates billing in the client). */
+const SHOW_STUB_PLAN_TOGGLE = import.meta.env.DEV;
 
 type NavItem = { href: string; label: string; icon: typeof LibrarySquare };
 
@@ -180,10 +179,11 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
   const paidApi = Boolean(data?.hasPaidValuationTier);
   const uiLabel = paidApi ? "Pro valuation access" : "Free valuation plan";
   const remaining = !paidApi ? data?.valuationsRemainingFree : null;
+  const briefHref = paidApi ? "/settings" : "/pricing#plans";
 
   return (
     <Link
-      href="/settings"
+      href={briefHref}
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition-colors hover:bg-muted/35",
         paidApi ? "border-accent/35 bg-accent/10" : "border-border/80 bg-card",
@@ -191,7 +191,9 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
         className,
       )}
       title={
-        paidApi ? "Stripe shows an active paid valuation tier. Opens Settings for receipts and upgrades." : "Open billing and free valuation limits."
+        paidApi
+          ? "Stripe shows an active paid valuation tier. Opens Settings for receipts and upgrades."
+          : "View plans and upgrade on the pricing page."
       }
     >
       <Sparkles className={cn("h-4 w-4 shrink-0", paidApi ? "text-accent" : "text-muted-foreground")} />
@@ -326,10 +328,10 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {!isMobile ? (
-              SHOW_STUB_PLAN_TOGGLE ? (
-                <StubBillingPlanSwitcher />
-              ) : SHOW_DEV_PRO_CHROME_PREVIEW ? (
+            {SHOW_STUB_PLAN_TOGGLE ? (
+              <StubBillingPlanSwitcher compact={isMobile} />
+            ) : SHOW_DEV_PRO_CHROME_PREVIEW ? (
+              !isMobile ? (
                 <ProPreviewToggle />
               ) : null
             ) : null}
@@ -358,9 +360,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         </div>
         {isMobile ? (
           <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            {SHOW_STUB_PLAN_TOGGLE ? (
-              <StubBillingPlanSwitcher compact />
-            ) : SHOW_DEV_PRO_CHROME_PREVIEW ? (
+            {SHOW_STUB_PLAN_TOGGLE ? null : SHOW_DEV_PRO_CHROME_PREVIEW ? (
               <ProPreviewToggle compact />
             ) : null}
             <PlanBrief />

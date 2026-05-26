@@ -186,7 +186,9 @@ export default function HomePage() {
       <header className="space-y-4">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{headlineForHome}</h1>
-          <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">{sublineForHome}</p>
+          <p className="w-full max-w-none whitespace-nowrap overflow-x-auto overscroll-x-contain text-base leading-relaxed text-muted-foreground">
+            {sublineForHome}
+          </p>
         </div>
         {!portfoliosLoading && portfolios != null && portfolios.length > 1 ? (
           <div className="flex flex-wrap gap-2 pt-1">
@@ -269,15 +271,6 @@ export default function HomePage() {
           </Link>
         ))}
       </section>
-
-      {showingInheritanceUpsell ? (
-        <PaidFeatureTeaser
-          eyebrow="Everyday steward boost"
-          title="Separate inheritance ledger"
-          description="Activate the add-on in Settings to spin up a second workspace for estate rehearsal, heirs, or heirloom tracking."
-          href="/settings"
-        />
-      ) : null}
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -613,6 +606,15 @@ export default function HomePage() {
           </div>
         ) : null}
       </section>
+
+      {showingInheritanceUpsell ? (
+        <PaidFeatureTeaser
+          eyebrow="Everyday steward boost"
+          title="Separate inheritance ledger"
+          description="Activate the add-on in Settings to spin up a second workspace for estate rehearsal, heirs, or heirloom tracking."
+          href="/settings"
+        />
+      ) : null}
     </div>
   );
 }

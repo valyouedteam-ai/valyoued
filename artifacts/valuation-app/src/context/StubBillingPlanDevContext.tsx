@@ -10,11 +10,13 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { setExtraRequestHeadersGetter } from "@workspace/api-client-react";
 import { PERSONA_SESSION_KEY } from "@/hooks/use-persona-sync";
+import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 
 /** Canonical values sent via `X-Stub-Billing-Plan` together with AUTH_STUB_MODE. */
 export type StubBillingPlanSlug = "free" | "everyday_plus" | "professional";
 
 const STORAGE_KEY = "valyoued.stubBillingPlan";
+const STORAGE_INHERITANCE = "valyoued.stubInheritanceAddon";
 
 function readStoredSlug(): StubBillingPlanSlug | null {
   try {
@@ -26,10 +28,25 @@ function readStoredSlug(): StubBillingPlanSlug | null {
   return null;
 }
 
-export const StubBillingPlanDevContext = createContext<null | {
+function readStoredInheritance(): boolean {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_INHERITANCE)?.trim();
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+  } catch {
+    /* quota / privacy mode */
+  }
+  return false;
+}
+
+export type StubBillingPlanDevContextValue = {
   planSlug: StubBillingPlanSlug;
   setPlanSlug: (slug: StubBillingPlanSlug) => void;
-}>(null);
+  inheritanceAddon: boolean;
+  setInheritanceAddon: (next: boolean) => void;
+};
+
+export const StubBillingPlanDevContext = createContext<StubBillingPlanDevContextValue | null>(null);
 
 export function useOptionalStubBillingPlanDev() {
   return useContext(StubBillingPlanDevContext);
@@ -40,6 +57,7 @@ export function StubBillingPlanDevProvider({ children }: { children: ReactNode }
   const queryClient = useQueryClient();
 
   const [planSlug, setPlanSlugState] = useState<StubBillingPlanSlug>(() => readStoredSlug() ?? "free");
+  const [inheritanceAddon, setInheritanceAddonState] = useState(readStoredInheritance);
 
   const setPlanSlug = useCallback((slug: StubBillingPlanSlug) => {
     setPlanSlugState(slug);
@@ -50,12 +68,26 @@ export function StubBillingPlanDevProvider({ children }: { children: ReactNode }
     }
   }, []);
 
+  const setInheritanceAddon = useCallback((next: boolean) => {
+    setInheritanceAddonState(next);
+    try {
+      sessionStorage.setItem(STORAGE_INHERITANCE, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
+    if (!AUTH_STUB_MODE) {
+      setExtraRequestHeadersGetter(null);
+      return;
+    }
     setExtraRequestHeadersGetter(() => ({
       "X-Stub-Billing-Plan": planSlug,
+      "X-Stub-Inheritance-Addon": inheritanceAddon ? "1" : "0",
     }));
     return () => setExtraRequestHeadersGetter(null);
-  }, [planSlug]);
+  }, [planSlug, inheritanceAddon]);
 
   useEffect(() => {
     try {
@@ -68,9 +100,18 @@ export function StubBillingPlanDevProvider({ children }: { children: ReactNode }
 
   useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: ["me-billing"] });
-  }, [planSlug, queryClient]);
+    void queryClient.invalidateQueries({ queryKey: ["/api/portfolios"] });
+  }, [planSlug, inheritanceAddon, queryClient]);
 
-  const value = useMemo(() => ({ planSlug, setPlanSlug }), [planSlug, setPlanSlug]);
+  const value = useMemo(
+    (): StubBillingPlanDevContextValue => ({
+      planSlug,
+      setPlanSlug,
+      inheritanceAddon,
+      setInheritanceAddon,
+    }),
+    [planSlug, setPlanSlug, inheritanceAddon, setInheritanceAddon],
+  );
 
   return <StubBillingPlanDevContext.Provider value={value}>{children}</StubBillingPlanDevContext.Provider>;
 }

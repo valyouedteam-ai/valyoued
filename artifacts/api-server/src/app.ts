@@ -47,10 +47,10 @@ app.post(
   },
 );
 
-// Allow JSON bodies up to 8MB so a ~5MB photo (base64-inflated to ~6.7MB) fits
-// while bounding abuse on heavier valuation endpoints.
-app.use(express.json({ limit: "8mb" }));
-app.use(express.urlencoded({ extended: true, limit: "8mb" }));
+// Photo extract sends base64 (~4/3 the raw JPEG). A 6–7MB decoded image needs ~9MB JSON;
+// leave headroom beyond the client's 5MB raw cap so the route can return readable errors instead of dropping the body mid-parse.
+app.use(express.json({ limit: "12mb" }));
+app.use(express.urlencoded({ extended: true, limit: "12mb" }));
 
 if (isAuthStubMode()) {
   logger.warn(

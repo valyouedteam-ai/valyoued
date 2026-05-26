@@ -56,8 +56,13 @@ function SellerPersonaFromStubBillingInner({ children }: { children: ReactNode }
 
 function SellerPersonaFromClerkInner({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
+  const stubTier = useOptionalStubBillingPlanDev();
 
   const pack = useMemo((): SellerPersonaPack => {
+    if (import.meta.env.DEV && stubTier) {
+      return personaPackForStubBillingPlan(stubTier.planSlug);
+    }
+
     const fromClerkRaw = user?.unsafeMetadata?.sellerPersona;
     const fromClerk: SellerPersonaResolved =
       fromClerkRaw === "everyday" || fromClerkRaw === "professional" ? fromClerkRaw : null;
@@ -83,7 +88,7 @@ function SellerPersonaFromClerkInner({ children }: { children: ReactNode }) {
       sublineForHome:
         "Track net worth snapshots by bucket, revisit monitors, draft listings, then upgrade whenever you want deeper market rows.",
     };
-  }, [isLoaded, user]);
+  }, [isLoaded, user, stubTier]);
 
   return <SellerPersonaContext.Provider value={pack}>{children}</SellerPersonaContext.Provider>;
 }

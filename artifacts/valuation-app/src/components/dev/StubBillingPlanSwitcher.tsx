@@ -1,7 +1,9 @@
-import { useContext } from "react";
+import { useContext, useId } from "react";
 import { StubBillingPlanDevContext } from "@/context/StubBillingPlanDevContext";
 import type { StubBillingPlanSlug } from "@/context/StubBillingPlanDevContext";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 const OPTIONS: { value: StubBillingPlanSlug; label: string }[] = [
@@ -11,20 +13,22 @@ const OPTIONS: { value: StubBillingPlanSlug; label: string }[] = [
 ];
 
 /**
- * Visible in dev when `VITE_AUTH_STUB_MODE` is on.
- * Sends `X-Stub-Billing-Plan` on every API call so entitlement checks match the mocked workspace.
+ * Shown whenever `StubBillingPlanDevProvider` mounts (development builds).
+ * Auth stub: sends `X-Stub-Billing-Plan` and `X-Stub-Inheritance-Addon` so entitlements and portfolios stay in sync.
+ * Clerk dev: billing snapshot is mocked in the browser; use auth stub to exercise the inheritance workspace end to end.
  */
 export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
   const ctx = useContext(StubBillingPlanDevContext);
+  const inheritanceFieldId = useId();
   if (!ctx) return null;
 
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 rounded-full border border-border/70 bg-card/85 px-1.5 py-1 shadow-sm",
+        "flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-full border border-border/70 bg-card/85 px-1.5 py-1 shadow-sm",
         compact && "justify-center px-2",
       )}
-      title='Dev toggle: rotates stub billing tiers sent as X-Stub-Billing-Plan (AUTH_STUB_MODE on the API).'
+      title="Dev tier and inheritance. Auth stub: API reads X-Stub-Billing-Plan and X-Stub-Inheritance-Addon. Clerk dev: billing fields are mocked client-side; portfolio list is still real."
     >
       <span
         className={cn(
@@ -32,7 +36,7 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
           compact && "hidden",
         )}
       >
-        Stub plan
+        Dev tier
       </span>
       <ToggleGroup
         type="single"
@@ -50,6 +54,29 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
+      <div
+        className={cn(
+          "flex items-center gap-2 border-border/60 pl-1 min-[980px]:border-l min-[980px]:pl-3",
+          compact && "min-[980px]:pl-2",
+        )}
+      >
+        <Label
+          htmlFor={inheritanceFieldId}
+          className={cn(
+            "cursor-pointer whitespace-nowrap text-muted-foreground",
+            compact ? "text-[10px]" : "text-xs",
+          )}
+        >
+          {compact ? "Inh." : "Inheritance"}
+        </Label>
+        <Switch
+          id={inheritanceFieldId}
+          className="scale-90 data-[state=checked]:bg-accent"
+          checked={ctx.inheritanceAddon}
+          onCheckedChange={ctx.setInheritanceAddon}
+          aria-label="Toggle inheritance add-on (dev)"
+        />
+      </div>
     </div>
   );
 }

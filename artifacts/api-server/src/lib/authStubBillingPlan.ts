@@ -5,14 +5,21 @@ import { isAuthStubMode } from "./authStub";
 /** Mirrors `PlanSlug`; lives here to avoid coupling this module to Drizzle-heavy entitlements imports. */
 export type AuthStubResolvedPlanSlug = "none" | "everyday_plus" | "professional";
 
-const slugStore = new AsyncLocalStorage<AuthStubResolvedPlanSlug>();
+type StubRequestBillingState = {
+  planSlug: AuthStubResolvedPlanSlug;
+  inheritanceAddon: boolean;
+};
+
+const billingStateStore = new AsyncLocalStorage<StubRequestBillingState>();
 
 export function stubBillingPlanAlsMiddleware(req: Request, _res: Response, next: NextFunction): void {
   if (!isAuthStubMode()) {
     next();
     return;
   }
-  slugStore.run(parseAuthStubBillingPlanFromRequest(req), () => next());
+  const planSlug = resolveAuthStubBillingPlanSlugFromRequest(req);
+  const inheritanceAddon = resolveAuthStubInheritanceAddonFromRequest(req);
+  billingStateStore.run({ planSlug, inheritanceAddon }, () => next());
 }
 
 function normalizeHeaderOrEnvToken(raw: string | undefined): string {
@@ -47,13 +54,40 @@ function parseEnvAuthStubBillingTier(): AuthStubResolvedPlanSlug {
   return slug ?? "none";
 }
 
-function parseAuthStubBillingPlanFromRequest(req: Request): AuthStubResolvedPlanSlug {
+function mapAuthStubInheritanceHeader(req: Request): boolean | null {
+  const raw = req.get("x-stub-inheritance-addon");
+  if (raw == null || raw.trim() === "") return null;
+  const h = normalizeHeaderOrEnvToken(raw);
+  if (h === "1" || h === "true" || h === "on" || h === "yes") return true;
+  if (h === "0" || h === "false" || h === "off" || h === "no") return false;
+  return null;
+}
+
+/** Env fallback when the dev client does not send `X-Stub-Inheritance-Addon`. */
+export function parseEnvAuthStubInheritanceAddon(): boolean {
+  return process.env.AUTH_STUB_INHERITANCE_ADDON?.trim() === "1";
+}
+
+function resolveAuthStubBillingPlanSlugFromRequest(req: Request): AuthStubResolvedPlanSlug {
   const fromHeader = mapTokenToSlug(normalizeHeaderOrEnvToken(req.get("x-stub-billing-plan")));
   return fromHeader ?? parseEnvAuthStubBillingTier();
 }
 
+function resolveAuthStubInheritanceAddonFromRequest(req: Request): boolean {
+  const fromHeader = mapAuthStubInheritanceHeader(req);
+  if (fromHeader !== null) return fromHeader;
+  return parseEnvAuthStubInheritanceAddon();
+}
+
 /** Inside an API request, prefers the ALS value from middleware; falls back to env when ALS is absent. */
 export function currentAuthStubBillingPlanSlug(): AuthStubResolvedPlanSlug {
-  const fromStore = slugStore.getStore();
-  return fromStore ?? parseEnvAuthStubBillingTier();
+  const s = billingStateStore.getStore();
+  if (s) return s.planSlug;
+  return parseEnvAuthStubBillingTier();
+}
+
+export function currentAuthStubInheritanceAddon(): boolean {
+  const s = billingStateStore.getStore();
+  if (s) return s.inheritanceAddon;
+  return parseEnvAuthStubInheritanceAddon();
 }

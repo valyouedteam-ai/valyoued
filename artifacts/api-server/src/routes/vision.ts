@@ -2,13 +2,55 @@ import { Router, type IRouter } from "express";
 import { ExtractFromPhotoBody, ExtractFromPhotoResponse } from "@workspace/api-zod";
 import { isLlmConfigured } from "@workspace/llm";
 import { getAssetType } from "../lib/assetTypes";
-import { extractAttributesFromPhoto } from "../lib/vision";
+import { extractAttributesFromPhoto, type VisionExtractOutput } from "../lib/vision";
 import { logger } from "../lib/logger";
 import { rateLimit } from "../lib/rateLimit";
 import { getUserId } from "../middlewares/requireAuth";
 import { recordPlatformEvent } from "../lib/platformEvents";
 
 const router: IRouter = Router();
+
+function buildSanitizedVisionResponse(result: VisionExtractOutput) {
+  const extracted: Record<string, string> = {};
+  for (const [k, v] of Object.entries(result.extracted ?? {})) {
+    if (typeof k !== "string" || typeof v !== "string") continue;
+    const vv = v.trim();
+    if (vv.length === 0) continue;
+    extracted[k] = vv.length > 10_000 ? vv.slice(0, 10_000) : vv;
+  }
+
+  const confidence =
+    typeof result.confidence === "number" && Number.isFinite(result.confidence)
+      ? Math.min(1, Math.max(0, result.confidence))
+      : 0.5;
+
+  const notesRaw = typeof result.notes === "string" ? result.notes : "";
+  const notes = notesRaw.length > 20_000 ? notesRaw.slice(0, 20_000) : notesRaw;
+
+  const parsed = ExtractFromPhotoResponse.safeParse({
+    extracted,
+    confidence,
+    notes,
+    ...(typeof result.suggestedTitle === "string" && result.suggestedTitle.trim() !== ""
+      ? { suggestedTitle: result.suggestedTitle.trim().slice(0, 400) }
+      : {}),
+  });
+
+  if (parsed.success) return parsed.data;
+
+  logger.warn(
+    { issues: parsed.error.flatten() },
+    "Vision response missed OpenAPI/zod constraints; falling back to a minimal envelope",
+  );
+  const minimal = ExtractFromPhotoResponse.safeParse({
+    extracted: {},
+    confidence: 0,
+    notes: notes ? notes.slice(0, 2000) : "Fill in the fields manually.",
+  });
+  return minimal.success
+    ? minimal.data
+    : { extracted: {}, confidence: 0, notes: "Fill in the fields manually." };
+}
 
 // Vision calls are expensive (Anthropic image input). Cap at 8 per minute per IP.
 // Open to signed-out guests (e.g. /start) so photo auto-fill works before sign-up; authenticated userId is logged when present.
@@ -20,7 +62,16 @@ const visionLimit = rateLimit({
 
 router.post("/vision/extract", visionLimit, async (req, res): Promise<void> => {
   const userId = getUserId(req);
-  const body = ExtractFromPhotoBody.safeParse(req.body);
+
+  const normalizedBody =
+    req.body && typeof req.body === "object" && typeof (req.body as { mimeType?: unknown }).mimeType === "string"
+      ? {
+          ...(req.body as Record<string, unknown>),
+          mimeType: String((req.body as { mimeType: string }).mimeType).replace(/^image\/jpg$/i, "image/jpeg"),
+        }
+      : req.body;
+
+  const body = ExtractFromPhotoBody.safeParse(normalizedBody);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
     return;
@@ -57,14 +108,7 @@ router.post("/vision/extract", visionLimit, async (req, res): Promise<void> => {
       mimeType: body.data.mimeType,
     });
 
-    res.json(
-      ExtractFromPhotoResponse.parse({
-        extracted: result.extracted,
-        confidence: result.confidence,
-        notes: result.notes,
-        suggestedTitle: result.suggestedTitle,
-      }),
-    );
+    res.json(buildSanitizedVisionResponse(result));
     void recordPlatformEvent({
       userId,
       eventType: "vision.extracted",

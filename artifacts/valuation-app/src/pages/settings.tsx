@@ -564,8 +564,8 @@ function SettingsPageInner({
               <Sparkles className="h-5 w-5 text-accent" />
               Subscription &amp; valuations
             </CardTitle>
-            <CardDescription className="leading-relaxed text-pretty">
-              {billing ? (
+            {billing ? (
+              <CardDescription className="leading-relaxed text-pretty">
                 <>
                   API tier{" "}
                   <span className="font-medium text-foreground tabular-nums">{billing.tier}</span>
@@ -592,10 +592,8 @@ function SettingsPageInner({
                     </>
                   ) : null}
                 </>
-              ) : (
-                <>Fetching billing snapshot from the API…</>
-              )}
-            </CardDescription>
+              </CardDescription>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
             {!billing?.hasPaidValuationTier ? (

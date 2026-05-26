@@ -7,13 +7,9 @@ import {
 } from "@workspace/db";
 
 import { isAuthStubMode } from "./authStub";
-import { currentAuthStubBillingPlanSlug } from "./authStubBillingPlan";
+import { currentAuthStubBillingPlanSlug, currentAuthStubInheritanceAddon } from "./authStubBillingPlan";
 
 const FREE_MONTHLY_VALUATION_CAP = 5;
-
-function stubInheritanceAddonFromEnv(): boolean {
-  return process.env.AUTH_STUB_INHERITANCE_ADDON?.trim() === "1";
-}
 
 const ACTIVE_SUB_STATUSES = new Set(["active", "trialing", "past_due"]);
 
@@ -135,7 +131,7 @@ async function resolveAuthStubBillingEntitlements(userId: string, planSlug: Plan
     tier: hasPaidValuationTier ? "pro" : "free",
     planSlug,
     subscriptionStatus: hasPaidValuationTier ? "stub_active" : "inactive",
-    hasInheritanceAddon: stubInheritanceAddonFromEnv(),
+    hasInheritanceAddon: currentAuthStubInheritanceAddon(),
     valuationsThisMonth,
     valuationsMonthLimit,
     valuationsRemainingFree,
