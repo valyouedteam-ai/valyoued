@@ -231,8 +231,9 @@ export default function InheritancePage() {
                   <span className="font-mono">X-Stub-Billing-Plan</span> and{" "}
                   <span className="font-mono">X-Stub-Inheritance-Addon</span>. From the repo root run{" "}
                   <span className="font-mono">pnpm dev</span>{" "}
-                  (the API defaults to{" "}
-                  <span className="font-mono">NODE_ENV=development</span>), or set{" "}
+                  (the API script sets{" "}
+                  <span className="font-mono">NODE_ENV=development</span>, and the server keeps that even if{" "}
+                  <span className="font-mono">.env.local</span> also sets production), or set{" "}
                   <span className="font-mono">ALLOW_DEV_STUB_BILLING_HEADERS=1</span> on a private local API build. Remote
                   production APIs always use real Billing.
                 </p>

@@ -9,8 +9,19 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(here, "..", "..", "..");
 
+/**
+ * Preserve NODE_ENV across dotenv `.env.local` (override). Otherwise a file entry such as NODE_ENV=production
+ * defeats `export NODE_ENV=development` from `pnpm dev` and disables Clerk dev stub billing headers
+ * (`X-Stub-Billing-Plan`, `X-Stub-Inheritance-Addon`) trust in authStubBillingPlan.
+ */
+const nodeEnvPreserved = process.env.NODE_ENV;
+
 dotenv.config({ path: path.join(workspaceRoot, ".env") });
 dotenv.config({ path: path.join(workspaceRoot, ".env.local"), override: true });
+
+if (nodeEnvPreserved !== undefined) {
+  process.env.NODE_ENV = nodeEnvPreserved;
+}
 
 /** Express Clerk reads `CLERK_PUBLISHABLE_KEY`; many setups only set the Vite-prefixed key. */
 function ensureClerkPublishableKeyFromFrontendEnv(): void {
