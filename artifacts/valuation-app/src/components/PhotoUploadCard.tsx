@@ -13,6 +13,8 @@ interface Props {
   /** Top-level category from asset type (e.g. "Real Estate"). Adjusts instructional copy. */
   assetCategory?: string;
   onAutoFill: (extracted: Record<string, string>, suggestedTitle?: string) => void;
+  /** True on /start before sign-up: avoids sending Authorization so Clerk middleware does not 401 anonymous requests. */
+  guestVisionExtract?: boolean;
 }
 
 const ALLOWED_TYPES: VisionExtractInputMimeType[] = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -23,6 +25,7 @@ export function PhotoUploadCard({
   assetTypeName,
   assetCategory,
   onAutoFill,
+  guestVisionExtract = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export function PhotoUploadCard({
   const [result, setResult] = useState<VisionExtractResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const { toast } = useToast();
-  const extract = useExtractFromPhoto();
+  const extract = useExtractFromPhoto(guestVisionExtract ? { request: { attachAuthToken: false } } : undefined);
   const realEstate = assetCategory === "Real Estate";
 
   // Bumped on each new file or asset-type change so we can drop stale responses.

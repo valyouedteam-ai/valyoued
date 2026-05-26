@@ -1,5 +1,7 @@
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
+  /** When false, skip `setAuthTokenGetter` Bearer attachment (for guest-safe endpoints). Default true. */
+  attachAuthToken?: boolean;
 };
 
 export type ErrorType<T = unknown> = ApiError<T>;
@@ -356,7 +358,7 @@ export async function customFetch<T = unknown>(
   options: CustomFetchOptions = {},
 ): Promise<T> {
   input = applyBaseUrl(input);
-  const { responseType = "auto", headers: headersInit, ...init } = options;
+  const { responseType = "auto", headers: headersInit, attachAuthToken = true, ...init } = options;
 
   const method = resolveMethod(input, init.method);
 
@@ -384,7 +386,7 @@ export async function customFetch<T = unknown>(
 
   // Attach bearer token when an auth getter is configured and no
   // Authorization header has been explicitly provided.
-  if (_authTokenGetter && !headers.has("authorization")) {
+  if (_authTokenGetter && attachAuthToken && !headers.has("authorization")) {
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);

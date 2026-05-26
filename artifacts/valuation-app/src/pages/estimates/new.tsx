@@ -1014,6 +1014,7 @@ function NewEstimatePageInner({
                     assetTypeId={selectedType.id}
                     assetTypeName={selectedType.name}
                     assetCategory={selectedType.category}
+                    guestVisionExtract={!authStubMode && authLoaded && !isSignedIn}
                     onAutoFill={handlePhotoAutoFill}
                   />
                 </div>
