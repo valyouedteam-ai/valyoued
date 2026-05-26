@@ -20,6 +20,21 @@ export function hasGenericLlmCredentials(): boolean {
   return Boolean(trimEnv("LLM_API_KEY"));
 }
 
+/** True when `getLlm()` can build a client for the effective provider (see `LLM_PROVIDER` and vendor keys). */
+export function isLlmConfigured(): boolean {
+  const forced = process.env.LLM_PROVIDER?.toLowerCase().trim();
+  if (forced === "anthropic") {
+    return Boolean(resolveAnthropicApiKey("anthropic"));
+  }
+  if (forced === "openai") {
+    return Boolean(resolveOpenAiApiKey("openai"));
+  }
+  if (hasAnthropicVendorCredentials()) return true;
+  if (hasOpenAiVendorCredentials()) return true;
+  if (hasGenericLlmCredentials()) return true;
+  return false;
+}
+
 /**
  * Resolves the active provider when `LLM_PROVIDER` is unset:
  * vendor-specific env wins (Anthropic first), then a lone `LLM_API_KEY` defaults to OpenAI

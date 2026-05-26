@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { ExtractFromPhotoBody, ExtractFromPhotoResponse } from "@workspace/api-zod";
+import { isLlmConfigured } from "@workspace/llm";
 import { getAssetType } from "../lib/assetTypes";
 import { extractAttributesFromPhoto } from "../lib/vision";
 import { logger } from "../lib/logger";
@@ -36,6 +37,16 @@ router.post("/vision/extract", visionLimit, async (req, res): Promise<void> => {
     res
       .status(413)
       .json({ error: "Image is too large. Please upload a photo under 6MB." });
+    return;
+  }
+
+  if (!isLlmConfigured()) {
+    logger.warn("POST /vision/extract: no LLM vendor keys on this host (set ANTHROPIC_API_KEY, OPENAI_API_KEY, or LLM_API_KEY)");
+    res.status(503).json({
+      error:
+        "Photo auto-fill is turned off on this server because no AI API key is configured. You can still fill the form manually.",
+      code: "VISION_LLM_NOT_CONFIGURED",
+    });
     return;
   }
 
@@ -77,6 +88,21 @@ router.post("/vision/extract", visionLimit, async (req, res): Promise<void> => {
           }
         : {};
     logger.error({ err, ...extra }, "Vision extraction error");
+
+    const msg = extra.message ?? "";
+    const looksLikeMissingKey =
+      /ANTHROPIC_API_KEY|OPENAI_API_KEY|LLM_API_KEY|LLM_PROVIDER must be|Anthropic: set|OpenAI: set/i.test(
+        msg,
+      );
+    if (looksLikeMissingKey) {
+      res.status(503).json({
+        error:
+          "Photo auto-fill is turned off on this server because the AI provider is not configured correctly. You can still fill the form manually.",
+        code: "VISION_LLM_NOT_CONFIGURED",
+      });
+      return;
+    }
+
     res.status(502).json({
       error: "Could not analyze the image. Try again or fill the form manually.",
     });

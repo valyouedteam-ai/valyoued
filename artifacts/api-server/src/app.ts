@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
+import { isLlmConfigured } from "@workspace/llm";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
@@ -57,6 +58,12 @@ if (isAuthStubMode()) {
   );
 } else {
   app.use(clerkMiddleware());
+}
+
+if (!isLlmConfigured()) {
+  logger.warn(
+    "LLM API keys are not set (ANTHROPIC_API_KEY, OPENAI_API_KEY, or LLM_API_KEY). Photo extract returns 503 until you add keys on this API service (e.g. Railway Variables).",
+  );
 }
 
 app.use("/api", router);

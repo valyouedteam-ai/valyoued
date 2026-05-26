@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Upload, X, Wand2, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { useExtractFromPhoto } from "@workspace/api-client-react";
-import type { VisionExtractResult, VisionExtractInputMimeType } from "@workspace/api-client-react";
+import {
+  ApiError,
+  useExtractFromPhoto,
+  type VisionExtractInputMimeType,
+  type VisionExtractResult,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -165,9 +169,22 @@ export function PhotoUploadCard({
             });
           }
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
           if (token !== requestTokenRef.current) return;
-          const msg = err?.message || "Photo analysis failed.";
+          if (err instanceof ApiError && err.status === 503) {
+            const data = err.data as { code?: string; error?: string } | null | undefined;
+            if (data?.code === "VISION_LLM_NOT_CONFIGURED") {
+              toast({
+                title: "Photo auto-fill unavailable",
+                description:
+                  data.error ??
+                  "This deployment has no AI key configured. Continue with the form manually, or ask the operator to set ANTHROPIC_API_KEY or OPENAI_API_KEY on the API service.",
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+          const msg = err instanceof Error ? err.message : "Photo analysis failed.";
           toast({
             title: "Couldn't analyse the photo",
             description: msg.length > 140 ? "Please try again or fill the form manually." : msg,
