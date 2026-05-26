@@ -31,18 +31,18 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-full border border-border/70 bg-card/85 px-2 py-1 shadow-sm",
+        "flex flex-wrap items-center gap-1.5 rounded-full border border-border/70 bg-card/85 px-1.5 py-0.5 shadow-sm",
         compact && "justify-center",
       )}
-      title="Dev tier and inheritance. Auth stub: API reads X-Stub-Billing-Plan and X-Stub-Inheritance-Addon. Clerk dev: billing fields are mocked client-side; portfolio list is still real."
+      title="Subscription simulation and inheritance. Auth stub: API reads X-Stub-Billing-Plan and X-Stub-Inheritance-Addon. Clerk dev: billing fields are mocked client-side; portfolio list is still real."
     >
       <span
         className={cn(
-          "hidden whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground min-[980px]:inline",
+          "hidden whitespace-nowrap min-[980px]:inline font-mono text-[10px] font-medium tabular-nums tracking-tight text-muted-foreground",
           compact && "hidden",
         )}
       >
-        Dev tier
+        Subscription
       </span>
       <Select
         value={ctx.planSlug}
@@ -52,16 +52,22 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
       >
         <SelectTrigger
           className={cn(
-            "h-8 w-[7.25rem] shrink-0 rounded-full border-border/60 px-2.5 py-1.5 text-xs font-medium",
-            compact && "h-7 w-[6.25rem] px-2 py-1 text-[10px]",
+            "relative flex h-7 min-h-7 w-fit min-w-[5.25rem] shrink-0 justify-center rounded-full border-border/60 px-6 py-0 text-xs font-medium shadow-none",
+            "[&>span]:w-full [&>span]:truncate [&>span]:pr-4 [&>span]:text-center [&>span]:leading-none",
+            "[&>svg]:pointer-events-none [&>svg]:absolute [&>svg]:right-1.5 [&>svg]:top-1/2 [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:-translate-y-1/2 [&>svg]:shrink-0 [&>svg]:opacity-60",
+            compact && "h-6 min-h-6 min-w-[4.875rem] px-5 text-[11px] [&>span]:pr-3.5 [&>svg]:right-1 [&>svg]:h-3 [&>svg]:w-3",
           )}
-          aria-label="Dev billing tier"
+          aria-label="Subscription tier"
         >
-          <SelectValue placeholder="Tier" />
+          <SelectValue placeholder="Plan" />
         </SelectTrigger>
         <SelectContent position="popper" align="end" className="min-w-[var(--radix-select-trigger-width)]">
           {OPTIONS.map((o) => (
-            <SelectItem key={o.value} value={o.value} className="text-xs">
+            <SelectItem
+              key={o.value}
+              value={o.value}
+              className="justify-center pr-9 text-center text-xs data-[highlighted]:text-center focus:text-center focus:justify-center"
+            >
               {o.label}
             </SelectItem>
           ))}
@@ -69,16 +75,13 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
       </Select>
       <div
         className={cn(
-          "flex items-center gap-1.5 border-border/60 min-[980px]:border-l min-[980px]:pl-2",
-          compact && "min-[980px]:pl-1.5",
+          "flex items-center gap-1 border-border/60 min-[980px]:border-l min-[980px]:pl-1.5",
+          compact && "min-[980px]:pl-1",
         )}
       >
         <Label
           htmlFor={inheritanceFieldId}
-          className={cn(
-            "cursor-pointer whitespace-nowrap text-muted-foreground",
-            compact ? "text-[10px]" : "text-xs",
-          )}
+          className="cursor-pointer whitespace-nowrap font-mono text-[10px] text-muted-foreground"
         >
           {compact ? "Inh." : "Inheritance"}
         </Label>

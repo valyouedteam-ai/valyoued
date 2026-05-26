@@ -613,7 +613,7 @@ export const GetEstimateResponse = zod.object({
 });
 
 /**
- * @summary Update estimate metadata (intent)
+ * @summary Update estimate metadata (intent, optional outcome labels, feedback)
  */
 export const PatchEstimateParams = zod.object({
   id: zod.coerce.string(),
@@ -907,10 +907,13 @@ export const CreatePortfolioResponse = zod.object({
 
 /**
  * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
-and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
-using the same multiplier table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static
-hints). `averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
-(pure numbers; not currency-converted).
+and `byAssetType[].averageAdjustedUsd` are totals after converting each estimate through the same multiplier
+table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static hints) into one internal rollup
+unit for mixing currencies. Clients typically translate that rollup into the signed-in user's UI reference
+currency (configured in Settings; often labeled alongside portfolio totals).
+
+`averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
+(pure numbers; not FX-converted).
 
  * @summary Aggregate stats across saved estimates
  */
@@ -919,12 +922,12 @@ export const GetEstimateStatsResponse = zod.object({
   averageBaselineUsd: zod
     .number()
     .describe(
-      "Mean baseline midpoint to USD using the same multiplier table as GET \/fx\/rates (ECB\/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate).",
+      "Mean baseline midpoint after converting each row through the same multiplier table as GET \/fx\/rates into an internal rollup unit for cross-currency averaging (ECB\/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate). The SPA shows this in the user's Settings reference currency.",
     ),
   averageAdjustedUsd: zod
     .number()
     .describe(
-      "Mean adjusted midpoint to USD using the same multiplier table as GET \/fx\/rates (approximate).",
+      "Mean adjusted midpoint normalized the same way as averageBaselineUsd. Display in UI reference currency (Settings).",
     ),
   averageUplift: zod
     .number()
@@ -938,7 +941,7 @@ export const GetEstimateStatsResponse = zod.object({
       averageAdjustedUsd: zod
         .number()
         .describe(
-          "Mean adjusted midpoint for this asset type, USD equivalent via GET \/fx\/rates table.",
+          "Mean adjusted midpoint for this asset type through the GET \/fx\/rates multiplier rollup; surface in Settings reference currency in the SPA.",
         ),
     }),
   ),

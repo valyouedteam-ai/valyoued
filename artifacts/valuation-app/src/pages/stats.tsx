@@ -41,7 +41,7 @@ export default function StatsPage() {
   });
 
   const fxMult = fxSnap?.rates;
-  const fmt = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
+  const fmt = (rollup: number) => formatUsdRollupForDisplay(rollup, displayCcy, fxMult);
 
   if (isLoading) {
     return (
@@ -90,8 +90,9 @@ export default function StatsPage() {
       <div>
         <h1 className="text-3xl font-sans font-bold text-foreground">Market Aggregates</h1>
         <p className="text-muted-foreground mt-1">
-          Aggregates from valuations saved to your account. Averages below are shown in {displayCcy} using
-          mid-market-style FX for comparison; change this under{" "}
+          Aggregates from valuations saved to your account. Money averages below use your Settings reference currency
+          ({displayCcy}) with mid-market-style FX hints so mixed-currency valuations can sit on one scale; amounts are
+          approximate. Change currency under{" "}
           <Link href="/settings" className="text-accent hover:underline">
             Settings
           </Link>

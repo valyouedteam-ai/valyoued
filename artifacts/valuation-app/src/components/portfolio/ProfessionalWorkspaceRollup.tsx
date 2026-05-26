@@ -51,7 +51,7 @@ function openWorkspaceHref(primaryId: string | null | undefined, workspaceId: st
 
 type ProfessionalWorkspaceRollupProps = {
   estimateRows: EstimateSummary[];
-  /** Display-formatter for USD totals (respects user display currency). */
+  /** Display-formatter for cross-currency rollups using the user's reference currency from Settings. */
   formatRollup: (usd: number) => string;
   fxMult: Readonly<Record<string, number>> | null | undefined;
 };
@@ -154,7 +154,7 @@ export function ProfessionalWorkspaceRollup({
           <table className="w-full min-w-[520px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="pb-3 pr-3 font-medium">Workspace</th>
+                <th className="pb-3 pl-4 pr-3 font-medium sm:pl-5">Workspace</th>
                 <th className="pb-3 pr-3 font-medium">Kind</th>
                 <th className="pb-3 pr-3 font-medium tabular-nums">Items</th>
                 <th className="pb-3 pr-3 font-medium tabular-nums">Approx. total</th>
@@ -169,7 +169,7 @@ export function ProfessionalWorkspaceRollup({
                     key={row.id}
                     className={cn("border-b border-border/40", active && "bg-teal-500/[0.06] dark:bg-teal-950/30")}
                   >
-                    <td className="py-3 pr-3 font-medium text-foreground">
+                    <td className="py-3 pl-4 pr-3 font-medium text-foreground sm:pl-5">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate max-w-[200px] sm:max-w-none">{row.displayLabel}</span>
                         {active ? (
@@ -191,7 +191,7 @@ export function ProfessionalWorkspaceRollup({
                 );
               })}
               <tr className="bg-muted/40 font-medium">
-                <td className="py-3 pr-3 text-foreground">All workspaces combined</td>
+                <td className="py-3 pl-4 pr-3 text-foreground sm:pl-5">All workspaces combined</td>
                 <td className="py-3 pr-3 text-muted-foreground"> </td>
                 <td className="py-3 pr-3 tabular-nums text-foreground">{combined.itemCount}</td>
                 <td className="py-3 pr-3 font-sans tabular-nums text-foreground">{formatRollup(combined.totalUsd)}</td>

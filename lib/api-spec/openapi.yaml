@@ -207,10 +207,13 @@ paths:
       summary: Aggregate stats across saved estimates
       description: |
         Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
-        and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
-        using the same multiplier table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static
-        hints). `averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
-        (pure numbers; not currency-converted).
+        and `byAssetType[].averageAdjustedUsd` are totals after converting each estimate through the same multiplier
+        table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static hints) into one internal rollup
+        unit for mixing currencies. Clients typically translate that rollup into the signed-in user's UI reference
+        currency (configured in Settings; often labeled alongside portfolio totals).
+
+        `averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
+        (pure numbers; not FX-converted).
       responses:
         "200":
           description: Stats
@@ -821,10 +824,10 @@ components:
           type: integer
         averageBaselineUsd:
           type: number
-          description: Mean baseline midpoint to USD using the same multiplier table as GET /fx/rates (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate).
+          description: Mean baseline midpoint after converting each row through the same multiplier table as GET /fx/rates into an internal rollup unit for cross-currency averaging (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate). The SPA shows this in the user's Settings reference currency.
         averageAdjustedUsd:
           type: number
-          description: Mean adjusted midpoint to USD using the same multiplier table as GET /fx/rates (approximate).
+          description: Mean adjusted midpoint normalized the same way as averageBaselineUsd. Display in UI reference currency (Settings).
         averageUplift:
           type: number
           description: Mean of (adjustedMid / baselineMid − 1) per estimate, using each row's native amounts.
@@ -840,7 +843,7 @@ components:
                 type: integer
               averageAdjustedUsd:
                 type: number
-                description: Mean adjusted midpoint for this asset type, USD equivalent via GET /fx/rates table.
+                description: Mean adjusted midpoint for this asset type through the GET /fx/rates multiplier rollup; surface in Settings reference currency in the SPA.
         topArbitrageRegions:
           type: array
           items:

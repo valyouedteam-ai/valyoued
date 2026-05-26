@@ -392,7 +392,7 @@ export interface EstimateSummary {
 export type EstimateStatsByAssetTypeItem = {
   assetTypeName: string;
   count: number;
-  /** Mean adjusted midpoint for this asset type, USD equivalent via GET /fx/rates table. */
+  /** Mean adjusted midpoint for this asset type through the GET /fx/rates multiplier rollup; surface in Settings reference currency in the SPA. */
   averageAdjustedUsd: number;
 };
 
@@ -403,9 +403,9 @@ export type EstimateStatsTopArbitrageRegionsItem = {
 
 export interface EstimateStats {
   count: number;
-  /** Mean baseline midpoint to USD using the same multiplier table as GET /fx/rates (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate). */
+  /** Mean baseline midpoint after converting each row through the same multiplier table as GET /fx/rates into an internal rollup unit for cross-currency averaging (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate). The SPA shows this in the user's Settings reference currency. */
   averageBaselineUsd: number;
-  /** Mean adjusted midpoint to USD using the same multiplier table as GET /fx/rates (approximate). */
+  /** Mean adjusted midpoint normalized the same way as averageBaselineUsd. Display in UI reference currency (Settings). */
   averageAdjustedUsd: number;
   /** Mean of (adjustedMid / baselineMid − 1) per estimate, using each row's native amounts. */
   averageUplift: number;

@@ -7,7 +7,11 @@ import {
 } from "@workspace/db";
 
 import { isAuthStubMode } from "./authStub";
-import { currentAuthStubBillingPlanSlug, currentAuthStubInheritanceAddon } from "./authStubBillingPlan";
+import {
+  currentAuthStubBillingPlanSlug,
+  currentAuthStubInheritanceAddon,
+  currentDevelopmentBillingPlanOverlay,
+} from "./authStubBillingPlan";
 
 const FREE_MONTHLY_VALUATION_CAP = 5;
 
@@ -120,6 +124,26 @@ export async function incrementMonthlyEstimateUsage(userId: string): Promise<voi
     });
 }
 
+function applyDevelopmentBillingOverlay(ent: UserEntitlements, overlay: { planSlug: PlanSlug; inheritanceAddon: boolean }): UserEntitlements {
+  const { planSlug, inheritanceAddon } = overlay;
+  const hasPaidValuationTier = planSlug !== "none";
+  const valuationsMonthLimit = hasPaidValuationTier ? null : FREE_MONTHLY_VALUATION_CAP;
+  return {
+    ...ent,
+    planSlug,
+    hasInheritanceAddon: inheritanceAddon,
+    valuationsMonthLimit,
+    valuationsRemainingFree:
+      valuationsMonthLimit == null ? null : Math.max(0, valuationsMonthLimit - ent.valuationsThisMonth),
+    hasPaidValuationTier,
+    tier: hasPaidValuationTier ? "pro" : "free",
+    listingQuality: planSlug === "professional" ? "premium" : "basic",
+    canUseInternationalArbitrage: hasPaidValuationTier,
+    canUseAdvancedSellingReco: planSlug === "professional",
+    canUseMonitorEmailAlerts: hasPaidValuationTier,
+  };
+}
+
 async function resolveAuthStubBillingEntitlements(userId: string, planSlug: PlanSlug): Promise<UserEntitlements> {
   const valuationsThisMonth = await getValuationsUsedThisMonth(userId);
   const hasPaidValuationTier = planSlug !== "none";
@@ -166,7 +190,7 @@ export async function resolveUserEntitlements(userId: string): Promise<UserEntit
   const valuationsRemainingFree =
     valuationsMonthLimit == null ? null : Math.max(0, valuationsMonthLimit - valuationsThisMonth);
 
-  return {
+  let ent: UserEntitlements = {
     tier: hasPaidValuationTier ? "pro" : "free",
     planSlug,
     subscriptionStatus: status,
@@ -180,6 +204,13 @@ export async function resolveUserEntitlements(userId: string): Promise<UserEntit
     canUseAdvancedSellingReco: planSlug === "professional",
     canUseMonitorEmailAlerts: hasPaidValuationTier,
   };
+
+  const devOverlay = currentDevelopmentBillingPlanOverlay();
+  if (devOverlay) {
+    ent = applyDevelopmentBillingOverlay(ent, devOverlay);
+  }
+
+  return ent;
 }
 
 /** When true, persist `proInsights` on new estimates (Professional subscription). */

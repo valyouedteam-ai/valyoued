@@ -6,12 +6,14 @@ import { formatUsdRollupForDisplay } from "@/lib/aggregated-money";
 import { useDisplayCurrency } from "@/hooks/use-display-currency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowRight,
   Globe2,
+  Info,
   LayoutList,
   PieChart,
   Sparkles,
@@ -40,7 +42,8 @@ export default function MarketsPage() {
   }
 
   const fxMult = fxSnap?.rates;
-  const fmtUsd = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
+  /** Rollup payloads from `/estimates/stats` normalized via shared FX hints; formatted in user's reference currency ({@link displayCcy}). */
+  const fmtRollup = (rollup: number) => formatUsdRollupForDisplay(rollup, displayCcy, fxMult);
 
   const rows = useMemo(() => (Array.isArray(estimates) ? estimates : []), [estimates]);
   const canSeeRegionalPayHints = billingPaid || rows.some((e) => e.tier === "pro");
@@ -64,15 +67,16 @@ export default function MarketsPage() {
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
           See which regions show up most often as the strongest match across your saved valuations.
-          Combined averages here use the same rough FX conversion as your{" "}
-          <Link href="/portfolio" className="text-accent hover:underline">
-            portfolio
-          </Link>{" "}
-          (shown in {displayCcy}; change under{" "}
+          Combined averages here read your reference currency ({displayCcy}) from{" "}
           <Link href="/settings" className="text-accent hover:underline">
             Settings
+          </Link>{" "}
+          and use the same rough FX hints as your{" "}
+          <Link href="/portfolio" className="text-accent hover:underline">
+            portfolio
           </Link>
-          ). They are guides, not live bank rates. Open any report for fees, shipping, and marketplace links.
+          . They are guides, not live bank rates. Individual reports stay in each item&apos;s own currency.
+          Open any report for fees, shipping, and marketplace links.
         </p>
       </header>
       ) : (
@@ -108,7 +112,40 @@ export default function MarketsPage() {
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-1.5 text-xs">
-                <TrendingUp className="h-3.5 w-3.5" /> Avg. market uplift
+                <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0">Avg. market uplift</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                      aria-label="What average market uplift means"
+                    >
+                      <Info className="h-3.5 w-3.5" aria-hidden />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 text-sm font-sans" align="start">
+                    <p className="font-medium text-foreground">What this shows</p>
+                    <p className="mt-2 leading-relaxed text-muted-foreground">
+                      Each saved valuation has two mid-range values: a baseline midpoint from similar recent
+                      sales, and an adjusted midpoint after today's market signals are folded in (see your
+                      report for details).
+                    </p>
+                    <p className="mt-2 leading-relaxed text-muted-foreground">
+                      This percentage is the simple average of how far adjusted sits above or below baseline across
+                      all your saved reports. When it reads positive, those adjustments usually lifted the midpoint;
+                      when negative, they usually lowered it.
+                    </p>
+                    <p className="mt-2 leading-relaxed text-muted-foreground">
+                      Each gap uses that report&apos;s own currency only, so this figure does not use exchange
+                      rates. The baseline and adjusted averages on this row do use approximate FX to express
+                      many reports in one number, labeled in your reference currency ({displayCcy}) from
+                      Settings.
+                    </p>
+                  </PopoverContent>
+                </Popover>
               </CardDescription>
               <CardTitle className="text-3xl font-sans tabular-nums">
                 {formatPercent(stats.averageUplift)}
@@ -117,17 +154,21 @@ export default function MarketsPage() {
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Avg. baseline (converted to {displayCcy})</CardDescription>
+              <CardDescription className="text-xs">
+                Avg. baseline ({displayCcy}, approx.)
+              </CardDescription>
               <CardTitle className="text-2xl font-sans tabular-nums">
-                {fmtUsd(stats.averageBaselineUsd)}
+                {fmtRollup(stats.averageBaselineUsd)}
               </CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Avg. adjusted (converted to {displayCcy})</CardDescription>
+              <CardDescription className="text-xs">
+                Avg. adjusted ({displayCcy}, approx.)
+              </CardDescription>
               <CardTitle className="text-2xl font-sans tabular-nums">
-                {fmtUsd(stats.averageAdjustedUsd)}
+                {fmtRollup(stats.averageAdjustedUsd)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -218,7 +259,7 @@ export default function MarketsPage() {
                       <TableCell className="font-medium">{t.assetTypeName}</TableCell>
                       <TableCell className="text-right font-sans tabular-nums">{t.count}</TableCell>
                       <TableCell className="text-right font-sans text-sm tabular-nums">
-                        {fmtUsd(t.averageAdjustedUsd)}
+                        {fmtRollup(t.averageAdjustedUsd)}
                       </TableCell>
                     </TableRow>
                   ))}

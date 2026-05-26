@@ -10,9 +10,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { setExtraRequestHeadersGetter } from "@workspace/api-client-react";
 import { PERSONA_SESSION_KEY } from "@/hooks/use-persona-sync";
-import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 
-/** Canonical values sent via `X-Stub-Billing-Plan` together with AUTH_STUB_MODE. */
+/** Canonical values sent via `X-Stub-Billing-Plan` (auth stub runs in stub mode; local Clerk overlays in NODE_ENV development on the API only). */
 export type StubBillingPlanSlug = "free" | "everyday_plus" | "professional";
 
 const STORAGE_KEY = "valyoued.stubBillingPlan";
@@ -52,7 +51,7 @@ export function useOptionalStubBillingPlanDev() {
   return useContext(StubBillingPlanDevContext);
 }
 
-/** Auth stub builds: registers per-request billing header sync and mirrors persona for desk vs portfolio UX. */
+/** Dev Subscription strip: registers X-Stub-Billing-Plan on API calls for auth stub and for real Clerk in local development only (server overlays when NODE_ENV=development). Mirrors persona for desk vs portfolio UX. */
 export function StubBillingPlanDevProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
@@ -78,10 +77,6 @@ export function StubBillingPlanDevProvider({ children }: { children: ReactNode }
   }, []);
 
   useEffect(() => {
-    if (!AUTH_STUB_MODE) {
-      setExtraRequestHeadersGetter(null);
-      return;
-    }
     setExtraRequestHeadersGetter(() => ({
       "X-Stub-Billing-Plan": planSlug,
       "X-Stub-Inheritance-Addon": inheritanceAddon ? "1" : "0",

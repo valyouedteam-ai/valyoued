@@ -597,7 +597,7 @@ export function useGetEstimate<
 }
 
 /**
- * @summary Update estimate metadata (intent)
+ * @summary Update estimate metadata (intent, optional outcome labels, feedback)
  */
 export const getPatchEstimateUrl = (id: string) => {
   return `/api/estimates/${id}`;
@@ -661,7 +661,7 @@ export type PatchEstimateMutationBody = BodyType<PatchEstimateBody>;
 export type PatchEstimateMutationError = ErrorType<unknown>;
 
 /**
- * @summary Update estimate metadata (intent)
+ * @summary Update estimate metadata (intent, optional outcome labels, feedback)
  */
 export const usePatchEstimate = <
   TError = ErrorType<unknown>,
@@ -846,10 +846,13 @@ export const useCreatePortfolio = <
 
 /**
  * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
-and `byAssetType[].averageAdjustedUsd` convert each estimate from its stored row currency to USD
-using the same multiplier table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static
-hints). `averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
-(pure numbers; not currency-converted).
+and `byAssetType[].averageAdjustedUsd` are totals after converting each estimate through the same multiplier
+table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static hints) into one internal rollup
+unit for mixing currencies. Clients typically translate that rollup into the signed-in user's UI reference
+currency (configured in Settings; often labeled alongside portfolio totals).
+
+`averageUplift` is the unweighted mean of per-row (adjustedMid / baselineMid − 1) ratios
+(pure numbers; not FX-converted).
 
  * @summary Aggregate stats across saved estimates
  */

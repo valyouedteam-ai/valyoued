@@ -12,14 +12,53 @@ type StubRequestBillingState = {
 
 const billingStateStore = new AsyncLocalStorage<StubRequestBillingState>();
 
+function shouldTrustDevelopmentStubBillingHeaders(): boolean {
+  if (process.env.NODE_ENV !== "development") return false;
+  if (process.env.DISABLE_DEV_STUB_BILLING_HEADERS === "1") return false;
+  return true;
+}
+
+/**
+ * When not in AUTH stub mode (real Clerk locally), overlays plan from headers only after middleware
+ * stores ALS. Never used in production: trust is gated on NODE_ENV=development only.
+ */
+export function currentDevelopmentBillingPlanOverlay(): {
+  planSlug: AuthStubResolvedPlanSlug;
+  inheritanceAddon: boolean;
+} | null {
+  if (!shouldTrustDevelopmentStubBillingHeaders()) return null;
+  if (isAuthStubMode()) return null;
+  return billingStateStore.getStore() ?? null;
+}
+
 export function stubBillingPlanAlsMiddleware(req: Request, _res: Response, next: NextFunction): void {
-  if (!isAuthStubMode()) {
+  if (isAuthStubMode()) {
+    const planSlug = resolveAuthStubBillingPlanSlugFromRequest(req);
+    const inheritanceAddon = resolveAuthStubInheritanceAddonFromRequest(req);
+    billingStateStore.run({ planSlug, inheritanceAddon }, () => next());
+    return;
+  }
+
+  if (!shouldTrustDevelopmentStubBillingHeaders()) {
     next();
     return;
   }
-  const planSlug = resolveAuthStubBillingPlanSlugFromRequest(req);
-  const inheritanceAddon = resolveAuthStubInheritanceAddonFromRequest(req);
-  billingStateStore.run({ planSlug, inheritanceAddon }, () => next());
+
+  /** Real Clerk sessions: overlay only when the dev client deliberately sends billing simulation headers. */
+  const rawPlan = normalizeHeaderOrEnvToken(req.get("x-stub-billing-plan"));
+  if (rawPlan === "") {
+    next();
+    return;
+  }
+  const mappedPlan = mapTokenToSlug(rawPlan);
+  if (mappedPlan === null) {
+    next();
+    return;
+  }
+  /** Do not inherit env defaults for Clerk dev overlays (would surprise local simulations). */
+  const inheritanceAddon = mapAuthStubInheritanceHeader(req) ?? false;
+
+  billingStateStore.run({ planSlug: mappedPlan, inheritanceAddon }, () => next());
 }
 
 function normalizeHeaderOrEnvToken(raw: string | undefined): string {
