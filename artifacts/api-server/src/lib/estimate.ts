@@ -201,6 +201,208 @@ function extractJson(text: string): string {
   return text;
 }
 
+/** LLMs occasionally emit strings for numbers or malformed enums; Zod response validation rejects those and yielded HTTP 500. */
+function finiteNumber(raw: unknown, fallback: number): number {
+  const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.replace(/,/g, "").trim()) : NaN;
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function positiveMoney(raw: unknown, fallback: number): number {
+  const n = finiteNumber(raw, fallback);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : Math.max(1, Math.round(fallback));
+}
+
+function coerceImpact(raw: unknown): number {
+  const n = finiteNumber(raw, 1);
+  return Math.min(3, Math.max(0.15, Number.isFinite(n) ? n : 1));
+}
+
+function coerceWorldSentiment(raw: unknown): WorldEvent["sentiment"] {
+  return raw === "positive" || raw === "negative" || raw === "neutral" ? raw : "neutral";
+}
+
+function sanitizeReport(raw: unknown, fb: EstimateReport): EstimateReport {
+  if (!raw || typeof raw !== "object") return fb;
+  const r = raw as Record<string, unknown>;
+  const pick = (k: keyof EstimateReport): string =>
+    typeof r[k as string] === "string" && String(r[k as string]).trim() !== ""
+      ? String(r[k as string]).trim()
+      : fb[k];
+  return {
+    headline: pick("headline"),
+    summary: pick("summary"),
+    baselineNarrative: pick("baselineNarrative"),
+    marketNarrative: pick("marketNarrative"),
+    arbitrageNarrative: pick("arbitrageNarrative"),
+    worldEventsNarrative: pick("worldEventsNarrative"),
+    finalNarrative: pick("finalNarrative"),
+  };
+}
+
+function sanitizeProInsights(raw: unknown, fb: ProInsights): ProInsights {
+  if (!raw || typeof raw !== "object") return fb;
+  const p = raw as Record<string, unknown>;
+
+  const tacticsRaw = Array.isArray(p.negotiationTactics) ? p.negotiationTactics : fb.negotiationTactics;
+  const negotiationTactics = tacticsRaw.slice(0, 12).map((t, i) => {
+    if (!t || typeof t !== "object") return fb.negotiationTactics[i % fb.negotiationTactics.length];
+    const o = t as Record<string, unknown>;
+    const title = typeof o.title === "string" && o.title.trim() ? o.title.trim() : "Tip";
+    const detail = typeof o.detail === "string" && o.detail.trim() ? o.detail.trim() : "";
+    return { title, detail };
+  });
+
+  function stringLinesOrFb(v: unknown, fallback: string[]): string[] {
+    if (!Array.isArray(v)) return fallback;
+    const out = v.filter((x): x is string => typeof x === "string").flatMap((s) => {
+      const t = s.trim();
+      return t === "" ? [] : [t];
+    });
+    return out.length > 0 ? out.slice(0, 40) : fallback;
+  }
+
+  const tacticsClean =
+    negotiationTactics.length > 0 ? negotiationTactics : fb.negotiationTactics;
+
+  return {
+    negotiationTactics: tacticsClean,
+    talkingPoints: stringLinesOrFb(p.talkingPoints, fb.talkingPoints),
+    redFlags: stringLinesOrFb(p.redFlags, fb.redFlags),
+    optimalTiming:
+      typeof p.optimalTiming === "string" && p.optimalTiming.trim() ? p.optimalTiming.trim() : fb.optimalTiming,
+    listingTips: stringLinesOrFb(p.listingTips, fb.listingTips),
+    walkAwayPrice: positiveMoney(p.walkAwayPrice, fb.walkAwayPrice),
+    anchorPrice: positiveMoney(p.anchorPrice, fb.anchorPrice),
+  };
+}
+
+function sanitizeMarketSignals(raw: unknown, fb: MarketSignal[]): MarketSignal[] {
+  if (!Array.isArray(raw)) return fb;
+  const mapped = raw
+    .map((row, idx) => {
+      if (!row || typeof row !== "object") return null;
+      const o = row as Record<string, unknown>;
+      const label =
+        typeof o.label === "string" && o.label.trim() ? o.label.trim() : fb[idx % fb.length]?.label ?? "Signal";
+      const value =
+        typeof o.value === "string" && o.value.trim() ? o.value.trim() : fb[idx % fb.length]?.value ?? "—";
+      const rationale =
+        typeof o.rationale === "string" && o.rationale.trim()
+          ? o.rationale.trim()
+          : fb[idx % fb.length]?.rationale ?? "";
+      return {
+        label,
+        value,
+        impact: coerceImpact(o.impact),
+        rationale,
+      };
+    })
+    .filter((x): x is MarketSignal => x != null);
+  return mapped.length > 0 ? mapped : fb;
+}
+
+function sanitizeWorldEvents(raw: unknown, fb: WorldEvent[]): WorldEvent[] {
+  if (!Array.isArray(raw)) return fb;
+  const mapped = raw
+    .map((row, idx) => {
+      if (!row || typeof row !== "object") return null;
+      const o = row as Record<string, unknown>;
+      const title = typeof o.title === "string" && o.title.trim() ? o.title.trim() : `Event ${idx + 1}`;
+      const summary = typeof o.summary === "string" && o.summary.trim() ? o.summary.trim() : "Market context.";
+      const scope =
+        typeof o.scope === "string" && o.scope.trim()
+          ? o.scope.trim()
+          : fb[idx % fb.length]?.scope ?? "Global";
+      const source =
+        typeof o.source === "string" && o.source.trim() !== "" ? o.source.trim() : undefined;
+      const url =
+        typeof o.url === "string" && o.url.trim() !== "" ? o.url.trim() : undefined;
+      const publishedAt =
+        typeof o.publishedAt === "string" && o.publishedAt.trim() !== "" ? o.publishedAt.trim() : undefined;
+
+      const ev: WorldEvent = {
+        title,
+        summary,
+        sentiment: coerceWorldSentiment(o.sentiment),
+        scope,
+        ...(source !== undefined ? { source } : {}),
+        ...(url !== undefined ? { url } : {}),
+        ...(publishedAt !== undefined ? { publishedAt } : {}),
+      };
+      return ev;
+    })
+    .filter((x): x is WorldEvent => x != null);
+  return mapped.length > 0 ? mapped : fb;
+}
+
+function sanitizeArbitrageRows(raw: unknown, fb: ArbitrageOption[], currency: string): ArbitrageOption[] {
+  if (!Array.isArray(raw)) return fb;
+  const mapped = raw
+    .map((row, idx) => {
+      if (!row || typeof row !== "object") return null;
+      const o = row as Record<string, unknown>;
+      const fbRow = fb[idx % fb.length] ?? fb[0];
+      if (!fbRow) return null;
+      const region = typeof o.region === "string" && o.region.trim() ? o.region.trim() : fbRow.region;
+      const marketplace =
+        typeof o.marketplace === "string" && o.marketplace.trim() ? o.marketplace.trim() : fbRow.marketplace;
+      const demandNote =
+        typeof o.demandNote === "string" && o.demandNote.trim()
+          ? o.demandNote.trim()
+          : fbRow.demandNote;
+      const cc = typeof o.currency === "string" && o.currency.trim() ? o.currency.trim() : currency;
+      const recommended =
+        typeof o.recommended === "boolean" ? o.recommended : typeof o.recommended === "string"
+          ? o.recommended.toLowerCase() === "true"
+          : fbRow.recommended;
+
+      const salePrice = positiveMoney(o.estimatedSalePrice, fbRow.estimatedSalePrice);
+      const shipping = Math.max(0, Math.round(finiteNumber(o.estimatedShipping, fbRow.estimatedShipping)));
+      const fees = Math.max(0, Math.round(finiteNumber(o.estimatedFees, fbRow.estimatedFees)));
+      const duties = Math.max(0, Math.round(finiteNumber(o.estimatedDuties, fbRow.estimatedDuties)));
+      const netToSeller = positiveMoney(
+        o.netToSeller,
+        Math.max(0, salePrice - shipping - fees - duties),
+      );
+
+      return {
+        region,
+        marketplace,
+        estimatedSalePrice: salePrice,
+        estimatedShipping: shipping,
+        estimatedFees: fees,
+        estimatedDuties: duties,
+        netToSeller,
+        currency: cc,
+        demandNote,
+        recommended,
+      };
+    })
+    .filter((x): x is ArbitrageOption => x != null);
+  return mapped.length > 0 ? mapped : fb;
+}
+
+function sanitizeStructuredAiCore(raw: unknown, fb: AICore, currency: string): AICore {
+  if (!raw || typeof raw !== "object") return fb;
+  const o = raw as Record<string, unknown>;
+
+  const mid = positiveMoney(o.baselineMid, fb.baselineMid);
+  const low = positiveMoney(o.baselineLow, Math.min(mid, fb.baselineLow || Math.round(mid * 0.88)));
+  const high = positiveMoney(o.baselineHigh, Math.max(mid, fb.baselineHigh || Math.round(mid * 1.14)));
+
+  return {
+    baselineLow: Math.min(low, mid),
+    baselineMid: mid,
+    baselineHigh: Math.max(high, mid),
+    comparables: sanitizeComparables(Array.isArray(o.comparables) ? (o.comparables as Comparable[]) : fb.comparables),
+    marketSignals: sanitizeMarketSignals(o.marketSignals, fb.marketSignals),
+    worldEvents: sanitizeWorldEvents(o.worldEvents, fb.worldEvents),
+    arbitrage: sanitizeArbitrageRows(o.arbitrage, fb.arbitrage, currency),
+    report: sanitizeReport(o.report, fb.report),
+    proInsights: sanitizeProInsights(o.proInsights, fb.proInsights),
+  };
+}
+
 async function gatherNews(
   assetType: AssetType,
   region: string,
@@ -222,7 +424,7 @@ async function gatherNews(
   return articles.slice(0, 12);
 }
 
-async function callAI(prompt: string): Promise<AICore> {
+async function callAIStructured(prompt: string, fb: AICore, currency: string): Promise<AICore> {
   const llm = getLlm();
   const text = await llm.complete({
     model: defaultModel(),
@@ -230,7 +432,8 @@ async function callAI(prompt: string): Promise<AICore> {
     messages: [{ role: "user", content: prompt }],
   });
   const json = extractJson(text);
-  return JSON.parse(json) as AICore;
+  const raw = JSON.parse(json) as unknown;
+  return sanitizeStructuredAiCore(raw, fb, currency);
 }
 
 function fallbackCore(
@@ -355,15 +558,16 @@ export async function generateEstimate(
 
   const internalArchiveBlock = archiveHit?.promptBlock ?? undefined;
   const prompt = buildPrompt(input, assetType, currency, newsArticles, internalArchiveBlock);
+  const fb = fallbackCore(input, assetType, currency);
 
   let structuredFallback = false;
   let core: AICore;
   try {
-    core = await callAI(prompt);
+    core = await callAIStructured(prompt, fb, currency);
   } catch (err) {
     logger.error({ err }, "Structured estimate generation failed; using heuristic fallback.");
     structuredFallback = true;
-    core = fallbackCore(input, assetType, currency);
+    core = fb;
   }
 
   const lineage = buildStoredLineage({

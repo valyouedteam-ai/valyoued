@@ -113,7 +113,12 @@ function finalizeComparableUrl(raw: unknown): string | undefined {
 
 /** Real URLs only (no search hubs), sale years normalized, newest-first for display. */
 export function sanitizeComparables(comps: Comparable[] | undefined): Comparable[] {
-  const list = Array.isArray(comps) ? [...comps] : [];
+  const list = Array.isArray(comps)
+    ? comps.filter(
+        (c): c is Comparable =>
+          c != null && typeof c === "object" && !Array.isArray(c),
+      )
+    : [];
   const yNow = new Date().getFullYear();
   const normalized = list.map((c) => {
     const url = finalizeComparableUrl(c.url);
@@ -127,12 +132,35 @@ export function sanitizeComparables(comps: Comparable[] | undefined): Comparable
     const relevanceExplanation =
       typeof c.relevanceExplanation === "string" ? truncateField(c.relevanceExplanation, 360) || undefined : undefined;
 
+    const loose = c as { price?: unknown; source?: unknown; description?: unknown };
+    const parsedPrice =
+      typeof loose.price === "number"
+        ? loose.price
+        : typeof loose.price === "string"
+          ? Number(loose.price.replace(/,/g, "").trim())
+          : NaN;
+    const price = Number.isFinite(parsedPrice) && parsedPrice >= 0 ? Math.round(parsedPrice) : 0;
+
+    const source =
+      typeof loose.source === "string" && truncateField(loose.source, 160).trim().length > 0
+        ? truncateField(loose.source, 160)!
+        : "Comparable";
+    const description =
+      typeof loose.description === "string" && truncateField(loose.description, 560).trim().length > 0
+        ? truncateField(loose.description, 560)!
+        : "Similar market evidence";
+
     return {
       ...c,
+      source,
+      description,
+      price,
       year:
         typeof c.year === "number" && Number.isFinite(c.year)
           ? Math.min(yNow + 1, Math.max(1990, Math.round(c.year)))
-          : yNow,
+          : typeof c.year === "string" && /^\s*\d{4}\s*$/.test(c.year)
+            ? Math.min(yNow + 1, Math.max(1990, Math.round(Number(c.year))))
+            : yNow,
       url,
       imageUrl,
       matchTier,

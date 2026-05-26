@@ -8,6 +8,7 @@ import {
   mergePortfolioHref,
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
+import { portfolioWorkspaceButtonLabel } from "@/components/layout/PortfolioWorkspaceStrip";
 import { formatPercent, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -200,18 +201,25 @@ export default function HomePage() {
                   size="sm"
                   type="button"
                   variant={focused ? "default" : "outline"}
-                  className="rounded-full"
+                  className={cn(
+                    "rounded-full",
+                    focused && p.purpose === "inheritance"
+                      ? "bg-violet-600 text-white hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-600"
+                      : null,
+                    focused && p.purpose === "pro_board"
+                      ? "bg-teal-700 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-600"
+                      : null,
+                    !focused && p.purpose === "inheritance"
+                      ? "border-violet-400/55 text-violet-900 hover:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/15"
+                      : null,
+                    !focused && p.purpose === "pro_board"
+                      ? "border-teal-500/45 text-teal-900 hover:bg-teal-500/10 dark:text-teal-200 dark:hover:bg-teal-500/15"
+                      : null,
+                  )}
                   aria-pressed={focused}
                   onClick={() => selectPortfolioById(p.id)}
                 >
-                  {p.label ||
-                    (p.purpose === "primary"
-                      ? primaryLabel ?? "Primary"
-                      : p.purpose === "pro_board"
-                        ? "Desk"
-                        : p.purpose === "inheritance"
-                          ? "Inheritance"
-                          : "Workspace")}
+                  {portfolioWorkspaceButtonLabel(p, primaryLabel)}
                 </Button>
               );
             })}

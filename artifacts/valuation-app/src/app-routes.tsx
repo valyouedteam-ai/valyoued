@@ -13,6 +13,7 @@ import SignUpPage from "@/pages/sign-up";
 import NewEstimatePage from "@/pages/estimates/new";
 import EstimatesPage from "@/pages/estimates/index";
 import EstimateReportPage from "@/pages/estimates/[id]";
+import InheritancePage from "@/pages/inheritance";
 import PortfolioPage from "@/pages/portfolio";
 import MarketsPage from "@/pages/markets";
 import ListingsPage from "@/pages/listings";
@@ -76,6 +77,7 @@ function AppShellSwitch() {
       <Route path="/estimate/new" component={NewEstimatePage} />
       <Route path="/estimates" component={EstimatesPage} />
       <Route path="/estimates/:id" component={EstimateReportPage} />
+      <Route path="/inheritance" component={InheritancePage} />
       <Route path="/portfolio" component={PortfolioPage} />
       <Route path="/stats" component={PortfolioPage} />
       <Route path="/markets" component={MarketsPage} />

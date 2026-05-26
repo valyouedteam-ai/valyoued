@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { Comparable } from "@workspace/api-zod";
 import { comparableUrlLooksLikeSearchOrBrowse, sanitizeComparables } from "./comparables.js";
 
 test("strips eBay search hub URLs", () => {
@@ -37,6 +38,23 @@ test("sanitizeComparables removes search URLs but keeps item permalinks", () => 
   ]);
   assert.equal(out[0].url, undefined);
   assert.equal(out[1].url, "https://www.ebay.com/itm/12345");
+});
+
+test("sanitizeComparables skips null and invalid rows (LLM may emit holes)", () => {
+  const out = sanitizeComparables(
+    [
+      null,
+      {
+        source: "OK",
+        description: "OK row",
+        price: 100,
+        year: 2024,
+      },
+      "not-an-object" as unknown as Comparable,
+    ] as Comparable[],
+  );
+  assert.equal(out.length, 1);
+  assert.equal(out[0].source, "OK");
 });
 
 test("sanitizeComparables keeps HTTPS imageUrl and rejects http", () => {

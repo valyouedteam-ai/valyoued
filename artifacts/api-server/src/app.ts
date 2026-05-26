@@ -1,7 +1,13 @@
-import express, { type Express } from "express";
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+  type Express,
+} from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
+import { ZodError } from "zod";
 import { isLlmConfigured } from "@workspace/llm";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -67,5 +73,54 @@ if (!isLlmConfigured()) {
 }
 
 app.use("/api", router);
+
+/** Default Express HTML errors break SPA clients expecting JSON from `/api`. */
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction): void => {
+  if (res.headersSent) {
+    return;
+  }
+
+  logger.error({ err }, "Unhandled request error");
+
+  const pathRaw = typeof req.originalUrl === "string" ? req.originalUrl : req.url ?? "";
+  const pathOnly = pathRaw.split("?", 1)[0] ?? "";
+  const api = pathOnly.startsWith("/api");
+
+  if (!api) {
+    res.status(500).send("Internal Server Error");
+    return;
+  }
+
+  let status = 500;
+  let payload: { error: string; issues?: unknown; code?: string } = {
+    error: "Internal Server Error",
+  };
+
+  if (err instanceof ZodError) {
+    payload = {
+      error: "API response validation failed",
+      issues: err.flatten(),
+      code: "API_RESPONSE_SCHEMA",
+    };
+  } else if (err && typeof err === "object") {
+    const o = err as { status?: unknown; statusCode?: unknown };
+    const raw = o.status ?? o.statusCode;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(n) && n >= 400 && n < 600) {
+      status = n;
+    }
+    const msg =
+      err instanceof Error
+        ? err.message
+        : "message" in err && typeof (err as { message?: unknown }).message === "string"
+          ? String((err as { message: string }).message)
+          : "Internal Server Error";
+    payload = { ...payload, error: msg };
+  } else if (typeof err === "string" && err.trim()) {
+    payload = { ...payload, error: err };
+  }
+
+  res.status(status).json(payload);
+});
 
 export default app;

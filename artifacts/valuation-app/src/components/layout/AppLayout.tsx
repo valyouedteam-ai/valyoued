@@ -32,6 +32,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { PortfolioWorkspaceStrip } from "@/components/layout/PortfolioWorkspaceStrip";
 import {
   mergePortfolioHref,
   PortfolioWorkspaceProvider,
@@ -70,6 +71,14 @@ const navWorkspace: NavItem[] = [
 
 const navInsights: NavItem[] = [
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+  {
+    href: "/inheritance",
+    label: "Inheritance",
+    icon: Landmark,
+    navTitle:
+      "Separate ledger for estates, heirs, and heirlooms. Open this hub before valuing heirlooms or someone else's items.",
+    skipPortfolioQuery: true,
+  },
   { href: "/listings", label: "Ads", icon: Megaphone },
 ];
 
@@ -126,41 +135,29 @@ function portfolioWorkspaceHref(portfolio: Portfolio | undefined, primary: Portf
 
 function buildInsightNavigation(input: {
   paidTier: boolean;
-  inheritanceAddon: boolean;
   professionalPlan: boolean;
   portfolios: Portfolio[] | undefined;
   primaryPortfolio: Portfolio | null;
 }): NavItem[] {
   const rows: NavItem[] = [...navInsights];
   const { portfolios, primaryPortfolio } = input;
-  const primId = primaryPortfolio?.id ?? null;
 
   if (input.paidTier) {
     rows.push(NAV_MARKETS);
   }
 
-  if (input.inheritanceAddon) {
-    const inh = portfolios?.find((p) => p.purpose === "inheritance");
-    const href =
-      inh?.id && primId ? portfolioWorkspaceHref(inh, primaryPortfolio) : "/settings#inheritance-addon";
-    rows.push({
-      href,
-      label: "Inheritance",
-      icon: Landmark,
-      navTitle:
-        "Separate ledger: second Portfolio workspace for estates, heirs, and heirlooms. Open Portfolio here or switch workspace pills on Home before you valuate.",
-      skipPortfolioQuery: true,
-    });
-  }
-
   if (input.professionalPlan) {
-    const desk = portfolios?.find((p) => p.purpose === "pro_board");
+    const desks = [...(portfolios?.filter((p) => p.purpose === "pro_board") ?? [])].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    const desk = desks[0];
     const href = desk?.id ? portfolioWorkspaceHref(desk, primaryPortfolio) : "/portfolio";
     rows.push({
       href,
       label: "Desk",
       icon: PanelsTopLeft,
-      navTitle: "Professional trading desk",
+      navTitle:
+        "Jump to your latest trading desk workspace. Create more desks from Portfolio (Professional) to split stock lanes.",
       skipPortfolioQuery: true,
     });
   }
@@ -172,19 +169,17 @@ function useDashboardNavInsights(): NavItem[] {
   const { data: billing } = useBillingSummary();
   const { portfolios, primaryPortfolio } = usePortfolioWorkspace();
   const paidTier = Boolean(billing?.hasPaidValuationTier);
-  const inheritanceAddon = Boolean(billing?.hasInheritanceAddon);
   const professionalPlan = billing?.planSlug === "professional";
 
   return useMemo(
     () =>
       buildInsightNavigation({
         paidTier,
-        inheritanceAddon,
         professionalPlan,
         portfolios,
         primaryPortfolio,
       }),
-    [paidTier, inheritanceAddon, professionalPlan, portfolios, primaryPortfolio],
+    [paidTier, professionalPlan, portfolios, primaryPortfolio],
   );
 }
 
@@ -420,15 +415,15 @@ function MobileNavSheet({ insightNav }: { insightNav: NavItem[] }) {
               </Button>
             </Link>
             <Link href="/admin" onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
-              <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Team dashboard">
+              <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Admin dashboard">
                 <ShieldHalf className="h-4 w-4 shrink-0" />
-                Team
+                Admin
               </Button>
             </Link>
           </div>
         </div>
         <div className="mt-auto space-y-4 border-t border-border px-4 py-5">
-          <PlanBrief block className="w-full justify-between" />
+          {SHOW_STUB_PLAN_TOGGLE ? null : <PlanBrief block className="w-full justify-between" />}
           <UserMenu />
         </div>
       </SheetContent>
@@ -493,7 +488,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
                 <ProPreviewToggle />
               ) : null
             ) : null}
-            {!isMobile ? <PlanBrief className="hidden lg:flex" /> : null}
+            {!isMobile && !SHOW_STUB_PLAN_TOGGLE ? <PlanBrief className="hidden lg:flex" /> : null}
             <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
               <Button
                 variant={shellIconActiveSettings ? "secondary" : "ghost"}
@@ -503,7 +498,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
                 <Settings className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/admin" title="Team dashboard" aria-label="Team dashboard" className="hidden md:block">
+            <Link href="/admin" title="Admin dashboard" aria-label="Admin dashboard" className="hidden md:block">
               <Button
                 variant={shellIconActiveAdmin ? "secondary" : "ghost"}
                 size="icon"
@@ -516,9 +511,10 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
             <MobileNavSheet insightNav={insightNav} />
           </div>
         </div>
-        {isMobile ? (
+        <PortfolioWorkspaceStrip />
+        {isMobile && !SHOW_STUB_PLAN_TOGGLE ? (
           <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            {SHOW_STUB_PLAN_TOGGLE ? null : SHOW_DEV_PRO_CHROME_PREVIEW ? (
+            {SHOW_DEV_PRO_CHROME_PREVIEW ? (
               <ProPreviewToggle compact />
             ) : null}
             <PlanBrief />

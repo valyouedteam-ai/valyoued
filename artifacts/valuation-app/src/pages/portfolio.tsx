@@ -35,6 +35,8 @@ import {
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
 import { useSellerPersona } from "@/hooks/use-seller-persona";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { ProfessionalWorkspaceRollup } from "@/components/portfolio/ProfessionalWorkspaceRollup";
 
 type PortfolioItem = EstimateSummary & {
   liveValue: number;
@@ -128,7 +130,17 @@ const PALETTE = [
 export default function PortfolioPage() {
   const { code: displayCcy } = useDisplayCurrency();
   const { isProfessional } = useSellerPersona();
+  const { data: billing } = useBillingSummary();
+  const professionalPlan = billing?.planSlug === "professional";
   const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
+
+  const inheritanceWorkspace = activePortfolio?.purpose === "inheritance";
+  const deskWorkspace = activePortfolio?.purpose === "pro_board";
+  const workspaceShellClass = inheritanceWorkspace
+    ? "rounded-3xl border border-violet-500/20 bg-violet-500/[0.04] px-4 py-6 ring-1 ring-violet-500/15 shadow-sm dark:bg-violet-950/20 dark:ring-violet-400/25 sm:px-5 sm:py-8"
+    : deskWorkspace
+      ? "rounded-3xl border border-teal-500/25 bg-teal-500/[0.04] px-4 py-6 ring-1 ring-teal-500/15 shadow-sm dark:bg-teal-950/20 dark:ring-teal-400/30 sm:px-5 sm:py-8"
+      : "";
 
   const { data: estimates, isLoading } = useListEstimates({
     query: {
@@ -219,7 +231,7 @@ export default function PortfolioPage() {
 
   if (isLoading) {
     return (
-      <div className="w-full space-y-8">
+      <div className={cn("w-full space-y-8", workspaceShellClass)}>
         <Skeleton className="h-12 w-72" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -233,8 +245,16 @@ export default function PortfolioPage() {
 
   if (scopedRows.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto pt-12">
-        <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30">
+      <div
+        className={cn(
+          "mx-auto pt-12",
+          professionalPlan ? "max-w-5xl" : "max-w-3xl",
+          workspaceShellClass,
+        )}
+      >
+        <div className="space-y-6">
+          <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
+          <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30">
           <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">
             <Briefcase className="h-8 w-8 text-accent" />
           </div>
@@ -246,7 +266,7 @@ export default function PortfolioPage() {
           <p className="text-muted-foreground max-w-md mb-6">
             Run a valuation and attach it to this workspace{" "}
             {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id
-              ? "Pick another workspace in Settings to see your main ledger."
+              ? "Use the workspace pills under the navigation bar to return to your primary ledger."
               : "to see holdings, shelf mix, and listing shortcuts."}
           </p>
           <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
@@ -256,20 +276,42 @@ export default function PortfolioPage() {
             </Button>
           </Link>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full space-y-8 pb-16">
+    <div className={cn("w-full space-y-8 pb-16", workspaceShellClass)}>
+      <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-sans font-bold text-foreground">My Portfolio</h1>
+          <h1 className="text-3xl font-sans font-bold text-foreground">
+            {inheritanceWorkspace ? "Inheritance portfolio" : deskWorkspace ? "Trading desk" : "My portfolio"}
+          </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            {isProfessional
-              ? "Desk view for resale stock lanes, valuations, and high-value rotations."
-              : "Personal holdings view with shelf mix helpers and shortcuts into monitors."}
+            {inheritanceWorkspace ? (
+              <>
+                Estate rehearsal, heirlooms, and valuables you track separately from your everyday holdings. Violet chrome
+                reminds you this ledger is not your primary shelf.
+              </>
+            ) : deskWorkspace ? (
+              professionalPlan ? (
+                <>
+                  This desk totals only valuations attached to this lane. The workspace overview above lists item counts
+                  and approximate values across every portfolio on your Professional plan.
+                </>
+              ) : (
+                "Trading desk view for stock you route through this workspace."
+              )
+            ) : professionalPlan ? (
+              "Workspace overview above tracks every ledger. The cards and collection below follow whichever workspace is active."
+            ) : isProfessional ? (
+              "Desk-focused view for valuations and shelf mix in this workspace."
+            ) : (
+              "Personal holdings view with shelf mix helpers and shortcuts into monitors."
+            )}
           </p>
           {portfolioHeaderSubtitle ? (
             <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{portfolioHeaderSubtitle}</p>

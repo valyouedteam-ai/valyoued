@@ -237,7 +237,7 @@ export default function MarketsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="h-5 w-5 text-accent" />
-            Drill into each asset
+            Saved valuations
           </CardTitle>
           <CardDescription>
             Comparative pricing versus recent sales, live marketplace search shortcuts, and optional

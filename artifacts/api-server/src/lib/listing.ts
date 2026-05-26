@@ -42,7 +42,8 @@ const PROFILES: Record<Platform, PlatformProfile> = {
     audience: "Bargain hunters, collectors, international buyers",
     toneRules:
       "Search-friendly keywords woven into natural first-person sentences (not a cold spec dump). Include condition grade, dimensions, completeness (box, papers, accessories). Mention returns policy.",
-    titleHint: "80 chars max, keyword-stuffed (brand, model, key spec, condition). All caps for key acronyms is fine.",
+    titleHint:
+      "80 chars max, keyword-stuffed (brand, model, key spec). Never put numeric condition scores or N/10 in the title. All caps for key acronyms is fine.",
     bodyHint:
       "Open with a short friendly seller line, then cover item, condition and defects, what's included, shipping, returns. Bullets are fine where they help.",
   },
@@ -130,6 +131,32 @@ export interface GeneratedListing {
   photoTips: PhotoTip[];
   hashtags: string[];
   proTips: string[];
+}
+
+/** Strip numeric condition fractions (such as "9/10") from marketplace titles; condition belongs in the body. */
+export function sanitizeListingDraftTitle(title: string): string {
+  let t = title.trim();
+  if (!t) return t;
+  // Phrases like "condition 9/10", "cond 8 / 10"
+  t = t.replace(/\bcond(?:ition)?\.?\s*\d{1,2}\s*\/\s*10\b/gi, "");
+  // Parenthetical or bare "9/10" style scores on our 1-10 wizard scale only
+  t = t.replace(/\(?\s*\d{1,2}\s*\/\s*10\s*\)?/g, "");
+  // Tidy duplicated punctuation and whitespace left behind
+  t = t.replace(/\s*[-–,;:|]\s*(?:[-–,;:|]\s*)+/g, ", ");
+  t = t.replace(/\s{2,}/g, " ").trim();
+  t = t.replace(/^[-–,;:,|.\s]+|[-–,;:,|.\s]+$/g, "").trim();
+  return t;
+}
+
+/**
+ * Cuts off internal seller checklists sometimes emitted by older prompts; they must not ship in marketplace copy.
+ */
+export function stripSellerTodoBlockFromDraftBody(body: string): string {
+  const b = typeof body === "string" ? body.trimEnd() : "";
+  if (!b) return "";
+  const idx = b.toLowerCase().indexOf("still need from seller");
+  if (idx < 0) return b;
+  return b.slice(0, idx).replace(/[\s\r\n]+$/u, "").trimEnd();
 }
 
 /** Drop tips that rely on vague lifecycle advice unrelated to THIS item/class/platform. */
@@ -234,15 +261,15 @@ export async function generateListingDraft(
   const qualityBlock =
     quality === "basic"
       ? `\nSTYLE: BASIC (free-tier). Plain, credible, modest length. Aim for roughly 650-950 characters body. Offer 4 photo tips maximum. Omit hype.\nproTips: MUST be an empty JSON array [] (no seller tip bullets).`
-      : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller: persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, completeness callouts${plan === "professional" ? ", and resale/stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips. For proTips follow the SEPARATE proTips RULES section (strict): never generic "life hacks".`;
+      : `\nSTYLE: PREMIUM. Natural seller voice you'd see from an experienced reseller: persuasive but believable.\nProfessional plan (${plan}) commercial polish: sharper keyword coverage, and concise callouts for accessories or completeness only when ITEM explicitly lists them${plan === "professional" ? ", plus resale or stock-movement wording where appropriate." : "."}\nProduce 6-7 photoTips. For proTips follow the SEPARATE proTips RULES section (strict): never generic "life hacks".`;
 
   const conversationalVoice = `
 CONVERSATIONAL draftBody (required for all platforms; still follow platform profile for keywords and length):
 - Open with a short friendly human line (for example "Hi" or "Hello" plus who you are as the seller, such as "Hi, I'm [name or 'the owner'] and I'm selling..."). Do not invent a real name if none was given: use "the owner", "I'm selling", or similar.
 - Write the whole body in first person ("I'm asking...", "I've had it for...", "I'm happy to...") so it reads like a message to buyers, not a catalogue block.
 - After the opener, say what the item is in plain words (brand, model, year if known).
-- Include an explicit honesty section on physical condition and defects. Use a clear heading line such as "Condition and flaws:" or "Worth knowing:" then short sentences or bullets. If ITEM data lacks defect detail, summarise condition honestly from condition score and notes, and invite questions instead of guessing damage.
-- Then cover what's included, your asking price (the TARGET LIST PRICE), and how you'd like pickup, shipping, or contact to work for the seller region.
+- Include an honest section on physical condition and defects **only using what ITEM and owner notes actually say**. Use a clear heading line such as "Condition and flaws:" or "Worth knowing:" then short sentences or bullets. Never invent damage. Never say that defect detail is thin, incomplete, unknown, or "ask me because it is not listed"; if specifics are lacking, summarise only what the condition score and notes support in neutral terms, without calling attention to missing detail.
+- Then cover what is included (only if ITEM gives it), your asking price (the TARGET LIST PRICE), and how you would like pickup, shipping, or contact to work for the seller region.
 `.trim();
 
   const platformChecklist = prerequisitesBlockForPlatform(args.platform);
@@ -286,11 +313,11 @@ ${proTipsRules}
 
 ${localeTerms}
 
-PLATFORM PREREQUISITES (mention truthfully using ITEM data only; never invent specifics)
-Cover these buyer expectations naturally in prose or bullets: ${platformChecklist}
-If ITEM data misses something important below, append a boldly labeled separate block at the VERY END:
-Still need from seller:
-- ...
+PLATFORM PREREQUISITES (use ITEM facts only)
+Work relevant buyer expectations from this list naturally into conversational prose where you actually have facts. Do not invent specifics.
+Checklist (${args.platform}): ${platformChecklist}
+The listing must read as buyer-facing copy ready to paste. Never end with or insert a labelled seller to-do section (for example lines starting with "Still need from seller" or markdown such as "**Still need from seller:**" followed by bullet lists of missing MOT, paperwork, keys, postcode, specs, or similar).
+OMISSIONS: If ITEM does not include a fact, do not mention that fact at all. Do not apologise for gaps, do not say you are unsure, do not invite messages or DMs specifically to supply details that are absent from ITEM, and do not use phrases like "not included here", "TBC", "to follow", "I do not have", or "drop me a line for X" when X was never in ITEM. Stay silent on missing topics; write only from what is present.
 
 ${conversationalVoice}
 
@@ -302,8 +329,8 @@ PLATFORM PROFILE
 
 OUTPUT: STRICT JSON ONLY (no prose, no markdown fences):
 {
-  "draftTitle": string,    // ready to copy/paste into the platform's title field
-  "draftBody": string,     // ready to copy/paste into the description box. Conversational first person with a clear condition/flaws section. Use \\n for line breaks. NO markdown.
+  "draftTitle": string,    // marketplace title field: NEVER put condition as N/10 or numeric score here
+  "draftBody": string,     // paste-ready buyer copy. Conversational first person. NO markdown headings. NEVER include "Still need from seller" blocks or QA checklists. Only state facts present in ITEM; never call out missing information. Use \\n for line breaks only.
   "photoTips": [           // 4-7 ordered shots the seller should upload, optimised for THIS asset class & platform
     {
       "angle": string,     // such as "Front 3/4 hero", "Serial number close-up", "Box and papers flat-lay"
@@ -314,7 +341,11 @@ OUTPUT: STRICT JSON ONLY (no prose, no markdown fences):
   "proTips": [string]      // BASIC: [] only. PREMIUM: see proTips RULES (empty array if unsure).
 }
 
-CRITICAL: include the target price in the body as the asking price. Never invent serial numbers, model years, or specs that weren't given. Use only what's in the ITEM block above. Use realistic shipping/collection wording for the seller's region. Do not sound like a corporate template: keep the voice human and direct.`;
+CRITICAL: include the target price in the body as the asking price. Never invent serial numbers, model years, or specs that weren't given. Use only what's in the ITEM block above. Use realistic shipping/collection wording for the seller's region. Do not sound like a corporate template: keep the voice human and direct.
+Never put "**Still need from seller:**", "Still need from seller:", or similar seller checklists in draftBody.
+Do not make missing information obvious: omit any topic that is not in ITEM; no apologies, no "not sure", no highlighting gaps.
+
+TITLE: draftTitle must NOT contain numeric condition scores or fractions (no "9/10", "8/10", "condition 7/10", or similar). Put condition only in draftBody using honest words.`;
 
   let raw: string;
   try {
@@ -356,9 +387,18 @@ CRITICAL: include the target price in the body as the asking price. Never invent
   const rawProTips = (parsed.proTips ?? []).filter((t) => typeof t === "string" && t.trim() !== "");
   const proTips = quality === "basic" ? [] : filterProTips(rawProTips);
 
+  const rawTitle = (parsed.draftTitle?.trim() || i.title?.trim() || "").trim();
+  let draftTitle = sanitizeListingDraftTitle(rawTitle);
+  if (draftTitle.length < 3) {
+    draftTitle = sanitizeListingDraftTitle(`${i.brand ?? ""} ${i.model ?? ""}`.trim());
+  }
+  if (draftTitle.length < 3) {
+    draftTitle = sanitizeListingDraftTitle(e.assetType.name.trim()) || "Listing";
+  }
+
   return {
-    draftTitle: parsed.draftTitle?.trim() ?? i.title,
-    draftBody: parsed.draftBody?.trim() ?? "",
+    draftTitle,
+    draftBody: stripSellerTodoBlockFromDraftBody(parsed.draftBody?.trim() ?? ""),
     suggestedPrice: Math.round(targetPrice),
     photoTips,
     hashtags: (parsed.hashtags ?? []).filter((h) => typeof h === "string" && h.trim() !== ""),

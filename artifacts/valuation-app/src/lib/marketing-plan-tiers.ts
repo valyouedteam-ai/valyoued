@@ -76,8 +76,8 @@ export const INHERITANCE_ADDON_CARD: MarketingPlanCardDef = {
   ctaLabel: "Sign up, then add inheritance in Billing",
   ctaHref: "/sign-up",
   authenticatedCta: {
-    label: "Open inheritance workspace in Billing",
-    href: "/settings#inheritance-addon",
+    label: "Learn about the inheritance ledger",
+    href: "/inheritance",
   },
   variant: "outline",
 };

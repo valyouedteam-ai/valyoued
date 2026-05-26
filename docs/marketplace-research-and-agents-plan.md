@@ -33,7 +33,7 @@ Today the product uses **explicit curation**, not automated web scraping.
 ### Listing prerequisite hints (prompt-driven)
 
 - **Data:** [lib/marketplace-regions/src/listing-prerequisites.ts](../lib/marketplace-regions/src/listing-prerequisites.ts) holds `PLATFORM_LISTING_PREREQUISITES`: short prose per platform describing typical buyer-critical fields (not compliance).
-- **Injection:** [artifacts/api-server/src/lib/listing.ts](../artifacts/api-server/src/lib/listing.ts) folds `prerequisitesBlockForPlatform(platform)` plus `sellerTerminologyPromptLine(i.currentRegion)` into the Anthropic listing prompt and instructs the model to emit a **`Still need from seller:`** block when ITEM data lacks required nuance.
+- **Injection:** [artifacts/api-server/src/lib/listing.ts](../artifacts/api-server/src/lib/listing.ts) folds `prerequisitesBlockForPlatform(platform)` plus `sellerTerminologyPromptLine(i.currentRegion)` into the listing prompt. Missing ITEM fields are handled in conversational prose (or omitted), not as a public "Still need from seller" checklist in the draft body.
 
 ### Locale terminology for listing copy
 
@@ -142,7 +142,7 @@ Current region groups are coarse. Enhancements:
 
 - **Allowlist fidelity:** Changing research JSON (or staged DB overlay) adjusts visible platforms without app redeploy OR with one config deploy workflow documented.
 - **Security:** Scraping/agent jobs sandboxed; no secrets in repos; timeouts and domain allowlists to prevent SSRF creep.
-- **Prompt safety:** Prerequisites block cites only facts inferred from ITEM + structured extras; unresolved items appear under **Still need from seller**.
+- **Prompt safety:** Prerequisites block cites only facts inferred from ITEM + structured extras; unknowns are not appended as buyer-facing seller to-do lists in the draft body.
 - **UX:** Sellers never see suppressed platforms when region is authoritative; resumed estimates with incompatible region still degrade gracefully after review.
 - **Tests:** Fixture regions per geography for allowlist; golden prompt fragments for prerequisites + terminology; inference unit tests per vertical.
 

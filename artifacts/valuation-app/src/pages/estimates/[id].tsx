@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ArbitrageOption, Comparable } from "@workspace/api-client-react";
+import type { ArbitrageOption } from "@workspace/api-client-react";
 import {
   useGetEstimate,
   getGetEstimateQueryKey,
@@ -78,7 +78,7 @@ function ReportSaleInline({
   const [raw, setRaw] = useState("");
   return (
     <form
-      className="flex flex-wrap items-end gap-2"
+      className="flex w-full max-w-none flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         const cleaned = raw.replace(/,/g, "").trim();
@@ -88,38 +88,28 @@ function ReportSaleInline({
         setRaw("");
       }}
     >
-      <label className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+      <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
         Sold near ({ccy})
         <input
           type="text"
           autoComplete="off"
           inputMode="decimal"
-          className="h-8 w-28 rounded-md border border-border bg-background px-2 tabular-nums text-sm text-foreground"
+          className="h-10 w-full rounded-md border border-border bg-background px-3 tabular-nums text-sm text-foreground"
           value={raw}
           placeholder="Optional"
           disabled={disabled}
           onChange={(e) => setRaw(e.target.value)}
+          aria-describedby="sold-near-helper"
         />
+        <span id="sold-near-helper" className="text-[11px] font-normal leading-snug text-muted-foreground/90">
+          Optional rough sale price after you have exchanged.
+        </span>
       </label>
-      <Button type="submit" size="sm" variant="secondary" disabled={disabled} className="h-8">
+      <Button type="submit" size="sm" variant="secondary" disabled={disabled} className="h-10 w-full">
         Save
       </Button>
     </form>
   );
-}
-
-function compMatchTierLabel(t: Comparable["matchTier"] | undefined): string | null {
-  if (t === "strong") return "Strong match";
-  if (t === "moderate") return "Close match";
-  if (t === "broadAnalogue") return "Broad analogue";
-  return null;
-}
-
-function transactionGuessLabel(t: Comparable["transactionTypeGuess"] | undefined): string | null {
-  if (t === "sold_estimate") return "Sold signal";
-  if (t === "asking_price") return "Asking / listing";
-  if (t === "unknown") return "Type unclear";
-  return null;
 }
 
 /** Cost breakdown under each marketplace row. */
@@ -135,13 +125,6 @@ function ArbitrageVenueFeeBreakdown({
   const cur = option.currency || "USD";
   const fm = (n: number) => formatMoney(n, cur);
   const gross = option.estimatedSalePrice;
-  const modeledNet = gross - (option.estimatedFees + option.estimatedShipping + option.estimatedDuties);
-  const netDelta = modeledNet - option.netToSeller;
-  const tallyOk =
-    Number.isFinite(netDelta) &&
-    gross > 0 &&
-    (Math.abs(netDelta) <= Math.max(2, gross * 0.02) ||
-      Math.abs(netDelta / Math.max(option.netToSeller, 1)) <= 0.03);
 
   return (
     <div className="no-print space-y-3 rounded-xl border border-border/50 bg-muted/20 p-3 text-sm md:p-4">
@@ -204,15 +187,7 @@ function ArbitrageVenueFeeBreakdown({
           <dt>Tax or duty</dt>
           <dd>-{fm(option.estimatedDuties)}</dd>
         </div>
-        <div className="flex justify-between gap-4 border-t border-border/60 pt-2 font-semibold text-foreground">
-          <dt>About what you keep</dt>
-          <dd>{fm(option.netToSeller)}</dd>
-        </div>
       </dl>
-
-      <p className="text-[11px] leading-snug text-muted-foreground">
-        Rounded.{!tallyOk ? " Small gaps are usually rounding." : ""} Confirm on the marketplace and with your courier.
-      </p>
     </div>
   );
 }
@@ -355,6 +330,7 @@ export default function EstimateReportPage() {
     marketNarrative: stripQ(partialReport?.marketNarrative ?? ""),
     arbitrageNarrative: stripQ(partialReport?.arbitrageNarrative ?? ""),
     worldEventsNarrative: stripQ(partialReport?.worldEventsNarrative ?? ""),
+    finalNarrative: stripQ(partialReport?.finalNarrative ?? ""),
   };
 
   const arbitrageRows = estimate.arbitrage ?? [];
@@ -469,7 +445,7 @@ export default function EstimateReportPage() {
             {report.headline}
           </h1>
           {report.summary ? (
-            <p className="max-w-2xl text-sm leading-snug text-muted-foreground sm:text-base">{report.summary}</p>
+            <p className="w-full max-w-none text-sm leading-snug text-muted-foreground sm:text-base">{report.summary}</p>
           ) : null}
         </div>
 
@@ -500,74 +476,10 @@ export default function EstimateReportPage() {
           </div>
         </section>
 
-        <section className="no-print flex flex-col gap-2 rounded-2xl border border-border/50 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="text-sm">
-            <p className="font-medium text-foreground">Calibration</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Optional signals improve future estimates. Nothing here changes your saved valuation snapshot.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            {estimate.valuationFeedback ? (
-              <p className="text-xs text-muted-foreground">
-                Thanks{estimate.valuationFeedback.helpful ? ", glad it helped" : " for the honest note"}.
-              </p>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground">Was this report useful?</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={patchIntent.isPending}
-                  className="h-8"
-                  onClick={() =>
-                    patchIntent.mutate({ id: estimate.id, data: { valuationFeedback: { helpful: true } } })
-                  }
-                >
-                  Yes
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={patchIntent.isPending}
-                  className="h-8 text-muted-foreground"
-                  onClick={() =>
-                    patchIntent.mutate({ id: estimate.id, data: { valuationFeedback: { helpful: false } } })
-                  }
-                >
-                  Not really
-                </Button>
-              </div>
-            )}
-            {estimate.valuationOutcome ? (
-              <p className="text-xs text-muted-foreground">
-                Reported sold around{" "}
-                <span className="font-medium tabular-nums text-foreground">
-                  {formatMoney(estimate.valuationOutcome.soldPrice, ccy)}
-                </span>
-                .
-              </p>
-            ) : (
-              <ReportSaleInline
-                ccy={ccy}
-                disabled={patchIntent.isPending}
-                onSubmitSold={(soldPrice) =>
-                  patchIntent.mutate({ id: estimate.id, data: { valuationOutcome: { soldPrice } } })
-                }
-              />
-            )}
-          </div>
-        </section>
-
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm print:border-border print:shadow-none">
           <div className="border-b border-border/50 bg-gradient-to-br from-accent/[0.07] via-transparent to-transparent px-4 py-4 sm:px-5">
             <p className="text-xs font-medium text-muted-foreground sm:text-sm">Estimate today</p>
             <p className="mt-1 text-4xl font-semibold tabular-nums tracking-tight text-foreground sm:text-5xl">{fmt(estimate.adjustedMid)}</p>
-            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              Likely band {fmt(estimate.adjustedLow, true)} to {fmt(estimate.adjustedHigh, true)}
-            </p>
             {uplift !== 0 ? (
               <p
                 className={cn(
@@ -581,7 +493,9 @@ export default function EstimateReportPage() {
               </p>
             ) : null}
             {report.marketNarrative ? (
-              <p className="mt-2 max-w-2xl text-xs leading-snug text-foreground/85 sm:text-sm">{report.marketNarrative}</p>
+              <p className="mt-2 w-full max-w-none text-xs leading-snug text-foreground/85 sm:text-sm">
+                {report.marketNarrative}
+              </p>
             ) : null}
           </div>
           <div className="border-t border-border/50 px-4 py-4 sm:px-5">
@@ -593,11 +507,8 @@ export default function EstimateReportPage() {
               </span>
             </div>
             {report.baselineNarrative ? (
-              <p className="mt-2 text-xs leading-snug text-muted-foreground sm:text-sm">{report.baselineNarrative}</p>
+              <p className="mt-2 w-full max-w-none text-xs leading-snug text-muted-foreground sm:text-sm">{report.baselineNarrative}</p>
             ) : null}
-            <p className="mt-3 border-l-2 border-accent/25 pl-3 text-[11px] leading-snug text-muted-foreground sm:text-xs">
-              The headline layers news and demand on similar sales. Use the range when you talk price.
-            </p>
           </div>
         </div>
       </header>
@@ -614,7 +525,7 @@ export default function EstimateReportPage() {
                   <h2 className="text-lg font-semibold tracking-tight text-foreground">
                     See the full picture
                   </h2>
-                  <p className="max-w-xl text-sm leading-snug text-muted-foreground">
+                  <p className="w-full max-w-none text-sm leading-snug text-muted-foreground">
                     Subscribe for news, payouts by venue, the full comparable grid, and the seller playbook. This summary
                     stays here until billing is active or you open a valuation generated on Pro.
                     {comparables.length > 0 ? (
@@ -656,7 +567,7 @@ export default function EstimateReportPage() {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">News that may tilt the price</h2>
               {report.worldEventsNarrative ? (
-                <p className="max-w-2xl text-sm leading-snug text-muted-foreground">{report.worldEventsNarrative}</p>
+                <p className="w-full max-w-none text-sm leading-snug text-muted-foreground">{report.worldEventsNarrative}</p>
               ) : null}
             </div>
 
@@ -685,7 +596,7 @@ export default function EstimateReportPage() {
                             <span className="shrink-0 text-[11px] text-muted-foreground">{ev.scope}</span>
                           ) : null}
                         </div>
-                        <p className="text-sm leading-snug text-muted-foreground">{stripQ(ev.summary)}</p>
+                        <p className="w-full max-w-none text-sm leading-snug text-muted-foreground">{stripQ(ev.summary)}</p>
                         {(ev.source || ev.url || ev.publishedAt) && (
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                             {ev.source ? <span>{ev.source}</span> : null}
@@ -725,8 +636,10 @@ export default function EstimateReportPage() {
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 {isMobile ? "Where listing might pay best" : "Local sites and payouts"}
               </h2>
-              <p className="mt-1 max-w-2xl text-sm leading-snug text-muted-foreground">
-                Estimated list price minus fees, shipping, and duties. Expand a row for the breakdown.
+              <p className="mt-1 w-full max-w-none text-sm leading-snug text-muted-foreground">
+                {report.arbitrageNarrative
+                  ? report.arbitrageNarrative
+                  : "Estimated list price minus fees, shipping, and duties. Expand a row for the breakdown."}
               </p>
             </div>
 
@@ -856,13 +769,7 @@ export default function EstimateReportPage() {
         {/* Similar sales */}
         {comparables.length > 0 ? (
           <section className="space-y-4 print:break-inside-avoid">
-            <div className="space-y-1">
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">Similar sales and why they matter</h2>
-              <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
-                Each row ties back to your wizard notes. Open permalinks when present, or jump to sold and live searches on
-                the marketplaces we cover.
-              </p>
-            </div>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Similar sales and why they matter</h2>
 
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-border/50 bg-muted/10 p-4">
@@ -873,7 +780,7 @@ export default function EstimateReportPage() {
                   {sellerRegion ? ` · ${sellerRegion}` : ""}
                 </p>
                 {estimate.input?.attributes ? (
-                  <p className="mt-2 line-clamp-3 text-xs leading-snug text-muted-foreground">{estimate.input.attributes}</p>
+                  <p className="mt-2 text-xs leading-snug text-muted-foreground">{estimate.input.attributes}</p>
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Add richer attributes on the next valuation to sharpen how comps line up.
@@ -882,7 +789,7 @@ export default function EstimateReportPage() {
               </div>
               <div className="rounded-xl border border-border/50 bg-card/60 p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Evidence context</p>
-                <p className="mt-1 text-sm leading-snug text-muted-foreground">
+                <p className="mt-1 w-full max-w-none text-sm leading-snug text-muted-foreground">
                   Strong matches align on condition and specs. Broad analogues are still useful for direction but should not
                   be read as identical sales.
                 </p>
@@ -920,8 +827,6 @@ export default function EstimateReportPage() {
               const thumbUrl = SHOW_COMP_THUMBNAILS ? safeHttpUrl(comp.imageUrl) : undefined;
               const saleYear = typeof comp.year === "number" && Number.isFinite(comp.year) ? comp.year : null;
               const isStaleSale = saleYear != null && saleYear < staleSaleBeforeYear;
-              const matchTier = compMatchTierLabel(comp.matchTier);
-              const txGuess = transactionGuessLabel(comp.transactionTypeGuess);
               return (
                 <Card key={`${comp.source}-${comp.price}-${i}`} className="flex flex-col overflow-hidden rounded-2xl border-border/50 bg-card shadow-sm">
                   {thumbUrl ? (
@@ -939,16 +844,6 @@ export default function EstimateReportPage() {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">{comp.source}</span>
-                        {matchTier ? (
-                          <Badge variant="outline" className="text-[10px] font-normal">
-                            {matchTier}
-                          </Badge>
-                        ) : null}
-                        {txGuess ? (
-                          <Badge variant="secondary" className="text-[10px] font-normal">
-                            {txGuess}
-                          </Badge>
-                        ) : null}
                       </div>
                       {verifiedUrl ? (
                         <a
@@ -966,11 +861,13 @@ export default function EstimateReportPage() {
                       )}
                     </div>
                     {comp.relevanceExplanation ? (
-                      <p className="mt-2 text-xs font-medium leading-snug text-accent">{stripQ(comp.relevanceExplanation)}</p>
+                      <p className="mt-2 w-full max-w-none text-xs font-medium leading-snug text-accent">
+                        {stripQ(comp.relevanceExplanation)}
+                      </p>
                     ) : null}
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col p-4 pt-0">
-                    <p className="line-clamp-3 text-sm leading-snug text-foreground">{stripQ(comp.description)}</p>
+                    <p className="text-sm leading-snug text-foreground">{stripQ(comp.description)}</p>
                     <div className="mb-2 mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
                       {comp.conditionCue ? <span className="rounded bg-muted/60 px-1.5 py-0.5">{stripQ(comp.conditionCue)}</span> : null}
                       {comp.locationOrChannel ? <span className="rounded bg-muted/60 px-1.5 py-0.5">{stripQ(comp.locationOrChannel)}</span> : null}
@@ -979,8 +876,8 @@ export default function EstimateReportPage() {
                         <span className="rounded bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground">Older row</span>
                       ) : null}
                     </div>
-                    <div className="mb-3 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {verifiedUrl ? (
+                    {verifiedUrl ? (
+                      <div className="mb-3 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <a
                           href={verifiedUrl}
                           target="_blank"
@@ -991,10 +888,8 @@ export default function EstimateReportPage() {
                           Open source link
                           <ExternalLink className="h-3 w-3" />
                         </a>
-                      ) : (
-                        <span className="text-muted-foreground/80">No permalink for this row</span>
-                      )}
-                    </div>
+                      </div>
+                    ) : null}
                     <div className="mt-auto space-y-2 border-t border-border/40 pt-2">
                       <div>
                         <p className="mb-2 text-[11px] font-medium text-muted-foreground">Similar sold listings</p>
@@ -1075,7 +970,7 @@ export default function EstimateReportPage() {
                     <h2 id="seller-playbook-heading" className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
                       Price, chats, listing
                     </h2>
-                    <p className="max-w-xl text-sm leading-snug text-muted-foreground">
+                    <p className="w-full max-w-none text-sm leading-snug text-muted-foreground">
                       Opening ask, walk-away floor, negotiation steps, pitfalls, and listing tweaks.
                     </p>
                   </div>
@@ -1179,6 +1074,75 @@ export default function EstimateReportPage() {
             </Link>
           </section>
         )}
+
+        {report.finalNarrative ? (
+          <section className="print:break-inside-avoid rounded-2xl border border-border/50 bg-muted/10 p-4 sm:p-5">
+            <p className="w-full max-w-none text-sm leading-snug text-muted-foreground sm:text-base">{report.finalNarrative}</p>
+          </section>
+        ) : null}
+
+        <section className="no-print w-full rounded-2xl border border-border/50 bg-muted/20 p-4 sm:p-5">
+          <div className="space-y-5">
+            <div className="text-sm">
+              <p className="font-medium text-foreground">Calibration</p>
+              <p className="mt-1 text-xs text-muted-foreground leading-snug">
+                Optional signals improve future estimates. Nothing here changes your saved valuation snapshot.
+              </p>
+            </div>
+            {estimate.valuationFeedback ? (
+              <p className="text-xs text-muted-foreground">
+                Thanks{estimate.valuationFeedback.helpful ? ", glad it helped" : " for the honest note"}.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <span className="text-xs text-muted-foreground">Was this report useful?</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={patchIntent.isPending}
+                    className="h-9"
+                    onClick={() =>
+                      patchIntent.mutate({ id: estimate.id, data: { valuationFeedback: { helpful: true } } })
+                    }
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={patchIntent.isPending}
+                    className="h-9 text-muted-foreground"
+                    onClick={() =>
+                      patchIntent.mutate({ id: estimate.id, data: { valuationFeedback: { helpful: false } } })
+                    }
+                  >
+                    Not really
+                  </Button>
+                </div>
+              </div>
+            )}
+            {estimate.valuationOutcome ? (
+              <p className="text-sm text-muted-foreground">
+                Reported sold around{" "}
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatMoney(estimate.valuationOutcome.soldPrice, ccy)}
+                </span>
+                .
+              </p>
+            ) : (
+              <ReportSaleInline
+                ccy={ccy}
+                disabled={patchIntent.isPending}
+                onSubmitSold={(soldPrice) =>
+                  patchIntent.mutate({ id: estimate.id, data: { valuationOutcome: { soldPrice } } })
+                }
+              />
+            )}
+          </div>
+        </section>
 
         <p className="mt-8 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground">
           Estimate only, not formal advice. Pricing changes with the market.

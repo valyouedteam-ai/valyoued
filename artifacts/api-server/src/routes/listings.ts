@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-zod";
 import type { EstimateResult } from "@workspace/api-zod";
 import { mergeEstimateResultFromRow } from "../lib/estimateResultMerge";
-import { generateListingDraft, type Platform, type PriceStrategy } from "../lib/listing";
+import { generateListingDraft, sanitizeListingDraftTitle, stripSellerTodoBlockFromDraftBody, type Platform, type PriceStrategy } from "../lib/listing";
 import { allowedPlatformsForRegion } from "@workspace/marketplace-regions";
 import { resolveUserEntitlements } from "../lib/entitlements";
 import { logger } from "../lib/logger";
@@ -159,8 +159,8 @@ function rowToDraft(row: typeof listingsTable.$inferSelect) {
     platform: row.platform,
     assetTitle: row.assetTitle,
     assetTypeName: row.assetTypeName,
-    draftTitle: row.draftTitle,
-    draftBody: row.draftBody,
+    draftTitle: sanitizeListingDraftTitle(row.draftTitle),
+    draftBody: stripSellerTodoBlockFromDraftBody(row.draftBody),
     suggestedPrice: row.suggestedPrice,
     currency: row.currency,
     photoTips: row.photoTips,

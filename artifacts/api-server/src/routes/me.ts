@@ -13,6 +13,7 @@ import {
   sendHtmlEmail,
 } from "../lib/emailDelivery";
 import { resolveUserEntitlements } from "../lib/entitlements";
+import { sanitizeListingDraftTitle, stripSellerTodoBlockFromDraftBody } from "../lib/listing";
 
 const router: IRouter = Router();
 
@@ -195,8 +196,8 @@ router.get("/me/data-export", requireAuth, async (req, res): Promise<void> => {
       platform: r.platform,
       assetTitle: r.assetTitle,
       assetTypeName: r.assetTypeName,
-      draftTitle: r.draftTitle,
-      draftBody: r.draftBody,
+      draftTitle: sanitizeListingDraftTitle(r.draftTitle),
+      draftBody: stripSellerTodoBlockFromDraftBody(r.draftBody),
       suggestedPrice: r.suggestedPrice,
       currency: r.currency,
       photoTips: r.photoTips,

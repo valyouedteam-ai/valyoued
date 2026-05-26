@@ -11,11 +11,11 @@ import {
   Bike,
   BookMarked,
   BookOpen,
-  BrainCircuit,
   Briefcase,
   Building2,
   Camera,
   Car,
+  Calculator,
   Coins,
   Cpu,
   Disc3,
@@ -61,7 +61,7 @@ import {
   getListEstimatesQueryKey,
   getGetEstimateStatsQueryKey,
 } from "@workspace/api-client-react";
-import type { EstimateInput, AssetType, AssetField } from "@workspace/api-client-react";
+import type { EstimateInput, AssetType, AssetField, Portfolio } from "@workspace/api-client-react";
 import { assetTypeAllowedForSellerTier } from "@workspace/asset-shelf-tier";
 import { GENERAL_ITEM_ASSET_TYPE_ID, isWizardSupportedAssetTypeId, pickAssetTypesForWizardPicker, WIZARD_CURATED_PRIMARY_COUNT } from "@workspace/curated-asset-ids";
 import { inferVehicleFuelHint, matchFuelDropdownOption } from "@workspace/marketplace-regions";
@@ -402,6 +402,14 @@ function DynamicAssetFieldRow({
   );
 }
 
+/** Human hint for the wizard portfolio dropdown (shown next to the ledger name). */
+function portfolioWorkspaceHelpText(purpose: Portfolio["purpose"]): string {
+  if (purpose === "primary") return "Your main holdings";
+  if (purpose === "inheritance") return "Estate, heirlooms, or items you track for others";
+  if (purpose === "pro_board") return "Professional desk";
+  return "Workspace";
+}
+
 function describeValuationGateError(err: unknown): string {
   if (err instanceof ApiError && err.status === 429) {
     const payload = err.data as { error?: string } | null | undefined;
@@ -483,7 +491,8 @@ function NewEstimatePageInner({
     resumedRef.current = true;
     sessionStorage.removeItem(PENDING_KEY);
     const resumePayload = { ...pending.input } satisfies PendingPayload["input"];
-    const pfResolved = portfolioCtx?.primaryPortfolio?.id ?? portfoliosList?.[0]?.id;
+    const pfResolved =
+      portfolioCtx?.activePortfolio?.id ?? portfolioCtx?.primaryPortfolio?.id ?? portfoliosList?.[0]?.id;
     if (pfResolved && resumePayload.portfolioId === undefined) {
       resumePayload.portfolioId = pfResolved;
     }
@@ -952,7 +961,7 @@ function NewEstimatePageInner({
           <div className="absolute inset-0 rounded-full border-4 border-accent/20"></div>
           <div className="absolute inset-0 rounded-full border-4 border-accent border-t-transparent animate-spin"></div>
           <div className="absolute inset-0 flex items-center justify-center text-accent">
-            <BrainCircuit className="h-8 w-8" />
+            <Calculator className="h-8 w-8" />
           </div>
         </div>
         <div className="text-center space-y-2">
@@ -1325,15 +1334,16 @@ function NewEstimatePageInner({
                         <SelectContent>
                           {portfoliosList.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
-                              {p.label ?? p.id.slice(0, 8)}{" "}
-                              <span className="text-xs capitalize text-muted-foreground">
-                                ({p.purpose.replace("_", " ")})
-                              </span>
+                              <span className="font-medium">{p.label?.trim() ? p.label : p.id.slice(0, 8)}</span>
+                              <span className="text-muted-foreground"> · {portfolioWorkspaceHelpText(p.purpose)}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>Matches the workspace picker in the app header when you are signed in.</FormDescription>
+                      <FormDescription>
+                        Choose which ledger receives this valuation after the model runs. Matches the workspace pills under
+                        the navigation bar so you can jump between personal and inheritance dashboards without mixing items.
+                      </FormDescription>
                     </FormItem>
                   ) : null}
                 </div>

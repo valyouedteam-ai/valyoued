@@ -180,6 +180,23 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
   await incrementMonthlyEstimateUsage(userId);
 
   const result = mergeEstimateResultFromRow(row, row.result);
+  const parsedPayload = CreateEstimateResponse.safeParse(result);
+  if (!parsedPayload.success) {
+    logger.error(
+      {
+        estimateId: row.id,
+        userId,
+        zodIssues: parsedPayload.error.flatten(),
+      },
+      "CreateEstimateResponse validation failed after insert",
+    );
+    res.status(500).json({
+      error:
+        "We saved your valuation but the response payload failed validation. Our team sees this error in logs. Please reload your portfolio or try again.",
+    });
+    return;
+  }
+
   void recordPlatformEvent({
     userId,
     eventType: "estimate.created",
@@ -200,7 +217,7 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
   }).catch((err) => {
     logger.error({ err }, "notifyEstimateReadyEmail failed");
   });
-  res.json(CreateEstimateResponse.parse(result));
+  res.json(parsedPayload.data);
 });
 
 router.patch("/estimates/:id", requireAuth, async (req, res): Promise<void> => {

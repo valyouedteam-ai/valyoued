@@ -16,7 +16,7 @@ Monorepo (pnpm workspaces).
 - `artifacts/api-server` (Express): endpoints under `/api/*`:
   - `/api/asset-types`, `/api/regions`, `/api/estimates` (POST/GET/list/stats), `/api/healthz`
   - `/api/me/billing`, `/api/me/data-export`: subscription snapshot + GDPR JSON bundle (authenticated)
-  - `/api/admin/overview`, `/api/admin/users/:userId/activity`: ops dashboard (`ADMIN_USER_IDS` env: comma-separated Clerk user IDs)
+  - `/api/admin/overview`, `/api/admin/users/:userId/activity`: admin dashboard API (`ADMIN_USER_IDS` env: comma-separated Clerk user IDs)
   - `/api/billing/checkout-session`, `/api/billing/customer-portal`, `/api/billing/webhook`: Stripe (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO`, `STRIPE_WEBHOOK_SECRET`, `PUBLIC_APP_URL`). Webhook mounted before `express.json()` with raw body.
   - `/api/vision/extract`: Anthropic vision (`src/lib/vision.ts`). Rate-limited to 8 req/min/IP.
   - `/api/listings`: marketplace drafts via Anthropic (`src/lib/listing.ts`). Rate-limited to 12 req/min/IP.
