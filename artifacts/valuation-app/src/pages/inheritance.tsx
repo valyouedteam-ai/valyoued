@@ -10,14 +10,30 @@ import {
 } from "@/context/PortfolioWorkspaceContext";
 import { useOptionalStubBillingPlanDev } from "@/context/StubBillingPlanDevContext";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { cn } from "@/lib/utils";
 import { portfolioWorkspaceButtonLabel } from "@/components/layout/PortfolioWorkspaceStrip";
 import {
+  ApiError,
   getListPortfoliosQueryKey,
   useCreatePortfolio,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+
+function formatProvisionError(err: unknown): string {
+  if (!err) return "";
+  if (err instanceof ApiError) {
+    const d = err.data;
+    if (d && typeof d === "object" && "error" in d) {
+      const msg = (d as { error?: unknown }).error;
+      if (typeof msg === "string" && msg.trim()) return msg.trim();
+    }
+    return err.message.trim() || `HTTP ${err.status}`;
+  }
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
 
 /**
  * Dedicated hub for the inheritance ledger: explains how it differs from the primary portfolio,
@@ -42,14 +58,22 @@ export default function InheritancePage() {
     selectPortfolioById,
   } = usePortfolioWorkspace();
 
-  const { mutate: provisionMutate, isPending: provisionPending, isError: provisionFailed } =
-    useCreatePortfolio({
-      mutation: {
-        onSettled: async () => {
-          await queryClient.invalidateQueries({ queryKey: getListPortfoliosQueryKey() });
-        },
+  const {
+    mutate: provisionMutate,
+    isPending: provisionPending,
+    isError: provisionFailed,
+    error: provisionError,
+  } = useCreatePortfolio({
+    mutation: {
+      onSettled: async () => {
+        await queryClient.invalidateQueries({ queryKey: getListPortfoliosQueryKey() });
       },
-    });
+    },
+  });
+
+  /** Clerk plus dev Subscription strip: billing fields are mocked in the browser while POST /api/portfolios stays real. */
+  const clerkDevBillingStrip =
+    Boolean(isDevBillingUiEnabled() && stubDev !== null && !AUTH_STUB_MODE);
 
   useEffect(() => {
     if (!hasAddon) {
@@ -191,10 +215,30 @@ export default function InheritancePage() {
                 : provisionPending
                   ? "Creating your inheritance workspace on the server. This usually finishes in under a second."
                   : provisionFailed
-                    ? "We could not create this workspace automatically. Confirm your Billing or simulated add-on matches what the API expects, then use Retry."
+                    ? "We could not create this workspace automatically. Use Retry after fixing the mismatch below."
                     : "Getting your inheritance workspace ready."}
             </CardDescription>
           </CardHeader>
+          {provisionFailed ? (
+            <div className="border-t px-6 py-4">
+              <p className="text-sm font-medium text-destructive">Server response</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {formatProvisionError(provisionError) || "Request failed (no details from API)."}
+              </p>
+              {clerkDevBillingStrip ? (
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  The Subscription strip changes this app only until the valuation API trusts{" "}
+                  <span className="font-mono">X-Stub-Billing-Plan</span> and{" "}
+                  <span className="font-mono">X-Stub-Inheritance-Addon</span>. From the repo root run{" "}
+                  <span className="font-mono">pnpm dev</span>{" "}
+                  (the API defaults to{" "}
+                  <span className="font-mono">NODE_ENV=development</span>), or set{" "}
+                  <span className="font-mono">ALLOW_DEV_STUB_BILLING_HEADERS=1</span> on a private local API build. Remote
+                  production APIs always use real Billing.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {inh ? (
               <>

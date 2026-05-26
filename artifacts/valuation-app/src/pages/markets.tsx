@@ -93,17 +93,17 @@ export default function MarketsPage() {
       ) : stats ? (
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-border/60 bg-card/40">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-1.5 text-xs">
+            <CardHeader className="flex flex-col items-center gap-2 p-5 text-center sm:p-6">
+              <CardDescription className="flex flex-wrap items-center justify-center gap-1.5 text-xs [&_svg]:shrink-0">
                 <LayoutList className="h-3.5 w-3.5" /> Valuations
               </CardDescription>
               <CardTitle className="text-3xl font-sans tabular-nums">{stats.count}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-1.5 text-xs">
-                <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+            <CardHeader className="flex flex-col items-center gap-2 p-5 text-center sm:p-6">
+              <CardDescription className="flex flex-wrap items-center justify-center gap-1 text-xs [&_svg]:shrink-0">
+                <TrendingUp className="h-3.5 w-3.5" />
                 <span className="min-w-0">Avg. market uplift</span>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -117,7 +117,7 @@ export default function MarketsPage() {
                       <Info className="h-3.5 w-3.5" aria-hidden />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 text-sm font-sans" align="start">
+                  <PopoverContent className="w-80 text-sm font-sans" align="center">
                     <p className="font-medium text-foreground">What this shows</p>
                     <p className="mt-2 leading-relaxed text-muted-foreground">
                       Each saved valuation has two mid-range values: a baseline midpoint from similar recent
@@ -138,24 +138,20 @@ export default function MarketsPage() {
                   </PopoverContent>
                 </Popover>
               </CardDescription>
-              <CardTitle className="text-3xl font-sans tabular-nums">
-                {formatPercent(stats.averageUplift)}
-              </CardTitle>
+              <CardTitle className="text-3xl font-sans tabular-nums">{formatPercent(stats.averageUplift)}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-1.5 text-xs">
-                <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <CardHeader className="flex flex-col items-center gap-2 p-5 text-center sm:p-6">
+              <CardDescription className="text-xs">
                 Avg. baseline ({displayCcy}, approx.)
               </CardDescription>
               <CardTitle className="text-3xl font-sans tabular-nums">{fmtRollup(stats.averageBaselineUsd)}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-1.5 text-xs">
-                <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <CardHeader className="flex flex-col items-center gap-2 p-5 text-center sm:p-6">
+              <CardDescription className="text-xs">
                 Avg. adjusted ({displayCcy}, approx.)
               </CardDescription>
               <CardTitle className="text-3xl font-sans tabular-nums">{fmtRollup(stats.averageAdjustedUsd)}</CardTitle>

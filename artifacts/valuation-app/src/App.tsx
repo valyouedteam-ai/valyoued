@@ -201,7 +201,7 @@ function ClerkProviderWithRouter() {
   );
 }
 
-/** Lets the nav-tier toggle run in real Clerk dev: billing is simulated client-side; auth stub sends `X-Stub-Billing-Plan`. */
+/** Lets the nav-tier toggle run under real Clerk; SPA sends billing simulation headers (`X-Stub-Billing-Plan`) that the API applies when NODE_ENV=development or ALLOW_DEV_STUB_BILLING_HEADERS=1. */
 function DevStubBillingShell({ children }: { children: ReactNode }) {
   if (isDevBillingUiEnabled()) return <StubBillingPlanDevProvider>{children}</StubBillingPlanDevProvider>;
   return children;

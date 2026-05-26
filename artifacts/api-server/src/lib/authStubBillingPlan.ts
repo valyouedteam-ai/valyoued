@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { Request, Response, NextFunction } from "express";
 import { isAuthStubMode } from "./authStub";
+import { logger } from "./logger";
 
 /** Mirrors `PlanSlug`; lives here to avoid coupling this module to Drizzle-heavy entitlements imports. */
 export type AuthStubResolvedPlanSlug = "none" | "everyday_plus" | "professional";
@@ -12,15 +13,32 @@ type StubRequestBillingState = {
 
 const billingStateStore = new AsyncLocalStorage<StubRequestBillingState>();
 
+let warnedAllowStubBillingOutsideDev = false;
+
+/**
+ * Headers `X-Stub-Billing-Plan` / `X-Stub-Inheritance-Addon` overlay DB billing for Clerk when:
+ * - `DISABLE_DEV_STUB_BILLING_HEADERS` is not `1`,
+ * - and (`NODE_ENV=development`, typical `pnpm dev` in api-server, or explicit `ALLOW_DEV_STUB_BILLING_HEADERS=1`).
+ * Do not set `ALLOW_DEV_STUB_BILLING_HEADERS` on public production APIs (simulated Professional would bypass Stripe).
+ */
 function shouldTrustDevelopmentStubBillingHeaders(): boolean {
-  if (process.env.NODE_ENV !== "development") return false;
   if (process.env.DISABLE_DEV_STUB_BILLING_HEADERS === "1") return false;
-  return true;
+  if (process.env.ALLOW_DEV_STUB_BILLING_HEADERS === "1") {
+    if (process.env.NODE_ENV !== "development" && !warnedAllowStubBillingOutsideDev) {
+      warnedAllowStubBillingOutsideDev = true;
+      logger.warn(
+        "ALLOW_DEV_STUB_BILLING_HEADERS=1 is set: honoring X-Stub-Billing-Plan outside NODE_ENV development. " +
+          "Keep this limited to trusted local tooling, not internet-facing deployments.",
+      );
+    }
+    return true;
+  }
+  return process.env.NODE_ENV === "development";
 }
 
 /**
- * Dev billing overlay for real Clerk (NODE_ENV development only). Prefers `req.devStubBillingOverlay` set
- * synchronously in middleware; falls back to ALS for edge cases. Auth stub mode always uses entitlements
+ * Dev billing overlay for real Clerk (`NODE_ENV=development` unless `ALLOW_DEV_STUB_BILLING_HEADERS=1`). Prefers `req.devStubBillingOverlay`
+ * set synchronously in middleware; falls back to ALS for edge cases. Auth stub mode always uses entitlements
  * from `currentAuthStubBillingPlanSlug()`, not this helper.
  */
 export function currentDevelopmentBillingPlanOverlay(req?: Request): {

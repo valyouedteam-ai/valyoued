@@ -21,7 +21,7 @@ const OPTIONS: { value: StubBillingPlanSlug; label: string }[] = [
 /**
  * Shown whenever `StubBillingPlanDevProvider` mounts (development builds).
  * Auth stub: sends `X-Stub-Billing-Plan` and `X-Stub-Inheritance-Addon` so entitlements and portfolios stay in sync.
- * Clerk dev: billing snapshot is mocked in the browser; use auth stub to exercise the inheritance workspace end to end.
+ * Clerk: the SPA mocks billing summaries; desks and gated routes need the API to honor `X-Stub-Billing-Plan` (`NODE_ENV=development` under `pnpm dev`, or `ALLOW_DEV_STUB_BILLING_HEADERS=1` on your local API when it runs production mode).
  */
 export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
   const ctx = useContext(StubBillingPlanDevContext);
@@ -34,7 +34,7 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
         "flex flex-wrap items-center gap-2 rounded-full border border-border/70 bg-card/85 py-1 pl-4 pr-2.5 shadow-sm sm:gap-2.5 sm:pl-5 sm:pr-3",
         compact && "justify-center px-3 py-0.5 pl-4",
       )}
-      title="Subscription simulation and inheritance. Auth stub: API reads X-Stub-Billing-Plan and X-Stub-Inheritance-Addon. Clerk dev: billing fields are mocked client-side; portfolio list is still real."
+      title="Dev subscription simulation. SPA sends X-Stub-Billing-Plan. Auth stub: API uses it everywhere. Clerk: api-server must overlay (NODE_ENV=development or ALLOW_DEV_STUB_BILLING_HEADERS=1) or desk creation stays on your real Stripe plan."
     >
       <span
         className={cn(

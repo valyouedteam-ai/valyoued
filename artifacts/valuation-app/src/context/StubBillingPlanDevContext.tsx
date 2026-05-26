@@ -51,7 +51,7 @@ export function useOptionalStubBillingPlanDev() {
   return useContext(StubBillingPlanDevContext);
 }
 
-/** Dev Subscription strip: registers X-Stub-Billing-Plan on API calls for auth stub and for real Clerk in local development only (server overlays when NODE_ENV=development). Mirrors persona for desk vs portfolio UX. */
+/** Dev Subscription strip: registers X-Stub-Billing-Plan on API calls. Auth stub reads it on every tier. Clerk: server overlays Stripe when NODE_ENV=development or ALLOW_DEV_STUB_BILLING_HEADERS=1 on the API. Mirrors persona for desk vs portfolio UX. */
 export function StubBillingPlanDevProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
