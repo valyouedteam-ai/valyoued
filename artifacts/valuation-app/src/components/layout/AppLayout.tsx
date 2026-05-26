@@ -1,17 +1,20 @@
-import { ReactNode, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { ReactNode, useMemo, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
+import type { Portfolio } from "@workspace/api-client-react";
 import { useUser, useClerk } from "@clerk/react";
 import {
   Briefcase,
   Calculator,
+  Globe2,
+  Landmark,
   LayoutDashboard,
   LibrarySquare,
   LogOut,
   Megaphone,
   Menu,
+  PanelsTopLeft,
   Settings,
   ShieldHalf,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,7 +46,21 @@ const SHOW_DEV_PRO_CHROME_PREVIEW = import.meta.env.DEV;
 /** Dev / optional preview: Free / Everyday+ / Pro plus inheritance (see `isDevBillingUiEnabled`). */
 const SHOW_STUB_PLAN_TOGGLE = isDevBillingUiEnabled();
 
-type NavItem = { href: string; label: string; icon: typeof LibrarySquare };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LibrarySquare;
+  navTitle?: string;
+  /** When set, skips merging the active workspace `?portfolio=` tail (avoid corrupting hashes or doubling params). */
+  skipPortfolioQuery?: boolean;
+};
+
+const NAV_MARKETS: NavItem = {
+  href: "/markets",
+  label: "Regions",
+  icon: Globe2,
+  navTitle: "Regions and pricing context",
+};
 
 const navWorkspace: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: LibrarySquare },
@@ -56,16 +73,138 @@ const navInsights: NavItem[] = [
   { href: "/listings", label: "Ads", icon: Megaphone },
 ];
 
+function normalizeLocationSearch(search: string): string {
+  if (!search || search.startsWith("?")) return search;
+  return `?${search}`;
+}
+
+/** Match full nav target including `?portfolio=` query and `#hash`. */
+function routeMatchesNavHref(pathname: string, rawSearchParam: string, navHref: string): boolean {
+  const rawSearch = normalizeLocationSearch(rawSearchParam);
+
+  const hashIdx = navHref.indexOf("#");
+  const base = hashIdx >= 0 ? navHref.slice(0, hashIdx) : navHref;
+  const hashNeedle = hashIdx >= 0 ? navHref.slice(hashIdx + 1) : "";
+
+  const qIdx = base.indexOf("?");
+  const pathPart = qIdx >= 0 ? base.slice(0, qIdx) : base;
+  const queryPart = qIdx >= 0 ? base.slice(qIdx + 1) : "";
+
+  if (pathname !== pathPart) return false;
+
+  if (queryPart.length > 0) {
+    const expected = new URLSearchParams(queryPart);
+    const q = rawSearch.startsWith("?") ? rawSearch.slice(1) : rawSearch;
+    const current = new URLSearchParams(q);
+    for (const [k, v] of expected) {
+      if (current.get(k) !== v) return false;
+    }
+  }
+
+  if (hashNeedle.length > 0) {
+    if (typeof window === "undefined") return false;
+    return window.location.hash === `#${hashNeedle}`;
+  }
+
+  return true;
+}
+
+/** Active when `pathname`/`search` match the navigated URL (queries, hashes, or path-prefix sections). */
+function isResolvedNavActive(pathname: string, rawSearchParam: string, resolvedHref: string): boolean {
+  if (resolvedHref.includes("?") || resolvedHref.includes("#")) {
+    return routeMatchesNavHref(pathname, rawSearchParam, resolvedHref);
+  }
+  const pathOnly = resolvedHref.split("?")[0]?.split("#")[0] ?? resolvedHref;
+  return pathname === pathOnly || (pathOnly !== "/dashboard" && pathname.startsWith(pathOnly));
+}
+
+function portfolioWorkspaceHref(portfolio: Portfolio | undefined, primary: Portfolio | null | undefined): string {
+  const primId = primary?.id ?? null;
+  if (!portfolio?.id || !primId || portfolio.id === primId) return "/portfolio";
+  return mergePortfolioHref("/portfolio", `?portfolio=${encodeURIComponent(portfolio.id)}`);
+}
+
+function buildInsightNavigation(input: {
+  paidTier: boolean;
+  inheritanceAddon: boolean;
+  professionalPlan: boolean;
+  portfolios: Portfolio[] | undefined;
+  primaryPortfolio: Portfolio | null;
+}): NavItem[] {
+  const rows: NavItem[] = [...navInsights];
+  const { portfolios, primaryPortfolio } = input;
+  const primId = primaryPortfolio?.id ?? null;
+
+  if (input.paidTier) {
+    rows.push(NAV_MARKETS);
+  }
+
+  if (input.inheritanceAddon) {
+    const inh = portfolios?.find((p) => p.purpose === "inheritance");
+    const href =
+      inh?.id && primId ? portfolioWorkspaceHref(inh, primaryPortfolio) : "/settings#inheritance-addon";
+    rows.push({
+      href,
+      label: "Inheritance",
+      icon: Landmark,
+      navTitle:
+        "Separate ledger: second Portfolio workspace for estates, heirs, and heirlooms. Open Portfolio here or switch workspace pills on Home before you valuate.",
+      skipPortfolioQuery: true,
+    });
+  }
+
+  if (input.professionalPlan) {
+    const desk = portfolios?.find((p) => p.purpose === "pro_board");
+    const href = desk?.id ? portfolioWorkspaceHref(desk, primaryPortfolio) : "/portfolio";
+    rows.push({
+      href,
+      label: "Desk",
+      icon: PanelsTopLeft,
+      navTitle: "Professional trading desk",
+      skipPortfolioQuery: true,
+    });
+  }
+
+  return rows;
+}
+
+function useDashboardNavInsights(): NavItem[] {
+  const { data: billing } = useBillingSummary();
+  const { portfolios, primaryPortfolio } = usePortfolioWorkspace();
+  const paidTier = Boolean(billing?.hasPaidValuationTier);
+  const inheritanceAddon = Boolean(billing?.hasInheritanceAddon);
+  const professionalPlan = billing?.planSlug === "professional";
+
+  return useMemo(
+    () =>
+      buildInsightNavigation({
+        paidTier,
+        inheritanceAddon,
+        professionalPlan,
+        portfolios,
+        primaryPortfolio,
+      }),
+    [paidTier, inheritanceAddon, professionalPlan, portfolios, primaryPortfolio],
+  );
+}
+
+function resolveNavHref(item: NavItem, portfolioQuerySuffix: string): string {
+  if (item.skipPortfolioQuery || !portfolioQuerySuffix?.length) return item.href;
+  return mergePortfolioHref(item.href, portfolioQuerySuffix);
+}
+
 function NavLink({
   item,
-  active,
+  pathname,
+  search,
   onNavigate,
   className,
   block,
   portfolioHrefSuffix,
 }: {
   item: NavItem;
-  active: boolean;
+  pathname: string;
+  search: string;
   onNavigate?: () => void;
   className?: string;
   block?: boolean;
@@ -73,12 +212,15 @@ function NavLink({
   portfolioHrefSuffix?: string;
 }) {
   const Icon = item.icon;
-  const href =
-    portfolioHrefSuffix && portfolioHrefSuffix.length > 0
-      ? mergePortfolioHref(item.href, portfolioHrefSuffix)
-      : item.href;
+  const href = resolveNavHref(item, portfolioHrefSuffix ?? "");
+  const active = isResolvedNavActive(pathname, search, href);
   return (
-    <Link href={href} onClick={onNavigate} className={cn(block && "block w-full")}>
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={cn(block && "block w-full")}
+      {...(item.navTitle ? { title: item.navTitle, "aria-label": item.navTitle } : {})}
+    >
       <span
         className={cn(
           "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-all",
@@ -178,50 +320,49 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
   const { data } = useBillingSummary();
   const { persona, isProfessional } = useSellerPersona();
   const paidApi = Boolean(data?.hasPaidValuationTier);
-  const uiLabel = paidApi ? "Pro valuation access" : "Free valuation plan";
   const remaining = !paidApi ? data?.valuationsRemainingFree : null;
   const briefHref = paidApi ? "/settings" : "/pricing#plans";
+
+  const trackName = isProfessional ? "Professional desk" : "Everyday steward";
 
   return (
     <Link
       href={briefHref}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition-colors hover:bg-muted/35",
+        "inline-flex items-center rounded-full border px-3 py-1.5 shadow-sm transition-colors hover:bg-muted/35",
         paidApi ? "border-accent/35 bg-accent/10" : "border-border/80 bg-card",
         block && "w-full justify-between",
         className,
       )}
       title={
-        paidApi
-          ? "Stripe shows an active paid valuation tier. Opens Settings for receipts and upgrades."
-          : "View plans and upgrade on the pricing page."
+        paidApi ? "Opens Settings for receipts, billing, and plan changes." : "View plans and upgrade on the pricing page."
       }
     >
-      <Sparkles className={cn("h-4 w-4 shrink-0", paidApi ? "text-accent" : "text-muted-foreground")} />
       <div className="flex min-w-0 flex-col text-left leading-tight">
-        <span className="text-xs font-medium text-foreground">{uiLabel}</span>
-        {persona ? (
-          <span className="text-[10px] text-muted-foreground">
-            Track: {isProfessional ? "Professional desk" : "Everyday steward"}
-          </span>
-        ) : null}
-        {!paidApi && remaining != null ? (
-          <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
-            {remaining} valuations left · upgrade
-          </span>
-        ) : paidApi ? (
-          <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
-            Paid on Stripe · see Settings for details
-          </span>
-        ) : null}
+        {paidApi ? (
+          <span className="text-xs font-medium text-foreground">{trackName}</span>
+        ) : (
+          <>
+            <span className="text-xs font-medium text-foreground">Free valuation plan</span>
+            {persona ? (
+              <span className="text-[10px] text-muted-foreground">Track: {trackName}</span>
+            ) : null}
+            {remaining != null ? (
+              <span className="max-w-[210px] truncate text-[10px] text-muted-foreground">
+                {remaining} valuations left · upgrade
+              </span>
+            ) : null}
+          </>
+        )}
       </div>
     </Link>
   );
 }
 
-function MobileNavSheet() {
+function MobileNavSheet({ insightNav }: { insightNav: NavItem[] }) {
   const [open, setOpen] = useState(false);
-  const [location] = useLocation();
+  const [pathname] = useLocation();
+  const search = useSearch();
   const { portfolioQuerySuffix } = usePortfolioWorkspace();
 
   return (
@@ -243,9 +384,10 @@ function MobileNavSheet() {
                 <NavLink
                   key={item.href}
                   item={item}
+                  pathname={pathname}
+                  search={search}
                   block
                   portfolioHrefSuffix={portfolioQuerySuffix}
-                  active={location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href))}
                   onNavigate={() => setOpen(false)}
                   className="w-full !justify-start rounded-xl"
                 />
@@ -255,13 +397,14 @@ function MobileNavSheet() {
           <div>
             <div className="text-ui-caps text-muted-foreground mb-2 px-2">Insights</div>
             <div className="flex flex-col gap-1">
-              {navInsights.map((item) => (
+              {insightNav.map((item) => (
                 <NavLink
-                  key={item.href}
+                  key={`${item.label}:${item.href}`}
                   item={item}
+                  pathname={pathname}
+                  search={search}
                   block
                   portfolioHrefSuffix={portfolioQuerySuffix}
-                  active={location === item.href || location.startsWith(item.href)}
                   onNavigate={() => setOpen(false)}
                   className="w-full !justify-start rounded-xl"
                 />
@@ -294,11 +437,13 @@ function MobileNavSheet() {
 }
 
 function AppLayoutShell({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [pathname] = useLocation();
+  const search = useSearch();
   const isMobile = useIsMobile();
   const { portfolioQuerySuffix } = usePortfolioWorkspace();
-  const isActive = (href: string) =>
-    location === href || (href !== "/dashboard" && location.startsWith(href));
+  const insightNav = useDashboardNavInsights();
+  const shellIconActiveSettings = pathname === "/settings" || pathname.startsWith("/settings/");
+  const shellIconActiveAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
     <div className="no-print flex min-h-[100dvh] flex-col bg-background">
@@ -319,11 +464,23 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           <nav className="hidden min-w-0 flex-1 justify-center md:flex">
             <div className="flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none rounded-full border border-border/60 bg-muted/40 p-1">
               {navWorkspace.map((item) => (
-                <NavLink key={item.href} item={item} active={isActive(item.href)} portfolioHrefSuffix={portfolioQuerySuffix} />
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  search={search}
+                  portfolioHrefSuffix={portfolioQuerySuffix}
+                />
               ))}
               <Separator orientation="vertical" className="mx-1 h-7 bg-border/80" />
-              {navInsights.map((item) => (
-                <NavLink key={item.href} item={item} active={isActive(item.href)} portfolioHrefSuffix={portfolioQuerySuffix} />
+              {insightNav.map((item) => (
+                <NavLink
+                  key={`${item.label}:${item.href}`}
+                  item={item}
+                  pathname={pathname}
+                  search={search}
+                  portfolioHrefSuffix={portfolioQuerySuffix}
+                />
               ))}
             </div>
           </nav>
@@ -339,24 +496,24 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
             {!isMobile ? <PlanBrief className="hidden lg:flex" /> : null}
             <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
               <Button
-                variant={isActive("/settings") ? "secondary" : "ghost"}
+                variant={shellIconActiveSettings ? "secondary" : "ghost"}
                 size="icon"
-                className={cn("h-9 w-9 shrink-0 rounded-full", isActive("/settings") && "ring-1 ring-border")}
+                className={cn("h-9 w-9 shrink-0 rounded-full", shellIconActiveSettings && "ring-1 ring-border")}
               >
                 <Settings className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="/admin" title="Team dashboard" aria-label="Team dashboard" className="hidden md:block">
               <Button
-                variant={isActive("/admin") ? "secondary" : "ghost"}
+                variant={shellIconActiveAdmin ? "secondary" : "ghost"}
                 size="icon"
-                className={cn("h-9 w-9 shrink-0 rounded-full", isActive("/admin") && "ring-1 ring-border")}
+                className={cn("h-9 w-9 shrink-0 rounded-full", shellIconActiveAdmin && "ring-1 ring-border")}
               >
                 <ShieldHalf className="h-4 w-4" />
               </Button>
             </Link>
             <UserMenu compact />
-            <MobileNavSheet />
+            <MobileNavSheet insightNav={insightNav} />
           </div>
         </div>
         {isMobile ? (

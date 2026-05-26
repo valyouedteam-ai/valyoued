@@ -660,11 +660,18 @@ function SettingsPageInner({
                 </Button>
               </div>
             ) : billing?.hasInheritanceAddon ? (
-              <div id="inheritance-addon" className="scroll-mt-28">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Inheritance workspace billing is active. Switch between ledgers using the pills on Home, then valuations save into
-                whichever workspace you select.
-              </p>
+              <div id="inheritance-addon" className="scroll-mt-28 space-y-2">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  <span className="font-medium text-foreground">What this adds:</span> a second tinted Portfolio ledger next to your
+                  everyday holdings. Use it so estate rehearsals, heirloom lists, or a spare household tally stay visually and
+                  structurally apart from daily net worth tracking.
+                </p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  <span className="font-medium text-foreground">Where to use it:</span> tap{" "}
+                  <span className="text-foreground">Inheritance</span> in the Insights nav bar whenever that chip is visible,
+                  switch workspace pills at the top of Home, then open Portfolio. New valuations attach to whichever workspace you
+                  had selected before you hit Valuate.
+                </p>
               </div>
             ) : null}
           </CardContent>

@@ -234,12 +234,9 @@ export default function HomePage() {
               </Link>
               , then attach items to your signed-in workspaces.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4">
               <Button asChild className="rounded-full">
                 <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>Run my first valuation</Link>
-              </Button>
-              <Button asChild variant="outline" className="rounded-full">
-                <Link href={mergePortfolioHref("/portfolio", portfolioQuerySuffix)}>Preview portfolio layout</Link>
               </Button>
             </div>
           </motion.div>
