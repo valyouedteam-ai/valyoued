@@ -1,6 +1,23 @@
 import OpenAI from "openai";
 import type { ChatTurn, LlmProvider } from "../types.js";
 
+/**
+ * Some Chat Completions models return 400 for `max_tokens` and expect
+ * `max_completion_tokens` (o-series reasoning, GPT-5 family, GPT-4.1, etc.).
+ */
+function openAiPrefersMaxCompletionTokens(model: string): boolean {
+  const forced = process.env.OPENAI_USE_MAX_COMPLETION_TOKENS?.trim().toLowerCase();
+  if (forced === "1" || forced === "true" || forced === "yes") return true;
+  if (forced === "0" || forced === "false" || forced === "no") return false;
+
+  const m = model.trim().toLowerCase();
+  if (m.startsWith("gpt-5")) return true;
+  if (m.startsWith("gpt-4.1")) return true;
+  if (/^o\d/i.test(m)) return true;
+
+  return false;
+}
+
 function toOpenAiUserContent(
   content: ChatTurn["content"],
 ): OpenAI.Chat.Completions.ChatCompletionContentPart[] | string {
@@ -30,7 +47,9 @@ export function createOpenAiProvider(client: OpenAI): LlmProvider {
       const userContent = toOpenAiUserContent(messages[0].content);
       const res = await client.chat.completions.create({
         model,
-        max_tokens: maxTokens,
+        ...(openAiPrefersMaxCompletionTokens(model)
+          ? { max_completion_tokens: maxTokens }
+          : { max_tokens: maxTokens }),
         messages: [{ role: "user", content: userContent }],
       });
       const out = res.choices[0]?.message?.content;
