@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, useAuth } from "@clerk/react";
 import { StubBillingPlanDevProvider } from "@/context/StubBillingPlanDevContext";
+import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -202,7 +203,7 @@ function ClerkProviderWithRouter() {
 
 /** Lets the nav-tier toggle run in real Clerk dev: billing is simulated client-side; auth stub sends `X-Stub-Billing-Plan`. */
 function DevStubBillingShell({ children }: { children: ReactNode }) {
-  if (import.meta.env.DEV) return <StubBillingPlanDevProvider>{children}</StubBillingPlanDevProvider>;
+  if (isDevBillingUiEnabled()) return <StubBillingPlanDevProvider>{children}</StubBillingPlanDevProvider>;
   return children;
 }
 

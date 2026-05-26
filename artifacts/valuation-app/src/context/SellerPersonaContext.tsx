@@ -8,6 +8,7 @@ import { useUser } from "@clerk/react";
 import type { SellerPersonaChoice } from "@/hooks/use-persona-sync";
 import { peekSessionSellerPersona } from "@/hooks/use-persona-sync";
 import { useOptionalStubBillingPlanDev } from "@/context/StubBillingPlanDevContext";
+import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 
 export type SellerPersonaResolved = SellerPersonaChoice | null;
@@ -59,7 +60,7 @@ function SellerPersonaFromClerkInner({ children }: { children: ReactNode }) {
   const stubTier = useOptionalStubBillingPlanDev();
 
   const pack = useMemo((): SellerPersonaPack => {
-    if (import.meta.env.DEV && stubTier) {
+    if (isDevBillingUiEnabled() && stubTier) {
       return personaPackForStubBillingPlan(stubTier.planSlug);
     }
 

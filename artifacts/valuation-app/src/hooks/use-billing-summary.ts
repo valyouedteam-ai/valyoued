@@ -4,6 +4,7 @@ import { customFetch } from "@workspace/api-client-react";
 import { StubBillingPlanDevContext } from "@/context/StubBillingPlanDevContext";
 import type { StubBillingPlanSlug } from "@/context/StubBillingPlanDevContext";
 import { AUTH_STUB_MODE } from "@/lib/auth-stub";
+import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { apiUrl } from "@/lib/api-url";
 
 const DEV_FREE_MONTHLY_CAP = 5;
@@ -49,7 +50,7 @@ export type MeBillingResponse = {
 /** Server-backed billing + entitlement snapshot. Uses the shared Bearer token getter. */
 export function useBillingSummary() {
   const stubDev = useContext(StubBillingPlanDevContext);
-  const devTierSimActive = Boolean(import.meta.env.DEV && stubDev && !AUTH_STUB_MODE);
+  const devTierSimActive = Boolean(isDevBillingUiEnabled() && stubDev && !AUTH_STUB_MODE);
   const stubSlug = stubDev?.planSlug ?? null;
   const stubInh = stubDev?.inheritanceAddon ?? false;
 

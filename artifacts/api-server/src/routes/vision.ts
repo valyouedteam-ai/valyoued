@@ -52,6 +52,14 @@ function buildSanitizedVisionResponse(result: VisionExtractOutput) {
     : { extracted: {}, confidence: 0, notes: "Fill in the fields manually." };
 }
 
+/** Unauthenticated: confirms this revision serves `POST /api/vision/extract` without `requireAuth`. */
+router.get("/vision/status", (_req, res): void => {
+  res.json({
+    postExtractRequiresSession: false,
+    llmConfigured: isLlmConfigured(),
+  });
+});
+
 // Vision calls are expensive (Anthropic image input). Cap at 8 per minute per IP.
 // Open to signed-out guests (e.g. /start) so photo auto-fill works before sign-up; authenticated userId is logged when present.
 const visionLimit = rateLimit({

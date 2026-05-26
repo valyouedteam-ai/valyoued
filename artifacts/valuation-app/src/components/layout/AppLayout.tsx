@@ -34,13 +34,14 @@ import {
   PortfolioWorkspaceProvider,
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
+import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 
 const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 const SHOW_DEV_PRO_CHROME_PREVIEW = import.meta.env.DEV;
 
-/** Dev-only: Free / Everyday+ / Pro tier toggle (auth stub sends `X-Stub-Billing-Plan`; Clerk dev simulates billing in the client). */
-const SHOW_STUB_PLAN_TOGGLE = import.meta.env.DEV;
+/** Dev / optional preview: Free / Everyday+ / Pro plus inheritance (see `isDevBillingUiEnabled`). */
+const SHOW_STUB_PLAN_TOGGLE = isDevBillingUiEnabled();
 
 type NavItem = { href: string; label: string; icon: typeof LibrarySquare };
 
