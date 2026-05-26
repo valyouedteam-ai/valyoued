@@ -66,17 +66,8 @@ export default function MarketsPage() {
           Regions and pricing context
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
-          See which regions show up most often as the strongest match across your saved valuations.
-          Combined averages here read your reference currency ({displayCcy}) from{" "}
-          <Link href="/settings" className="text-accent hover:underline">
-            Settings
-          </Link>{" "}
-          and use the same rough FX hints as your{" "}
-          <Link href="/portfolio" className="text-accent hover:underline">
-            portfolio
-          </Link>
-          . They are guides, not live bank rates. Individual reports stay in each item&apos;s own currency.
-          Open any report for fees, shipping, and marketplace links.
+          See which regions show up most often as the strongest match across your saved valuations,
+          and open any report for fees, shipping, and marketplace links.
         </p>
       </header>
       ) : (
@@ -154,22 +145,20 @@ export default function MarketsPage() {
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">
+              <CardDescription className="flex items-center gap-1.5 text-xs">
+                <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Avg. baseline ({displayCcy}, approx.)
               </CardDescription>
-              <CardTitle className="text-2xl font-sans tabular-nums">
-                {fmtRollup(stats.averageBaselineUsd)}
-              </CardTitle>
+              <CardTitle className="text-3xl font-sans tabular-nums">{fmtRollup(stats.averageBaselineUsd)}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-border/60 bg-card/40">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs">
+              <CardDescription className="flex items-center gap-1.5 text-xs">
+                <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Avg. adjusted ({displayCcy}, approx.)
               </CardDescription>
-              <CardTitle className="text-2xl font-sans tabular-nums">
-                {fmtRollup(stats.averageAdjustedUsd)}
-              </CardTitle>
+              <CardTitle className="text-3xl font-sans tabular-nums">{fmtRollup(stats.averageAdjustedUsd)}</CardTitle>
             </CardHeader>
           </Card>
         </section>

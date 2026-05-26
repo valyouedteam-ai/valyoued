@@ -111,7 +111,7 @@ router.get("/estimates/stats", async (req, res): Promise<void> => {
 
 router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId);
+  const ent = await resolveUserEntitlements(userId, req);
 
   const body = CreateEstimateBody.safeParse(req.body);
   if (!body.success) {

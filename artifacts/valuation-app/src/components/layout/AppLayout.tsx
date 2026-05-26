@@ -22,6 +22,7 @@ import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { SellerPersonaProvider, useSellerPersona } from "@/hooks/use-seller-persona";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { StubBillingPlanSwitcher } from "@/components/dev/StubBillingPlanSwitcher";
+import { useOptionalStubBillingPlanDev } from "@/context/StubBillingPlanDevContext";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -166,21 +167,24 @@ function buildInsightNavigation(input: {
 }
 
 function useDashboardNavInsights(): NavItem[] {
+  const stubDev = useOptionalStubBillingPlanDev();
   const { data: billing } = useBillingSummary();
   const { portfolios, primaryPortfolio } = usePortfolioWorkspace();
   const paidTier = Boolean(billing?.hasPaidValuationTier);
   const professionalPlan = billing?.planSlug === "professional";
 
-  return useMemo(
-    () =>
-      buildInsightNavigation({
-        paidTier,
-        professionalPlan,
-        portfolios,
-        primaryPortfolio,
-      }),
-    [paidTier, professionalPlan, portfolios, primaryPortfolio],
-  );
+  return useMemo(() => {
+    let rows = buildInsightNavigation({
+      paidTier,
+      professionalPlan,
+      portfolios,
+      primaryPortfolio,
+    });
+    if (SHOW_STUB_PLAN_TOGGLE && stubDev !== null && !stubDev.inheritanceAddon) {
+      rows = rows.filter((item) => item.href !== "/inheritance");
+    }
+    return rows;
+  }, [paidTier, professionalPlan, portfolios, primaryPortfolio, stubDev?.inheritanceAddon]);
 }
 
 function resolveNavHref(item: NavItem, portfolioQuerySuffix: string): string {

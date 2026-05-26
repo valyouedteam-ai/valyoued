@@ -103,28 +103,28 @@ export default function StatsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
-            <CardDescription>Total Appraisals</CardDescription>
+            <CardDescription className="text-xs">Total Appraisals</CardDescription>
             <CardTitle className="text-3xl font-sans tabular-nums">{stats.count}</CardTitle>
           </CardHeader>
         </Card>
         
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
-            <CardDescription>Avg Baseline Value</CardDescription>
+            <CardDescription className="text-xs">Avg Baseline Value</CardDescription>
             <CardTitle className="text-3xl font-sans tabular-nums">{fmt(stats.averageBaselineUsd)}</CardTitle>
           </CardHeader>
         </Card>
         
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
-            <CardDescription>Avg Adjusted Value</CardDescription>
+            <CardDescription className="text-xs">Avg Adjusted Value</CardDescription>
             <CardTitle className="text-3xl font-sans tabular-nums text-accent">{fmt(stats.averageAdjustedUsd)}</CardTitle>
           </CardHeader>
         </Card>
         
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
-            <CardDescription>Mean Market Uplift</CardDescription>
+            <CardDescription className="text-xs">Mean Market Uplift</CardDescription>
             <CardTitle className={`text-3xl font-sans tabular-nums ${stats.averageUplift > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {stats.averageUplift > 0 ? '+' : ''}{formatPercent(stats.averageUplift)}
             </CardTitle>

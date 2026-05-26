@@ -1,4 +1,5 @@
 import { eq, sql, and, gte, lt } from "drizzle-orm";
+import type { Request } from "express";
 import {
   db,
   billingSubscriptionsTable,
@@ -167,7 +168,7 @@ async function resolveAuthStubBillingEntitlements(userId: string, planSlug: Plan
   };
 }
 
-export async function resolveUserEntitlements(userId: string): Promise<UserEntitlements> {
+export async function resolveUserEntitlements(userId: string, req?: Request): Promise<UserEntitlements> {
   if (isAuthStubMode()) {
     const planSlug = currentAuthStubBillingPlanSlug();
     return await resolveAuthStubBillingEntitlements(userId, planSlug);
@@ -205,7 +206,7 @@ export async function resolveUserEntitlements(userId: string): Promise<UserEntit
     canUseMonitorEmailAlerts: hasPaidValuationTier,
   };
 
-  const devOverlay = currentDevelopmentBillingPlanOverlay();
+  const devOverlay = currentDevelopmentBillingPlanOverlay(req);
   if (devOverlay) {
     ent = applyDevelopmentBillingOverlay(ent, devOverlay);
   }

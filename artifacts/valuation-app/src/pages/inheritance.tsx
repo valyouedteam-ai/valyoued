@@ -1,4 +1,5 @@
-import { Link } from "wouter";
+import { Link, Redirect } from "wouter";
+import { useEffect, useRef } from "react";
 import { Briefcase, Calculator, Landmark, LibrarySquare, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,15 +8,29 @@ import {
   mergePortfolioHref,
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
+import { useOptionalStubBillingPlanDev } from "@/context/StubBillingPlanDevContext";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { cn } from "@/lib/utils";
 import { portfolioWorkspaceButtonLabel } from "@/components/layout/PortfolioWorkspaceStrip";
+import {
+  getListPortfoliosQueryKey,
+  useCreatePortfolio,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * Dedicated hub for the inheritance ledger: explains how it differs from the primary portfolio,
- * links into the workspace after the add-on is active, or routes people to Billing to enable it.
+ * links into workspace actions once the add-on is active, or Billing to enable it.
+ *
+ * With the dev Subscription strip, `/inheritance` redirects to `/portfolio` unless the inheritance toggle is on.
+ * When add-on is active but the inheritance portfolio row has not been created yet, POST `/api/portfolios` is triggered once.
  */
 export default function InheritancePage() {
+  const queryClient = useQueryClient();
+  const provisionAttemptedRef = useRef(false);
+  const stubDev = useOptionalStubBillingPlanDev();
+
   const { data: billing } = useBillingSummary();
   const hasAddon = Boolean(billing?.hasInheritanceAddon);
   const {
@@ -27,9 +42,31 @@ export default function InheritancePage() {
     selectPortfolioById,
   } = usePortfolioWorkspace();
 
+  const { mutate: provisionMutate, isPending: provisionPending, isError: provisionFailed } =
+    useCreatePortfolio({
+      mutation: {
+        onSettled: async () => {
+          await queryClient.invalidateQueries({ queryKey: getListPortfoliosQueryKey() });
+        },
+      },
+    });
+
+  useEffect(() => {
+    if (!hasAddon) {
+      provisionAttemptedRef.current = false;
+      return;
+    }
+    if (portfoliosLoading || portfolios == null) return;
+    const hasRow = portfolios.some((p) => p.purpose === "inheritance");
+    if (hasRow) return;
+    if (provisionAttemptedRef.current || provisionPending) return;
+
+    provisionAttemptedRef.current = true;
+    provisionMutate({ data: { purpose: "inheritance" } });
+  }, [hasAddon, portfoliosLoading, portfolios, provisionMutate, provisionPending]);
+
   const primaryLabel = portfolios?.find((p) => p.purpose === "primary")?.label ?? null;
   const inh = portfolios?.find((p) => p.purpose === "inheritance");
-  /** Query string forcing the inheritance ledger when it is not the primary id. */
   const inhPortfolioQs =
     inh && primaryPortfolio && inh.id !== primaryPortfolio.id ? `?portfolio=${encodeURIComponent(inh.id)}` : "";
   const inheritancePortfolioHref = inh
@@ -37,6 +74,11 @@ export default function InheritancePage() {
       ? mergePortfolioHref("/portfolio", inhPortfolioQs)
       : "/portfolio"
     : mergePortfolioHref("/portfolio", portfolioQuerySuffix);
+
+  const shouldRedirectAway = Boolean(isDevBillingUiEnabled() && stubDev !== null && !stubDev.inheritanceAddon);
+  if (shouldRedirectAway) {
+    return <Redirect to="/portfolio" />;
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-10 pb-16">
@@ -145,26 +187,23 @@ export default function InheritancePage() {
             <CardTitle className="text-lg">Your inheritance portfolio</CardTitle>
             <CardDescription>
               {inh
-                ? "Open the full holdings view scoped to heirlooms, estate rehearsal, or non-owned items you track."
-                : "We provision the workspace alongside your billing state. Reload in a moment if it is still syncing."}
+                ? "Browse holdings, dashboards, or new valuations that stay scoped to this ledger."
+                : provisionPending
+                  ? "Creating your inheritance workspace on the server. This usually finishes in under a second."
+                  : provisionFailed
+                    ? "We could not create this workspace automatically. Confirm your Billing or simulated add-on matches what the API expects, then use Retry."
+                    : "Getting your inheritance workspace ready."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {inh ? (
-              <Button asChild className="rounded-full gap-2">
-                <Link href={inheritancePortfolioHref}>
-                  <Briefcase className="h-4 w-4" aria-hidden />
-                  Open inheritance portfolio
-                </Link>
-              </Button>
-            ) : (
-              <Button type="button" disabled className="rounded-full gap-2">
-                <Briefcase className="h-4 w-4" aria-hidden />
-                Waiting for inheritance workspace
-              </Button>
-            )}
-            {inh && inhPortfolioQs ? (
               <>
+                <Button asChild className="rounded-full gap-2">
+                  <Link href={inheritancePortfolioHref}>
+                    <Briefcase className="h-4 w-4" aria-hidden />
+                    Open inheritance portfolio
+                  </Link>
+                </Button>
                 <Button asChild variant="outline" className="rounded-full gap-2">
                   <Link href={mergePortfolioHref("/dashboard", inhPortfolioQs)}>
                     <LibrarySquare className="h-4 w-4" aria-hidden />
@@ -178,7 +217,26 @@ export default function InheritancePage() {
                   </Link>
                 </Button>
               </>
-            ) : null}
+            ) : (
+              <>
+                <Button type="button" disabled className="rounded-full gap-2">
+                  <Briefcase className="h-4 w-4" aria-hidden />
+                  {provisionPending ? "Creating workspace…" : "Preparing workspace…"}
+                </Button>
+                {provisionFailed ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => {
+                      void provisionMutate({ data: { purpose: "inheritance" } });
+                    }}
+                  >
+                    Retry create workspace
+                  </Button>
+                ) : null}
+              </>
+            )}
           </CardContent>
         </Card>
       )}

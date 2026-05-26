@@ -73,7 +73,7 @@ router.post("/listings", requireAuth, generateLimit, async (req, res): Promise<v
   }
 
   try {
-    const entitlements = await resolveUserEntitlements(userId);
+    const entitlements = await resolveUserEntitlements(userId, req);
     const generated = await generateListingDraft({
       estimate,
       platform: body.data.platform as Platform,

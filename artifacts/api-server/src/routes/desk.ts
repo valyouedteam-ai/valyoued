@@ -39,7 +39,7 @@ function portfolioScopeRows(
 
 router.get("/me/desk/stats", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId);
+  const ent = await resolveUserEntitlements(userId, req);
   if (ent.planSlug !== "professional") {
     res.status(403).json({ error: "Desk analytics require the Professional plan." });
     return;
@@ -88,7 +88,7 @@ const PatchDeskLayoutBody = z
 
 router.get("/me/desk/layout", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId);
+  const ent = await resolveUserEntitlements(userId, req);
   if (ent.planSlug !== "professional") {
     res.status(403).json({ error: "Desk layout requires the Professional plan." });
     return;
@@ -107,7 +107,7 @@ router.get("/me/desk/layout", requireAuth, async (req, res): Promise<void> => {
 
 router.patch("/me/desk/layout", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId);
+  const ent = await resolveUserEntitlements(userId, req);
   if (ent.planSlug !== "professional") {
     res.status(403).json({ error: "Desk layout requires the Professional plan." });
     return;
@@ -140,7 +140,7 @@ router.patch("/me/desk/layout", requireAuth, async (req, res): Promise<void> => 
 
 router.get("/me/desk/feed", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId);
+  const ent = await resolveUserEntitlements(userId, req);
   if (ent.planSlug !== "professional") {
     res.status(403).json({ error: "Desk feed requires the Professional plan." });
     return;

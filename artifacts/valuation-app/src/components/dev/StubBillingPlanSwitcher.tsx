@@ -31,14 +31,14 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-1.5 rounded-full border border-border/70 bg-card/85 px-1.5 py-0.5 shadow-sm",
-        compact && "justify-center",
+        "flex flex-wrap items-center gap-2 rounded-full border border-border/70 bg-card/85 py-1 pl-4 pr-2.5 shadow-sm sm:gap-2.5 sm:pl-5 sm:pr-3",
+        compact && "justify-center px-3 py-0.5 pl-4",
       )}
       title="Subscription simulation and inheritance. Auth stub: API reads X-Stub-Billing-Plan and X-Stub-Inheritance-Addon. Clerk dev: billing fields are mocked client-side; portfolio list is still real."
     >
       <span
         className={cn(
-          "hidden whitespace-nowrap min-[980px]:inline font-mono text-[10px] font-medium tabular-nums tracking-tight text-muted-foreground",
+          "hidden whitespace-nowrap min-[980px]:inline font-mono text-xs font-medium tabular-nums tracking-tight text-muted-foreground sm:text-sm",
           compact && "hidden",
         )}
       >
@@ -75,13 +75,16 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
       </Select>
       <div
         className={cn(
-          "flex items-center gap-1 border-border/60 min-[980px]:border-l min-[980px]:pl-1.5",
-          compact && "min-[980px]:pl-1",
+          "flex items-center gap-1.5 border-border/60 min-[980px]:border-l min-[980px]:pl-3 min-[980px]:ml-0.5",
+          compact && "min-[980px]:pl-2",
         )}
       >
         <Label
           htmlFor={inheritanceFieldId}
-          className="cursor-pointer whitespace-nowrap font-mono text-[10px] text-muted-foreground"
+          className={cn(
+            "cursor-pointer whitespace-nowrap font-mono text-muted-foreground",
+            compact ? "text-[11px]" : "text-xs sm:text-sm",
+          )}
         >
           {compact ? "Inh." : "Inheritance"}
         </Label>

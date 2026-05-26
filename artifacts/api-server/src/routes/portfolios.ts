@@ -23,9 +23,9 @@ function toApiPortfolio(row: typeof portfoliosTable.$inferSelect) {
   });
 }
 
-router.get("/portfolios", requireAuth, async (_req, res): Promise<void> => {
-  const userId = (_req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId);
+router.get("/portfolios", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId!;
+  const ent = await resolveUserEntitlements(userId, req);
   await reconcilePortfoliosForBilling(userId, ent.hasInheritanceAddon);
   const rows = await listPortfoliosForUser(userId);
   res.json(ListPortfoliosResponse.parse(rows.map(toApiPortfolio)));
@@ -38,7 +38,7 @@ router.post("/portfolios", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const ent = await resolveUserEntitlements(userId);
+  const ent = await resolveUserEntitlements(userId, req);
 
   if (body.data.purpose === "inheritance") {
     if (!ent.hasInheritanceAddon) {

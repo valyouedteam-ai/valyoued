@@ -19,15 +19,18 @@ function shouldTrustDevelopmentStubBillingHeaders(): boolean {
 }
 
 /**
- * When not in AUTH stub mode (real Clerk locally), overlays plan from headers only after middleware
- * stores ALS. Never used in production: trust is gated on NODE_ENV=development only.
+ * Dev billing overlay for real Clerk (NODE_ENV development only). Prefers `req.devStubBillingOverlay` set
+ * synchronously in middleware; falls back to ALS for edge cases. Auth stub mode always uses entitlements
+ * from `currentAuthStubBillingPlanSlug()`, not this helper.
  */
-export function currentDevelopmentBillingPlanOverlay(): {
+export function currentDevelopmentBillingPlanOverlay(req?: Request): {
   planSlug: AuthStubResolvedPlanSlug;
   inheritanceAddon: boolean;
 } | null {
   if (!shouldTrustDevelopmentStubBillingHeaders()) return null;
   if (isAuthStubMode()) return null;
+  const fromReq = req?.devStubBillingOverlay;
+  if (fromReq != null) return fromReq;
   return billingStateStore.getStore() ?? null;
 }
 
@@ -58,7 +61,9 @@ export function stubBillingPlanAlsMiddleware(req: Request, _res: Response, next:
   /** Do not inherit env defaults for Clerk dev overlays (would surprise local simulations). */
   const inheritanceAddon = mapAuthStubInheritanceHeader(req) ?? false;
 
-  billingStateStore.run({ planSlug: mappedPlan, inheritanceAddon }, () => next());
+  /** Attach on `req` so async Express handlers keep the snapshot after awaits (ALS from `run` + next() often does not). */
+  req.devStubBillingOverlay = { planSlug: mappedPlan, inheritanceAddon };
+  next();
 }
 
 function normalizeHeaderOrEnvToken(raw: string | undefined): string {

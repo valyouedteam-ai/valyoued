@@ -60,7 +60,7 @@ router.patch("/me/email-alerts", requireAuth, async (req, res): Promise<void> =>
   const wantsAnyEmailToggleOn =
     next.estimateReadyEmail || next.productUpdatesEmail || next.monitorValueChangeEmail;
   if (wantsAnyEmailToggleOn) {
-    const ent = await resolveUserEntitlements(userId);
+    const ent = await resolveUserEntitlements(userId, req);
     if (!ent.hasPaidValuationTier) {
       res.status(403).json({
         error:
@@ -110,7 +110,7 @@ router.post("/me/email-alerts/test", requireAuth, async (req, res): Promise<void
 
 router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId);
+  const ent = await resolveUserEntitlements(userId, req);
   if (isAuthStubMode()) {
     res.json({
       tier: ent.tier,
