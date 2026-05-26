@@ -98,6 +98,54 @@ export interface EstimateInput {
   portfolioId?: string;
 }
 
+/**
+ * Server-computed reproducibility metadata (prompt versioning, hashes, retrieval ids).
+ */
+export interface ValuationLineage {
+  promptVersion?: string;
+  promptSha256?: string;
+  llmProvider?: string;
+  llmModel?: string;
+  /** Stable id over the retrieved internal-comp slice used for prompt context when enabled. */
+  retrievalSnapshotId?: string | null;
+  internalArchiveMatchCount?: number;
+  newsArticleCount?: number;
+  /** True when heuristic fallback ran instead of a successful structured LLM parse. */
+  structuredFallback?: boolean;
+  /** Optional A/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API. */
+  experimentKey?: string | null;
+}
+
+/**
+ * User-reported realized sale as returned by the API (timestamps assigned server-side).
+ */
+export interface ValuationOutcome {
+  soldPrice: number;
+  /** ISO 4217 when different from valuation currency; omit to match valuation row currency. */
+  currency?: string;
+  recordedAt: string;
+}
+
+/**
+ * Helpfulness signal returned by the API (timestamps assigned server-side).
+ */
+export interface ValuationFeedback {
+  helpful: boolean;
+  recordedAt: string;
+}
+
+/**
+ * Supplies sold price on PATCH; omit currency to inherit the estimate row currency.
+ */
+export interface PatchValuationOutcome {
+  soldPrice: number;
+  currency?: string;
+}
+
+export interface PatchValuationFeedback {
+  helpful: boolean;
+}
+
 export type PatchEstimateBodyIntent =
   (typeof PatchEstimateBodyIntent)[keyof typeof PatchEstimateBodyIntent];
 
@@ -107,14 +155,19 @@ export const PatchEstimateBodyIntent = {
   sell: "sell",
 } as const;
 
+/**
+ * Provide at least one of intent, valuationOutcome, or valuationFeedback (or any combination).
+ */
 export interface PatchEstimateBody {
-  intent: PatchEstimateBodyIntent;
+  intent?: PatchEstimateBodyIntent;
+  valuationOutcome?: PatchValuationOutcome;
+  valuationFeedback?: PatchValuationFeedback;
 }
 
 export interface Portfolio {
   id: string;
   userId: string;
-  /** primary or pro_board workspace */
+  /** primary, pro_board desk, or inheritance add-on workspace */
   purpose: string;
   label: string;
   themeKey: string;
@@ -126,6 +179,7 @@ export type CreatePortfolioBodyPurpose =
 
 export const CreatePortfolioBodyPurpose = {
   pro_board: "pro_board",
+  inheritance: "inheritance",
 } as const;
 
 export interface CreatePortfolioBody {
@@ -277,6 +331,9 @@ export interface EstimateResult {
   tier: EstimateResultTier;
   proInsights?: ProInsights;
   intent?: EstimateResultIntent;
+  valuationLineage?: ValuationLineage;
+  valuationOutcome?: ValuationOutcome;
+  valuationFeedback?: ValuationFeedback;
 }
 
 /**

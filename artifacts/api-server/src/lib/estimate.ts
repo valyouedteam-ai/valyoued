@@ -1,4 +1,5 @@
 import { defaultModel, getLlm } from "@workspace/llm";
+import type { StoredValuationLineage } from "@workspace/db";
 import type {
   EstimateInput,
   EstimateResult,
@@ -13,6 +14,8 @@ import type {
 import { logger } from "./logger";
 import { searchNews, buildNewsQueries, type NewsArticle } from "./news";
 import { sanitizeComparables } from "./comparables";
+import { fetchInternalArchiveContext } from "./internalArchiveSignals";
+import { buildStoredLineage } from "./valuationLineage";
 
 interface AICore {
   baselineLow: number;
@@ -31,6 +34,7 @@ function buildPrompt(
   assetType: AssetType,
   currency: string,
   newsArticles: NewsArticle[],
+  internalArchiveBlock?: string,
 ): string {
   const extras = input.extraFields
     ? Object.entries(input.extraFields)
@@ -52,6 +56,11 @@ function buildPrompt(
           )
           .join("\n")
       : "(no live articles available; fall back to your training knowledge but mark events with sentiment:neutral if uncertain)";
+
+  const internalBlock =
+    internalArchiveBlock && internalArchiveBlock.trim() !== ""
+      ? `\n\nINTERNAL VALYOUED ARCHIVE (weak directional context only; anonymized recent similar valuations from this platform, not verified third-party transactions):\n${internalArchiveBlock.trim()}\n`
+      : "";
 
   return `You are ValYoued, a senior multi-asset appraiser. Estimate the resale value of an item based on the data below. Use your knowledge of recent (last 24 months) public sales, auction results, and marketplace listings.
 
@@ -90,7 +99,7 @@ below the purchase price even for items the user labelled "Luxury / Collectible"
 inflate values on a hunch; let the comparables drive the direction.
 
 LIVE NEWS HEADLINES (last 30 days, fetched moments ago; use these as the PRIMARY source for the World Events section):
-${newsBlock}
+${newsBlock}${internalBlock}
 
 Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. ALL prices below in ${currency}:
 
@@ -213,19 +222,12 @@ async function gatherNews(
   return articles.slice(0, 12);
 }
 
-async function callAI(
-  input: EstimateInput,
-  assetType: AssetType,
-  currency: string,
-  newsArticles: NewsArticle[],
-): Promise<AICore> {
+async function callAI(prompt: string): Promise<AICore> {
   const llm = getLlm();
   const text = await llm.complete({
     model: defaultModel(),
     maxTokens: 6000,
-    messages: [
-      { role: "user", content: buildPrompt(input, assetType, currency, newsArticles) },
-    ],
+    messages: [{ role: "user", content: prompt }],
   });
   const json = extractJson(text);
   return JSON.parse(json) as AICore;
@@ -320,25 +322,57 @@ function fallbackCore(
   };
 }
 
+export type GeneratedEstimatePayload = Omit<
+  EstimateResult,
+  "id" | "createdAt" | "valuationLineage" | "valuationOutcome" | "valuationFeedback"
+>;
+
 export async function generateEstimate(
   input: EstimateInput,
   assetType: AssetType,
   tier: "free" | "pro",
   /** When tier is Pro, Professional subscribers still flip this on to persist seller playbook (`proInsights`). */
   includeSellerPlaybook: boolean,
-): Promise<Omit<EstimateResult, "id" | "createdAt">> {
+): Promise<{ estimate: GeneratedEstimatePayload; lineage: StoredValuationLineage }> {
   const currency = input.currency;
 
-  const newsArticles = await gatherNews(assetType, input.currentRegion);
-  logger.info({ count: newsArticles.length, region: input.currentRegion, asset: assetType.id }, "Fetched live news for estimate");
+  const [newsArticles, archiveHit] = await Promise.all([
+    gatherNews(assetType, input.currentRegion),
+    fetchInternalArchiveContext({
+      assetTypeId: assetType.id,
+      title: input.title,
+    }),
+  ]);
+  logger.info(
+    {
+      newsCount: newsArticles.length,
+      archiveMatches: archiveHit?.matchCount ?? 0,
+      region: input.currentRegion,
+      asset: assetType.id,
+    },
+    "Context gathered for estimate",
+  );
 
+  const internalArchiveBlock = archiveHit?.promptBlock ?? undefined;
+  const prompt = buildPrompt(input, assetType, currency, newsArticles, internalArchiveBlock);
+
+  let structuredFallback = false;
   let core: AICore;
   try {
-    core = await callAI(input, assetType, currency, newsArticles);
+    core = await callAI(prompt);
   } catch (err) {
     logger.error({ err }, "Structured estimate generation failed; using heuristic fallback.");
+    structuredFallback = true;
     core = fallbackCore(input, assetType, currency);
   }
+
+  const lineage = buildStoredLineage({
+    promptText: prompt,
+    retrievalSnapshotId: archiveHit?.snapshotId ?? null,
+    internalArchiveMatchCount: archiveHit?.matchCount ?? 0,
+    newsArticleCount: newsArticles.length,
+    structuredFallback,
+  });
 
   const netMarketFactor =
     core.marketSignals.length > 0
@@ -384,7 +418,7 @@ export async function generateEstimate(
   }
   const bestArbitrageRegion = arbitrage.find((a) => a.recommended)?.region ?? input.currentRegion;
 
-  const result: Omit<EstimateResult, "id" | "createdAt"> = {
+  const estimate: GeneratedEstimatePayload = {
     input,
     assetType,
     currency,
@@ -405,5 +439,5 @@ export async function generateEstimate(
     ...(tier === "pro" && includeSellerPlaybook ? { proInsights: core.proInsights } : {}),
   };
 
-  return result;
+  return { estimate, lineage };
 }

@@ -66,6 +66,48 @@ const SHOW_COMP_THUMBNAILS =
   import.meta.env.VITE_SHOW_COMP_THUMBNAILS === "1" ||
   import.meta.env.VITE_SHOW_COMP_THUMBNAILS === "true";
 
+function ReportSaleInline({
+  ccy,
+  disabled,
+  onSubmitSold,
+}: {
+  ccy: string;
+  disabled: boolean;
+  onSubmitSold: (soldPrice: number) => void;
+}) {
+  const [raw, setRaw] = useState("");
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const cleaned = raw.replace(/,/g, "").trim();
+        const n = Number.parseFloat(cleaned);
+        if (!Number.isFinite(n) || n <= 0) return;
+        onSubmitSold(n);
+        setRaw("");
+      }}
+    >
+      <label className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+        Sold near ({ccy})
+        <input
+          type="text"
+          autoComplete="off"
+          inputMode="decimal"
+          className="h-8 w-28 rounded-md border border-border bg-background px-2 tabular-nums text-sm text-foreground"
+          value={raw}
+          placeholder="Optional"
+          disabled={disabled}
+          onChange={(e) => setRaw(e.target.value)}
+        />
+      </label>
+      <Button type="submit" size="sm" variant="secondary" disabled={disabled} className="h-8">
+        Save
+      </Button>
+    </form>
+  );
+}
+
 function compMatchTierLabel(t: Comparable["matchTier"] | undefined): string | null {
   if (t === "strong") return "Strong match";
   if (t === "moderate") return "Close match";
@@ -195,7 +237,7 @@ export default function EstimateReportPage() {
       },
       onError: (err) => {
         toast({
-          title: "Could not save intent",
+          title: "Could not save",
           description: err instanceof Error ? err.message : "Try again.",
           variant: "destructive",
         });
@@ -455,6 +497,67 @@ export default function EstimateReportPage() {
                 {intent === "hold" ? "Keeping it" : intent === "monitor" ? "Watching price" : "Getting ready to sell"}
               </Button>
             ))}
+          </div>
+        </section>
+
+        <section className="no-print flex flex-col gap-2 rounded-2xl border border-border/50 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="text-sm">
+            <p className="font-medium text-foreground">Calibration</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Optional signals improve future estimates. Nothing here changes your saved valuation snapshot.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:items-end">
+            {estimate.valuationFeedback ? (
+              <p className="text-xs text-muted-foreground">
+                Thanks{estimate.valuationFeedback.helpful ? ", glad it helped" : " for the honest note"}.
+              </p>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Was this report useful?</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={patchIntent.isPending}
+                  className="h-8"
+                  onClick={() =>
+                    patchIntent.mutate({ id: estimate.id, data: { valuationFeedback: { helpful: true } } })
+                  }
+                >
+                  Yes
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={patchIntent.isPending}
+                  className="h-8 text-muted-foreground"
+                  onClick={() =>
+                    patchIntent.mutate({ id: estimate.id, data: { valuationFeedback: { helpful: false } } })
+                  }
+                >
+                  Not really
+                </Button>
+              </div>
+            )}
+            {estimate.valuationOutcome ? (
+              <p className="text-xs text-muted-foreground">
+                Reported sold around{" "}
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatMoney(estimate.valuationOutcome.soldPrice, ccy)}
+                </span>
+                .
+              </p>
+            ) : (
+              <ReportSaleInline
+                ccy={ccy}
+                disabled={patchIntent.isPending}
+                onSubmitSold={(soldPrice) =>
+                  patchIntent.mutate({ id: estimate.id, data: { valuationOutcome: { soldPrice } } })
+                }
+              />
+            )}
           </div>
         </section>
 

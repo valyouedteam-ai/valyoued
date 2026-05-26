@@ -139,7 +139,7 @@ paths:
     patch:
       operationId: patchEstimate
       tags: [estimate]
-      summary: Update estimate metadata (intent)
+      summary: Update estimate metadata (intent, optional outcome labels, feedback)
       parameters:
         - in: path
           name: id
@@ -422,14 +422,86 @@ components:
           type: string
           format: uuid
           description: Workspace to attach this valuation to; defaults to primary portfolio
+    ValuationLineage:
+      type: object
+      description: Server-computed reproducibility metadata (prompt versioning, hashes, retrieval ids).
+      properties:
+        promptVersion:
+          type: string
+        promptSha256:
+          type: string
+        llmProvider:
+          type: string
+        llmModel:
+          type: string
+        retrievalSnapshotId:
+          type: string
+          nullable: true
+          description: Stable id over the retrieved internal-comp slice used for prompt context when enabled.
+        internalArchiveMatchCount:
+          type: integer
+        newsArticleCount:
+          type: integer
+        structuredFallback:
+          type: boolean
+          description: True when heuristic fallback ran instead of a successful structured LLM parse.
+        experimentKey:
+          type: string
+          nullable: true
+          description: Optional A/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.
+    ValuationOutcome:
+      type: object
+      description: User-reported realized sale as returned by the API (timestamps assigned server-side).
+      required: [soldPrice, recordedAt]
+      properties:
+        soldPrice:
+          type: number
+        currency:
+          type: string
+          description: ISO 4217 when different from valuation currency; omit to match valuation row currency.
+        recordedAt:
+          type: string
+          format: date-time
+    ValuationFeedback:
+      type: object
+      description: Helpfulness signal returned by the API (timestamps assigned server-side).
+      required: [helpful, recordedAt]
+      properties:
+        helpful:
+          type: boolean
+        recordedAt:
+          type: string
+          format: date-time
+    PatchValuationOutcome:
+      type: object
+      additionalProperties: false
+      description: Supplies sold price on PATCH; omit currency to inherit the estimate row currency.
+      required: [soldPrice]
+      properties:
+        soldPrice:
+          type: number
+        currency:
+          type: string
+    PatchValuationFeedback:
+      type: object
+      additionalProperties: false
+      required: [helpful]
+      properties:
+        helpful:
+          type: boolean
     PatchEstimateBody:
       type: object
+      description: >-
+        Provide at least one of intent, valuationOutcome, or valuationFeedback (or any combination).
       additionalProperties: false
       properties:
         intent:
           type: string
           enum: [hold, monitor, sell]
-      required: [intent]
+        valuationOutcome:
+          $ref: "#/components/schemas/PatchValuationOutcome"
+        valuationFeedback:
+          $ref: "#/components/schemas/PatchValuationFeedback"
     Portfolio:
       type: object
       required: [id, userId, purpose, label, themeKey, createdAt]
@@ -679,6 +751,12 @@ components:
           type: string
           nullable: true
           enum: [hold, monitor, sell]
+        valuationLineage:
+          $ref: "#/components/schemas/ValuationLineage"
+        valuationOutcome:
+          $ref: "#/components/schemas/ValuationOutcome"
+        valuationFeedback:
+          $ref: "#/components/schemas/ValuationFeedback"
     EstimateSummary:
       type: object
       required:

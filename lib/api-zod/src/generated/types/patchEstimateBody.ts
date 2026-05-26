@@ -6,7 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PatchEstimateBodyIntent } from "./patchEstimateBodyIntent";
+import type { PatchValuationFeedback } from "./patchValuationFeedback";
+import type { PatchValuationOutcome } from "./patchValuationOutcome";
 
+/**
+ * Provide at least one of intent, valuationOutcome, or valuationFeedback (or any combination).
+ */
 export interface PatchEstimateBody {
-  intent: PatchEstimateBodyIntent;
+  intent?: PatchEstimateBodyIntent;
+  valuationOutcome?: PatchValuationOutcome;
+  valuationFeedback?: PatchValuationFeedback;
 }

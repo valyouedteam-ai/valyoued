@@ -11,6 +11,7 @@ import {
   DeleteListingDraftParams,
 } from "@workspace/api-zod";
 import type { EstimateResult } from "@workspace/api-zod";
+import { mergeEstimateResultFromRow } from "../lib/estimateResultMerge";
 import { generateListingDraft, type Platform, type PriceStrategy } from "../lib/listing";
 import { allowedPlatformsForRegion } from "@workspace/marketplace-regions";
 import { resolveUserEntitlements } from "../lib/entitlements";
@@ -60,12 +61,7 @@ router.post("/listings", requireAuth, generateLimit, async (req, res): Promise<v
     return;
   }
 
-  const stored = estRow.result as Omit<EstimateResult, "id" | "createdAt">;
-  const estimate = {
-    ...stored,
-    id: estRow.id,
-    createdAt: estRow.createdAt.toISOString(),
-  } as unknown as EstimateResult;
+  const estimate: EstimateResult = mergeEstimateResultFromRow(estRow, estRow.result);
 
   const sellerRegion = estimate.input?.currentRegion ?? "";
   const allowed = new Set(allowedPlatformsForRegion(sellerRegion));

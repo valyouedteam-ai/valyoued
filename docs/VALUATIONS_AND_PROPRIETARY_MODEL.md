@@ -11,25 +11,27 @@ End-to-end, a signed-in user submits a valuation from the wizard. The API:
 1. **Validates entitlement** (`resolveUserEntitlements`, monthly caps, tier) in `artifacts/api-server/src/lib/entitlements.ts`.
 2. **Loads the asset taxonomy** slice (`artifacts/api-server/src/lib/assetTypes.ts`): fields become structured `EstimateInput` and drive the valuation prompt shape.
 3. **Pulls lightweight market context**: Google News RSS via `buildNewsQueries` / `searchNews` in `artifacts/api-server/src/lib/news.ts`, keyed off asset category and seller region. Headlines constrain the **`worldEvents`** block so outputs are anchored to fetched URLs where possible (`artifacts/api-server/src/lib/estimate.ts`).
-4. **Calls the LLM** (`@workspace/llm`) once per valuation with a **strict JSON** contract: baseline band, comparables, market signals, arbitrage rows, narratives, optional `proInsights` for qualifying Pro users.
-5. **Post-processes** model output server-side before persistence: comparable URL hygiene (`sanitizeComparables`), arbitrage row policy by tradeability and tier, averages `marketSignals` into adjusted prices (`generateEstimate` in `estimate.ts`).
-6. **Persists** one row per valuation in Postgres (`lib/db/src/schema/estimates.ts`): denormalized mid prices and **`result` JSONB** holding the full structured response (inputs, comps, narratives, tier flags, optional playbook).
-7. **Records usage and telemetry**: increments `estimate_usage_monthly`; emits an append-only **`platform_events`** row with a **minimal** payload (`estimate.created` in `artifacts/api-server/src/lib/platformEvents.ts`).
+4. **Optional pilot retrieval**: for `luxury-watch` when `INTERNAL_COMP_ARCHIVE=1`, a short-budget query may append weak **internal archive** context from similar past estimates ([`artifacts/api-server/src/lib/internalArchiveSignals.ts`](../artifacts/api-server/src/lib/internalArchiveSignals.ts)); `estimates.lineage.retrievalSnapshotId` fingerprints the slice used.
+5. **Calls the LLM** (`@workspace/llm`) once per valuation with a **strict JSON** contract: baseline band, comparables, market signals, arbitrage rows, narratives, optional `proInsights` for qualifying Pro users.
+6. **Post-processes** model output server-side before persistence: comparable URL hygiene (`sanitizeComparables`), arbitrage row policy by tradeability and tier, averages `marketSignals` into adjusted prices (`generateEstimate` in `estimate.ts`).
+7. **Persists** one row per valuation in Postgres (`lib/db/src/schema/estimates.ts`): denormalized mid prices; **`result` JSONB** for the structured response; **`lineage` JSONB** for prompt versioning, hashes, configured model id, retrieval snapshot metadata, counts, fallback flag; optional **`outcomeSoldPrice`** / **`feedbackHelpful`** columns for labels.
+8. **Records usage and telemetry**: increments `estimate_usage_monthly`; emits an append-only **`platform_events`** row with a **minimal** payload (`estimate.created` in `artifacts/api-server/src/lib/platformEvents.ts`).
 
-Patches after creation (`PATCH /estimates/:id`) can store **intent** (`hold` / `monitor` / `sell`) on the estimate row so outcomes stay separable from the initial model snapshot.
+Patches after creation (`PATCH /estimates/:id`) can store **intent** (`hold` / `monitor` / `sell`), **optional sold price**, and **helpfulness feedback** on the estimate row so labels stay separate from the initial **`result`** snapshot.
 
 ## What we store by design
 
 | Store | Purpose for product | Purpose for future model work |
 | --- | --- | --- |
 | `estimates.result` (JSONB) | Full report rendered in app | Single-document **(input snapshot, intermediate signals, headline numbers, narrative)** for replay, versioning, offline eval, or distillation |
-| `estimates` scalar columns | Fast list and stats queries | Join keys, filters (asset type, region via embedded input, tier, time) |
+| `estimates` scalar columns | Fast list and stats queries | Join keys, filters (asset type, region via embedded input, tier, time), optional **outcome** and **feedback** labels |
+| `estimates.lineage` (JSONB) | Transparency for support and audits | Replay (`promptSha256`, versions), retrieval slice ids, experiment keys |
 | `estimate_usage_monthly` | Fair use and billing | Volume and cohort stats by month |
 | `platform_events` | Admin and analytics | **Stream-friendly** events; schema comment flags **future proprietary model pipelines** |
 | `listings` (when used) | Draft listings from estimates | Links listing behavior to a valuation id |
 | OpenAPI + `lib/api-zod` | Contract between app, server, clients | **Versioned field definitions** for stable training features |
 
-The **`GET /me/data-export`** endpoint (`artifacts/api-server/src/routes/me.ts`) exports a user’s estimates (including `result`) and related listings as JSON. That is the same shape a privacy-aware internal ETL would start from, subject to policy and consent.
+The **`GET /me/data-export`** endpoint (`artifacts/api-server/src/routes/me.ts`) exports a user’s estimates (including `result`, **`lineage`**, optional outcome and feedback fields) and related listings as JSON. That is the same shape a privacy-aware internal ETL would start from, subject to policy and consent. See [Offline evaluation](./valuation-offline-eval.md) for aggregate metrics on exports.
 
 ## Product-facing “model” vs proprietary model
 
@@ -59,7 +61,7 @@ Recommended payload discipline (already partly reflected in `estimate.created`):
 
 Storing **`intent`** after the fact separates **seller judgment** from the initial machine output without rewriting history. Listing drafts (`listings`) tie monetization-facing copy back to **`estimateId`**.
 
-Future extensions in the same spirit: explicit **sold price**, **sold date**, **“valuation was helpful”**, or adjudicator corrections, ideally as **additive columns or side tables** so the original **`result`** remains an auditable snapshot.
+**Sold price**, **sold recorded timestamp**, and **“valuation was helpful”** now live as additive columns alongside **`result`**; the OpenAPI **`EstimateResult`** echoes them under `valuationOutcome` / `valuationFeedback` for clients.
 
 ### 5. External evidence lines
 
@@ -67,21 +69,30 @@ Comparable URLs survive only when they pass **`sanitizeComparables`**. That bias
 
 News-backed **`worldEvents`** carry **`url` / `publishedAt` / `source`** when grounded in RSS. That supports traceability (“why did we say X then?”) and eventual **weak supervision**, not wholesale scraping of marketplaces (see [Comparables URLs and similar past sales](./comparables-urls-and-past-sales-plan.md)).
 
-## Gaps and next investments (typical roadmap)
+## Gaps and next investments (roadmap deltas)
 
-These are **not** all implemented; they are the usual bridge from “LLM product” to “proprietary model”:
+Delivered foundations (this iteration):
 
-- **Outcome labels**: realized sale price, time-to-sale, or third-party appraisal for a subset of valuations.
-- **Feature store or batch exports**: scheduled, policy-checked extracts from `estimates` (and optional labels) into an offline environment.
-- **Model lineage**: log prompt hash, model id, and parser version alongside each row (today, much of this is implicit in deploys).
-- **Evaluation harness**: replay stored `input` + frozen context through new models and compare to stored outputs or labels.
-- **Governance**: retention windows, region-specific rules, and opt-out that align with `data-export` and Clerk account deletion.
+- **Model lineage**: `promptVersion`, `promptSha256`, configured provider/model ids, retrieval snapshot id, headline counts, `structuredFallback`.
+- **Lightweight labeling**: PATCHable sold price and thumbs-style feedback surfaced on the report UI and in exports.
+- **Evaluation starter**: scripting and doc for **[MAPE, calibration ratio, pairwise rank coherence]** cohort metrics ([`valuation-offline-eval.md`](./valuation-offline-eval.md)).
+
+Still **open** beyond this:
+
+- **Richer replay**: verbatim frozen retrieval blocks (RSS HTML, embeddings, partner feeds) in storage for bit-identical rerun.
+- **Feature store**: scheduled extracts at warehouse scale, not only GDPR export bundles.
+- **Learned calibration head** and distilled student models atop stored traces.
+
+See also **`valuation-shadow-promotion.md`** for how to dual-run challenger pipelines before swapping production behavior.
 
 ## Key files (quick map)
 
 | Area | Location |
 | --- | --- |
 | Valuation generation | `artifacts/api-server/src/lib/estimate.ts` |
+| Lineage + experiment key | `artifacts/api-server/src/lib/valuationLineage.ts` |
+| Internal archive pilot | `artifacts/api-server/src/lib/internalArchiveSignals.ts` |
+| Estimate merge helpers | `artifacts/api-server/src/lib/estimateResultMerge.ts` |
 | News retrieval | `artifacts/api-server/src/lib/news.ts` |
 | Estimate HTTP | `artifacts/api-server/src/routes/estimates.ts` |
 | Events | `artifacts/api-server/src/lib/platformEvents.ts`, `lib/db/src/schema/platform-events.ts` |

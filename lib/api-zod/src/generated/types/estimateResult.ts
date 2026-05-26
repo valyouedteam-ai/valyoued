@@ -14,6 +14,9 @@ import type { EstimateResultIntent } from "./estimateResultIntent";
 import type { EstimateResultTier } from "./estimateResultTier";
 import type { MarketSignal } from "./marketSignal";
 import type { ProInsights } from "./proInsights";
+import type { ValuationFeedback } from "./valuationFeedback";
+import type { ValuationLineage } from "./valuationLineage";
+import type { ValuationOutcome } from "./valuationOutcome";
 import type { WorldEvent } from "./worldEvent";
 
 export interface EstimateResult {
@@ -38,4 +41,7 @@ export interface EstimateResult {
   tier: EstimateResultTier;
   proInsights?: ProInsights;
   intent?: EstimateResultIntent;
+  valuationLineage?: ValuationLineage;
+  valuationOutcome?: ValuationOutcome;
+  valuationFeedback?: ValuationFeedback;
 }

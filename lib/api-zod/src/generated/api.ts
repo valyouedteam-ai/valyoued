@@ -318,6 +318,61 @@ export const CreateEstimateResponse = zod.object({
     })
     .optional(),
   intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
+  valuationLineage: zod
+    .object({
+      promptVersion: zod.string().optional(),
+      promptSha256: zod.string().optional(),
+      llmProvider: zod.string().optional(),
+      llmModel: zod.string().optional(),
+      retrievalSnapshotId: zod
+        .string()
+        .nullish()
+        .describe(
+          "Stable id over the retrieved internal-comp slice used for prompt context when enabled.",
+        ),
+      internalArchiveMatchCount: zod.number().optional(),
+      newsArticleCount: zod.number().optional(),
+      structuredFallback: zod
+        .boolean()
+        .optional()
+        .describe(
+          "True when heuristic fallback ran instead of a successful structured LLM parse.",
+        ),
+      experimentKey: zod
+        .string()
+        .nullish()
+        .describe(
+          "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
+        ),
+    })
+    .optional()
+    .describe(
+      "Server-computed reproducibility metadata (prompt versioning, hashes, retrieval ids).",
+    ),
+  valuationOutcome: zod
+    .object({
+      soldPrice: zod.number(),
+      currency: zod
+        .string()
+        .optional()
+        .describe(
+          "ISO 4217 when different from valuation currency; omit to match valuation row currency.",
+        ),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "User-reported realized sale as returned by the API (timestamps assigned server-side).",
+    ),
+  valuationFeedback: zod
+    .object({
+      helpful: zod.boolean(),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "Helpfulness signal returned by the API (timestamps assigned server-side).",
+    ),
 });
 
 /**
@@ -500,6 +555,61 @@ export const GetEstimateResponse = zod.object({
     })
     .optional(),
   intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
+  valuationLineage: zod
+    .object({
+      promptVersion: zod.string().optional(),
+      promptSha256: zod.string().optional(),
+      llmProvider: zod.string().optional(),
+      llmModel: zod.string().optional(),
+      retrievalSnapshotId: zod
+        .string()
+        .nullish()
+        .describe(
+          "Stable id over the retrieved internal-comp slice used for prompt context when enabled.",
+        ),
+      internalArchiveMatchCount: zod.number().optional(),
+      newsArticleCount: zod.number().optional(),
+      structuredFallback: zod
+        .boolean()
+        .optional()
+        .describe(
+          "True when heuristic fallback ran instead of a successful structured LLM parse.",
+        ),
+      experimentKey: zod
+        .string()
+        .nullish()
+        .describe(
+          "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
+        ),
+    })
+    .optional()
+    .describe(
+      "Server-computed reproducibility metadata (prompt versioning, hashes, retrieval ids).",
+    ),
+  valuationOutcome: zod
+    .object({
+      soldPrice: zod.number(),
+      currency: zod
+        .string()
+        .optional()
+        .describe(
+          "ISO 4217 when different from valuation currency; omit to match valuation row currency.",
+        ),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "User-reported realized sale as returned by the API (timestamps assigned server-side).",
+    ),
+  valuationFeedback: zod
+    .object({
+      helpful: zod.boolean(),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "Helpfulness signal returned by the API (timestamps assigned server-side).",
+    ),
 });
 
 /**
@@ -509,9 +619,27 @@ export const PatchEstimateParams = zod.object({
   id: zod.coerce.string(),
 });
 
-export const PatchEstimateBody = zod.object({
-  intent: zod.enum(["hold", "monitor", "sell"]),
-});
+export const PatchEstimateBody = zod
+  .object({
+    intent: zod.enum(["hold", "monitor", "sell"]).optional(),
+    valuationOutcome: zod
+      .object({
+        soldPrice: zod.number(),
+        currency: zod.string().optional(),
+      })
+      .optional()
+      .describe(
+        "Supplies sold price on PATCH; omit currency to inherit the estimate row currency.",
+      ),
+    valuationFeedback: zod
+      .object({
+        helpful: zod.boolean(),
+      })
+      .optional(),
+  })
+  .describe(
+    "Provide at least one of intent, valuationOutcome, or valuationFeedback (or any combination).",
+  );
 
 export const PatchEstimateResponse = zod.object({
   id: zod.string(),
@@ -686,6 +814,61 @@ export const PatchEstimateResponse = zod.object({
     })
     .optional(),
   intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
+  valuationLineage: zod
+    .object({
+      promptVersion: zod.string().optional(),
+      promptSha256: zod.string().optional(),
+      llmProvider: zod.string().optional(),
+      llmModel: zod.string().optional(),
+      retrievalSnapshotId: zod
+        .string()
+        .nullish()
+        .describe(
+          "Stable id over the retrieved internal-comp slice used for prompt context when enabled.",
+        ),
+      internalArchiveMatchCount: zod.number().optional(),
+      newsArticleCount: zod.number().optional(),
+      structuredFallback: zod
+        .boolean()
+        .optional()
+        .describe(
+          "True when heuristic fallback ran instead of a successful structured LLM parse.",
+        ),
+      experimentKey: zod
+        .string()
+        .nullish()
+        .describe(
+          "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
+        ),
+    })
+    .optional()
+    .describe(
+      "Server-computed reproducibility metadata (prompt versioning, hashes, retrieval ids).",
+    ),
+  valuationOutcome: zod
+    .object({
+      soldPrice: zod.number(),
+      currency: zod
+        .string()
+        .optional()
+        .describe(
+          "ISO 4217 when different from valuation currency; omit to match valuation row currency.",
+        ),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "User-reported realized sale as returned by the API (timestamps assigned server-side).",
+    ),
+  valuationFeedback: zod
+    .object({
+      helpful: zod.boolean(),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "Helpfulness signal returned by the API (timestamps assigned server-side).",
+    ),
 });
 
 /**
@@ -694,7 +877,9 @@ export const PatchEstimateResponse = zod.object({
 export const ListPortfoliosResponseItem = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  purpose: zod.string().describe("primary or pro_board workspace"),
+  purpose: zod
+    .string()
+    .describe("primary, pro_board desk, or inheritance add-on workspace"),
   label: zod.string(),
   themeKey: zod.string(),
   createdAt: zod.coerce.date(),
@@ -712,7 +897,9 @@ export const CreatePortfolioBody = zod.object({
 export const CreatePortfolioResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  purpose: zod.string().describe("primary or pro_board workspace"),
+  purpose: zod
+    .string()
+    .describe("primary, pro_board desk, or inheritance add-on workspace"),
   label: zod.string(),
   themeKey: zod.string(),
   createdAt: zod.coerce.date(),

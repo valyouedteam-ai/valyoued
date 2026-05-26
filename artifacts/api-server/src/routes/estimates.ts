@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { db, estimatesTable, type Estimate } from "@workspace/db";
+import type { EstimateInput } from "@workspace/api-zod";
 import {
   PatchEstimateBody,
   PatchEstimateParams,
@@ -13,11 +14,9 @@ import {
   ListEstimatesResponse,
   ListRegionsResponse,
 } from "@workspace/api-zod";
-import type { AssetType, EstimateInput, EstimateReport, EstimateResult } from "@workspace/api-zod";
 import { ASSET_TYPES, getAssetType } from "../lib/assetTypes";
 import { REGIONS, getRegion } from "../lib/regions";
 import { generateEstimate } from "../lib/estimate";
-import { sanitizeComparables } from "../lib/comparables";
 import { requireAuth, getUserId, type AuthedRequest } from "../middlewares/requireAuth";
 import { recordPlatformEvent } from "../lib/platformEvents";
 import { getFxRateSnapshot } from "../lib/fxRates";
@@ -33,159 +32,9 @@ import {
 } from "../lib/entitlements";
 import { getPortfolioByIdForUser, resolveDefaultPortfolioId } from "../lib/portfoliosService";
 import { computeEstimateStatsFromRows } from "../lib/estimateStatsRollup";
+import { mergeEstimateResultFromRow } from "../lib/estimateResultMerge";
 
 const router: IRouter = Router();
-
-function isCompleteAssetType(v: unknown): v is AssetType {
-  if (!v || typeof v !== "object") return false;
-  const o = v as Record<string, unknown>;
-  return (
-    typeof o.id === "string" &&
-    typeof o.name === "string" &&
-    typeof o.category === "string" &&
-    typeof o.tagline === "string" &&
-    Array.isArray(o.fields) &&
-    typeof o.exampleAttributes === "string" &&
-    typeof o.internationallyTradeable === "boolean"
-  );
-}
-
-function resolveEstimateAssetType(
-  row: { assetTypeId: string; assetTypeName: string },
-  embedded: unknown,
-): AssetType {
-  if (isCompleteAssetType(embedded)) return embedded;
-  const fromRegistry = getAssetType(row.assetTypeId);
-  if (fromRegistry) return fromRegistry;
-  return {
-    id: row.assetTypeId,
-    name: row.assetTypeName,
-    category: "Other",
-    tagline: "",
-    fields: [],
-    exampleAttributes: "",
-    internationallyTradeable: true,
-  };
-}
-
-function isCompleteEstimateInput(v: unknown): v is EstimateInput {
-  if (!v || typeof v !== "object") return false;
-  const o = v as Record<string, unknown>;
-  return (
-    typeof o.assetTypeId === "string" &&
-    typeof o.title === "string" &&
-    typeof o.currentRegion === "string" &&
-    typeof o.currency === "string" &&
-    typeof o.condition === "number"
-  );
-}
-
-function resolveEstimateInput(
-  row: {
-    assetTypeId: string;
-    title: string;
-    currency: string;
-    bestArbitrageRegion: string;
-  },
-  embedded: unknown,
-): EstimateInput {
-  if (isCompleteEstimateInput(embedded)) return embedded;
-  const partial =
-    embedded && typeof embedded === "object" ? (embedded as Partial<EstimateInput>) : {};
-  return {
-    assetTypeId: partial.assetTypeId ?? row.assetTypeId,
-    title: partial.title ?? row.title,
-    currentRegion: partial.currentRegion ?? row.bestArbitrageRegion,
-    currency: partial.currency ?? row.currency,
-    condition: typeof partial.condition === "number" ? partial.condition : 5,
-    brand: partial.brand,
-    model: partial.model,
-    year: partial.year,
-    purchasePrice: partial.purchasePrice,
-    attributes: partial.attributes,
-    extraFields: partial.extraFields,
-  };
-}
-
-function finiteNum(v: unknown, fallback: number): number {
-  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
-}
-
-function safeArray<T>(v: unknown): T[] {
-  return Array.isArray(v) ? (v as T[]) : [];
-}
-
-function isCompleteEstimateReport(v: unknown): v is EstimateReport {
-  if (!v || typeof v !== "object") return false;
-  const o = v as Record<string, unknown>;
-  return (
-    typeof o.headline === "string" &&
-    typeof o.summary === "string" &&
-    typeof o.baselineNarrative === "string" &&
-    typeof o.marketNarrative === "string" &&
-    typeof o.arbitrageNarrative === "string" &&
-    typeof o.worldEventsNarrative === "string" &&
-    typeof o.finalNarrative === "string"
-  );
-}
-
-function resolveEstimateReport(embedded: unknown, title: string): EstimateReport {
-  if (isCompleteEstimateReport(embedded)) return embedded;
-  const partial =
-    embedded && typeof embedded === "object" ? (embedded as Partial<EstimateReport>) : {};
-  return {
-    headline: partial.headline ?? `Valuation · ${title}`,
-    summary:
-      partial.summary ??
-      "This valuation was recovered from older data; some narrative sections may be missing.",
-    baselineNarrative: partial.baselineNarrative ?? "",
-    marketNarrative: partial.marketNarrative ?? "",
-    arbitrageNarrative: partial.arbitrageNarrative ?? "",
-    worldEventsNarrative: partial.worldEventsNarrative ?? "",
-    finalNarrative: partial.finalNarrative ?? "",
-  };
-}
-
-function mergeEstimateResultFromRow(row: Estimate, storedUnknown: unknown): EstimateResult {
-  const raw =
-    storedUnknown && typeof storedUnknown === "object"
-      ? (storedUnknown as Record<string, unknown>)
-      : {};
-  const baselineMid = finiteNum(raw.baselineMid, row.baselineMid);
-  const adjustedMid = finiteNum(raw.adjustedMid, row.adjustedMid);
-  const tier: "free" | "pro" =
-    raw.tier === "pro" || raw.tier === "free" ? raw.tier : (row.tier as "free" | "pro");
-
-  return {
-    ...raw,
-    input: resolveEstimateInput(row, raw.input),
-    assetType: resolveEstimateAssetType(row, raw.assetType),
-    report: resolveEstimateReport(raw.report, row.title),
-    marketSignals: safeArray(raw.marketSignals),
-    worldEvents: safeArray(raw.worldEvents),
-    arbitrage: safeArray(raw.arbitrage),
-    comparables: sanitizeComparables(safeArray(raw.comparables)),
-    netMarketFactor: finiteNum(raw.netMarketFactor, 1),
-    currency: typeof raw.currency === "string" && raw.currency ? raw.currency : row.currency,
-    tier,
-    baselineLow: finiteNum(raw.baselineLow, baselineMid),
-    baselineMid,
-    baselineHigh: finiteNum(raw.baselineHigh, baselineMid),
-    adjustedLow: finiteNum(raw.adjustedLow, adjustedMid),
-    adjustedMid,
-    adjustedHigh: finiteNum(raw.adjustedHigh, adjustedMid),
-    bestArbitrageRegion:
-      typeof raw.bestArbitrageRegion === "string" && raw.bestArbitrageRegion
-        ? raw.bestArbitrageRegion
-        : row.bestArbitrageRegion,
-    id: row.id,
-    createdAt: row.createdAt.toISOString(),
-    intent:
-      row.intent === "hold" || row.intent === "monitor" || row.intent === "sell"
-        ? (row.intent as NonNullable<EstimateResult["intent"]>)
-        : null,
-  } as unknown as EstimateResult;
-}
 
 function readSellerRegionFromStoredResult(storedUnknown: unknown, fallback: string): string {
   const raw =
@@ -318,22 +167,19 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
       assetTypeId: assetType.id,
       assetTypeName: assetType.name,
       title: input.title,
-      currency: computed.currency,
-      baselineMid: computed.baselineMid,
-      adjustedMid: computed.adjustedMid,
-      bestArbitrageRegion: computed.bestArbitrageRegion,
+      currency: computed.estimate.currency,
+      baselineMid: computed.estimate.baselineMid,
+      adjustedMid: computed.estimate.adjustedMid,
+      bestArbitrageRegion: computed.estimate.bestArbitrageRegion,
       tier,
-      result: computed,
+      result: computed.estimate,
+      lineage: computed.lineage,
     })
     .returning();
 
   await incrementMonthlyEstimateUsage(userId);
 
-  const result = {
-    ...computed,
-    id: row.id,
-    createdAt: row.createdAt.toISOString(),
-  } as unknown as EstimateResult;
+  const result = mergeEstimateResultFromRow(row, row.result);
   void recordPlatformEvent({
     userId,
     eventType: "estimate.created",
@@ -341,9 +187,9 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
       estimateId: row.id,
       assetTypeId: assetType.id,
       tier,
-      adjustedMid: computed.adjustedMid,
-      baselineMid: computed.baselineMid,
-      currency: computed.currency,
+      adjustedMid: computed.estimate.adjustedMid,
+      baselineMid: computed.estimate.baselineMid,
+      currency: computed.estimate.currency,
       region: input.currentRegion,
     },
   });
@@ -368,10 +214,39 @@ router.patch("/estimates/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsedBody.error.message });
     return;
   }
+  const patch = parsedBody.data;
+  if (
+    patch.intent === undefined &&
+    patch.valuationOutcome === undefined &&
+    patch.valuationFeedback === undefined
+  ) {
+    res.status(400).json({
+      error: "Provide at least one of intent, valuationOutcome, or valuationFeedback.",
+    });
+    return;
+  }
+
   const userId = (req as AuthedRequest).userId!;
+  const now = new Date();
+  const updates: Partial<Pick<Estimate, "intent" | "outcomeSoldPrice" | "outcomeCurrency" | "outcomeRecordedAt" | "feedbackHelpful" | "feedbackRecordedAt">> =
+    {};
+  if (patch.intent !== undefined) {
+    updates.intent = patch.intent;
+  }
+  if (patch.valuationOutcome !== undefined) {
+    updates.outcomeSoldPrice = patch.valuationOutcome.soldPrice;
+    updates.outcomeCurrency =
+      patch.valuationOutcome.currency?.trim() !== "" ? patch.valuationOutcome.currency!.trim() : null;
+    updates.outcomeRecordedAt = now;
+  }
+  if (patch.valuationFeedback !== undefined) {
+    updates.feedbackHelpful = patch.valuationFeedback.helpful;
+    updates.feedbackRecordedAt = now;
+  }
+
   const [updated] = await db
     .update(estimatesTable)
-    .set({ intent: parsedBody.data.intent })
+    .set(updates)
     .where(and(eq(estimatesTable.id, params.data.id), eq(estimatesTable.userId, userId)))
     .returning();
   if (!updated) {
