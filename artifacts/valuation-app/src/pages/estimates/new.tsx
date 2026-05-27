@@ -66,6 +66,7 @@ import { assetTypeAllowedForSellerTier } from "@workspace/asset-shelf-tier";
 import { GENERAL_ITEM_ASSET_TYPE_ID, isWizardSupportedAssetTypeId, pickAssetTypesForWizardPicker, WIZARD_CURATED_PRIMARY_COUNT } from "@workspace/curated-asset-ids";
 import { inferVehicleFuelHint, matchFuelDropdownOption } from "@workspace/marketplace-regions";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1323,14 +1324,12 @@ function NewEstimatePageInner({
                     )}
                   />
                   {portfoliosList && portfoliosList.length > 0 ? (
-                    <FormItem>
-                      <FormLabel>Portfolio workspace</FormLabel>
+                    <div className="space-y-2">
+                      <Label htmlFor="estimate-portfolio-workspace">Portfolio workspace</Label>
                       <Select value={portfolioChoice ?? ""} onValueChange={(v) => setPortfolioChoice(v)}>
-                        <FormControl>
-                          <SelectTrigger className="h-10 bg-background">
-                            <SelectValue placeholder="Select workspace" />
-                          </SelectTrigger>
-                        </FormControl>
+                        <SelectTrigger id="estimate-portfolio-workspace" className="h-10 bg-background">
+                          <SelectValue placeholder="Select workspace" />
+                        </SelectTrigger>
                         <SelectContent>
                           {portfoliosList.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
@@ -1340,11 +1339,11 @@ function NewEstimatePageInner({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>
+                      <p className="text-[0.8rem] text-muted-foreground">
                         Choose which ledger receives this valuation after the model runs. Matches the workspace pills under
                         the navigation bar so you can jump between personal and inheritance dashboards without mixing items.
-                      </FormDescription>
-                    </FormItem>
+                      </p>
+                    </div>
                   ) : null}
                 </div>
               )}
