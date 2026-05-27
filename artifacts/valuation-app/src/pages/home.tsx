@@ -315,7 +315,7 @@ export default function HomePage() {
                       <p className="text-sm font-medium leading-snug text-foreground">{HOME_BUCKET_LABEL[key]}</p>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-semibold tabular-nums text-foreground">{count}</span>
-                        <span className="text-xs uppercase tracking-[0.1em] text-muted-foreground">items</span>
+                        <span className="text-ui-caps text-muted-foreground">items</span>
                       </div>
                       <p className={cn("text-xs", empty ? "text-accent" : "text-muted-foreground")}>
                         {empty
