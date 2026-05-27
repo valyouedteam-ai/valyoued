@@ -1,8 +1,8 @@
-import { Switch, Route, useLocation, Redirect } from "wouter";
+import { Switch, Route, useLocation, Redirect, useSearch } from "wouter";
 import { useAuth } from "@clerk/react";
 import { useListEstimates } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import HomePage from "@/pages/home";
+import { mergePortfolioHref } from "@/context/PortfolioWorkspaceContext";
 import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
 import WelcomePersonaPage from "@/pages/welcome";
@@ -11,7 +11,6 @@ import AboutPage from "@/pages/about";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import NewEstimatePage from "@/pages/estimates/new";
-import EstimatesPage from "@/pages/estimates/index";
 import EstimateReportPage from "@/pages/estimates/[id]";
 import InheritancePage from "@/pages/inheritance";
 import PortfolioPage from "@/pages/portfolio";
@@ -51,6 +50,22 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function normalizeSearch(search: string): string {
+  if (!search) return "";
+  return search.startsWith("?") ? search : `?${search}`;
+}
+
+function LegacyDashboardPathRedirect() {
+  const search = useSearch();
+  return <Redirect to={normalizeSearch(search) ? `/dashboard${normalizeSearch(search)}` : "/dashboard"} />;
+}
+
+function EstimatesToRecentRedirect() {
+  const search = useSearch();
+  const qs = normalizeSearch(search);
+  return <Redirect to={mergePortfolioHref("/dashboard#recent-valuations", qs)} />;
+}
+
 function StubFullBleedSwitch() {
   return (
     <Switch>
@@ -73,13 +88,13 @@ function AppShellSwitch() {
     <Switch>
       <Route path="/recent" component={LatestEstimateRedirect} />
       <Route path="/welcome/continue" component={WelcomeContinuePage} />
-      <Route path="/dashboard" component={HomePage} />
+      <Route path="/dashboard" component={PortfolioPage} />
       <Route path="/estimate/new" component={NewEstimatePage} />
-      <Route path="/estimates" component={EstimatesPage} />
+      <Route path="/estimates" component={EstimatesToRecentRedirect} />
       <Route path="/estimates/:id" component={EstimateReportPage} />
       <Route path="/inheritance" component={InheritancePage} />
-      <Route path="/portfolio" component={PortfolioPage} />
-      <Route path="/stats" component={PortfolioPage} />
+      <Route path="/portfolio" component={LegacyDashboardPathRedirect} />
+      <Route path="/stats" component={LegacyDashboardPathRedirect} />
       <Route path="/markets" component={MarketsPage} />
       <Route path="/listings" component={ListingsPage} />
       <Route path="/settings" component={SettingsPage} />

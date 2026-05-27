@@ -8,7 +8,6 @@ import {
   Globe2,
   Landmark,
   LayoutDashboard,
-  LibrarySquare,
   LogOut,
   Megaphone,
   Menu,
@@ -51,7 +50,7 @@ const SHOW_STUB_PLAN_TOGGLE = isDevBillingUiEnabled();
 type NavItem = {
   href: string;
   label: string;
-  icon: typeof LibrarySquare;
+  icon: typeof Briefcase;
   navTitle?: string;
   /** When set, skips merging the active workspace `?portfolio=` tail (avoid corrupting hashes or doubling params). */
   skipPortfolioQuery?: boolean;
@@ -65,13 +64,17 @@ const NAV_MARKETS: NavItem = {
 };
 
 const navWorkspace: NavItem[] = [
-  { href: "/dashboard", label: "Home", icon: LibrarySquare },
+  { href: "/dashboard", label: "Portfolio", icon: Briefcase },
   { href: "/estimate/new", label: "Valuate", icon: Calculator },
-  { href: "/estimates", label: "History", icon: LayoutDashboard },
+  {
+    href: "/dashboard#recent-valuations",
+    label: "Recent",
+    icon: LayoutDashboard,
+    navTitle: "Recent valuations on this workspace (formerly History).",
+  },
 ];
 
 const navInsights: NavItem[] = [
-  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
   {
     href: "/inheritance",
     label: "Inheritance",
@@ -116,6 +119,14 @@ function routeMatchesNavHref(pathname: string, rawSearchParam: string, navHref: 
     return window.location.hash === `#${hashNeedle}`;
   }
 
+  if (
+    pathPart === "/dashboard" &&
+    typeof window !== "undefined" &&
+    window.location.hash === "#recent-valuations"
+  ) {
+    return false;
+  }
+
   return true;
 }
 
@@ -125,7 +136,16 @@ function isResolvedNavActive(pathname: string, rawSearchParam: string, resolvedH
     return routeMatchesNavHref(pathname, rawSearchParam, resolvedHref);
   }
   const pathOnly = resolvedHref.split("?")[0]?.split("#")[0] ?? resolvedHref;
-  return pathname === pathOnly || (pathOnly !== "/dashboard" && pathname.startsWith(pathOnly));
+  const pathMatches = pathname === pathOnly || (pathOnly !== "/dashboard" && pathname.startsWith(pathOnly));
+  if (!pathMatches) return false;
+  if (
+    pathOnly === "/dashboard" &&
+    typeof window !== "undefined" &&
+    window.location.hash === "#recent-valuations"
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function portfolioWorkspaceHref(
@@ -135,9 +155,9 @@ function portfolioWorkspaceHref(
 ): string {
   const primId = primary?.id ?? null;
   const defaultId = primId ?? allPortfolios?.[0]?.id ?? null;
-  if (!portfolio?.id) return "/portfolio";
-  if (defaultId != null && portfolio.id === defaultId) return "/portfolio";
-  return mergePortfolioHref("/portfolio", `?portfolio=${encodeURIComponent(portfolio.id)}`);
+  if (!portfolio?.id) return "/dashboard";
+  if (defaultId != null && portfolio.id === defaultId) return "/dashboard";
+  return mergePortfolioHref("/dashboard", `?portfolio=${encodeURIComponent(portfolio.id)}`);
 }
 
 function buildInsightNavigation(input: {
@@ -158,7 +178,7 @@ function buildInsightNavigation(input: {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     const desk = desks[0];
-    const href = desk?.id ? portfolioWorkspaceHref(desk, primaryPortfolio, portfolios) : "/portfolio";
+    const href = desk?.id ? portfolioWorkspaceHref(desk, primaryPortfolio, portfolios) : "/dashboard";
     rows.push({
       href,
       label: "Desk",
@@ -387,7 +407,7 @@ function MobileNavSheet({ insightNav }: { insightNav: NavItem[] }) {
             <div className="flex flex-col gap-1">
               {navWorkspace.map((item) => (
                 <NavLink
-                  key={item.href}
+                  key={`${item.label}:${item.href}`}
                   item={item}
                   pathname={pathname}
                   search={search}
@@ -470,7 +490,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
             <div className="flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none rounded-full border border-border/60 bg-muted/40 p-1">
               {navWorkspace.map((item) => (
                 <NavLink
-                  key={item.href}
+                  key={`${item.label}:${item.href}`}
                   item={item}
                   pathname={pathname}
                   search={search}

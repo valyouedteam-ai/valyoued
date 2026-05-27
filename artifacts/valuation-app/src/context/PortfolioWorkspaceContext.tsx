@@ -26,12 +26,18 @@ const PortfolioWorkspaceContext = createContext<PortfolioWorkspaceContextValue |
   null,
 );
 
-/** Append active workspace query to internal links (preserve existing search params when possible). */
+/** Append active workspace query to internal links (preserve existing search params and `#hash`). */
 export function mergePortfolioHref(href: string, portfolioQuerySuffix: string): string {
   if (!portfolioQuerySuffix || href.startsWith("http")) return href;
-  const q = portfolioQuerySuffix.startsWith("?") ? portfolioQuerySuffix.slice(1) : portfolioQuerySuffix;
-  if (!q) return href;
-  return href.includes("?") ? `${href}&${q}` : `${href}?${q}`;
+  const rawQ = portfolioQuerySuffix.startsWith("?") ? portfolioQuerySuffix.slice(1) : portfolioQuerySuffix;
+  if (!rawQ) return href;
+
+  const hashIdx = href.indexOf("#");
+  const beforeHash = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+  const hashPart = hashIdx >= 0 ? href.slice(hashIdx) : "";
+
+  const join = beforeHash.includes("?") ? "&" : "?";
+  return `${beforeHash}${join}${rawQ}${hashPart}`;
 }
 
 export function PortfolioWorkspaceProvider({ children }: { children: ReactNode }) {

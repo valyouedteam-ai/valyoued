@@ -53,10 +53,12 @@ import {
 import { ListingDraftView } from "@/components/ListingDraftView";
 import { useToast } from "@/hooks/use-toast";
 import { PLATFORM_LABEL } from "@/lib/platforms";
+import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
 
 type SortKey = "newest" | "oldest" | "price_high" | "price_low" | "title_az";
 
 export default function ListingsPage() {
+  const { portfolioQuerySuffix } = usePortfolioWorkspace();
   const { data: drafts, isLoading } = useListListingDrafts();
   const queryClient = useQueryClient();
   const deleteDraft = useDeleteListingDraft();
@@ -175,7 +177,7 @@ export default function ListingsPage() {
             Open any of your valuations and click <span className="font-medium text-foreground">"List for sale"</span> to generate
             a marketplace ad: title, description, photo angles and pricing strategy in one click.
           </p>
-          <Link href="/portfolio">
+          <Link href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}>
             <Button size="lg">
               <Plus className="h-4 w-4 mr-2" />
               Go to my portfolio
@@ -206,7 +208,7 @@ export default function ListingsPage() {
             </p>
           ) : null}
         </div>
-        <Link href="/portfolio">
+        <Link href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}>
           <Button variant="outline">
             <Plus className="h-4 w-4 mr-2" />
             Create from portfolio

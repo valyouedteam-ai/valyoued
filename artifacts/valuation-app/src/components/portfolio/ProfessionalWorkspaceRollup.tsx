@@ -37,15 +37,15 @@ function openPortfolioWorkspaceLink(
   urlDefaultPortfolioId: string | null | undefined,
   workspaceId: string,
 ): string {
-  if (semanticPrimaryId != null && workspaceId === semanticPrimaryId) return "/portfolio";
+  if (semanticPrimaryId != null && workspaceId === semanticPrimaryId) return "/dashboard";
   if (
     semanticPrimaryId == null &&
     urlDefaultPortfolioId != null &&
     workspaceId === urlDefaultPortfolioId
   ) {
-    return "/portfolio";
+    return "/dashboard";
   }
-  return mergePortfolioHref("/portfolio", `?portfolio=${encodeURIComponent(workspaceId)}`);
+  return mergePortfolioHref("/dashboard", `?portfolio=${encodeURIComponent(workspaceId)}`);
 }
 
 function purposeWorkspaceKind(purpose: Portfolio["purpose"]): string {

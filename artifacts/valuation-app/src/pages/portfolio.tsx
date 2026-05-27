@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
@@ -38,6 +38,7 @@ import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
 import { useSellerPersona } from "@/hooks/use-seller-persona";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { ProfessionalWorkspaceRollup } from "@/components/portfolio/ProfessionalWorkspaceRollup";
+import { DashboardHubLower } from "@/components/dashboard/DashboardHubLower";
 
 type PortfolioItem = EstimateSummary & {
   liveValue: number;
@@ -220,6 +221,23 @@ export default function PortfolioPage() {
 
   const portfolioHeaderSubtitle = portfolioWorkspaceSubtitle(activePortfolio);
 
+  useEffect(() => {
+    const el = document.getElementById("recent-valuations");
+    if (!el) return;
+
+    const reduceMotion =
+      typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const scrollToRecent = () => {
+      if (window.location.hash !== "#recent-valuations") return;
+      el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    };
+
+    scrollToRecent();
+    window.addEventListener("hashchange", scrollToRecent);
+    return () => window.removeEventListener("hashchange", scrollToRecent);
+  }, []);
+
   if (isLoading) {
     return (
       <div className={cn("w-full space-y-8", workspaceShellClass)}>
@@ -236,37 +254,32 @@ export default function PortfolioPage() {
 
   if (scopedRows.length === 0) {
     return (
-      <div
-        className={cn(
-          "mx-auto pt-12",
-          professionalPlan ? "max-w-5xl" : "max-w-3xl",
-          workspaceShellClass,
-        )}
-      >
+      <div className={cn("mx-auto w-full max-w-7xl pt-12", workspaceShellClass)}>
         <div className="space-y-6">
           <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
-          <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30">
-          <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">
-            <Briefcase className="h-8 w-8 text-accent" />
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-card/30 p-16 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+              <Briefcase className="h-8 w-8 text-accent" />
+            </div>
+            <h3 className="mb-2 font-sans text-2xl">
+              {inheritanceWorkspace || deskWorkspace
+                ? `${activePortfolio?.label ?? "This workspace"} is empty`
+                : "Your portfolio is empty"}
+            </h3>
+            <p className="mb-6 max-w-md text-muted-foreground">
+              Run a valuation and attach it to this workspace{" "}
+              {inheritanceWorkspace || deskWorkspace
+                ? "Use the workspace pills under the navigation bar to return to your primary ledger."
+                : "to see holdings, shelf mix, and listing shortcuts."}
+            </p>
+            <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
+              <Button size="lg">
+                <Plus className="mr-2 h-4 w-4" />
+                Value your first asset
+              </Button>
+            </Link>
           </div>
-          <h3 className="text-2xl font-sans mb-2">
-            {inheritanceWorkspace || deskWorkspace
-              ? `${activePortfolio?.label ?? "This workspace"} is empty`
-              : "Your portfolio is empty"}
-          </h3>
-          <p className="text-muted-foreground max-w-md mb-6">
-            Run a valuation and attach it to this workspace{" "}
-            {inheritanceWorkspace || deskWorkspace
-              ? "Use the workspace pills under the navigation bar to return to your primary ledger."
-              : "to see holdings, shelf mix, and listing shortcuts."}
-          </p>
-          <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
-            <Button size="lg">
-              <Plus className="h-4 w-4 mr-2" />
-              Value your first asset
-            </Button>
-          </Link>
-        </div>
+          <DashboardHubLower scopedEstimates={scopedRows} estimatesLoading={isLoading} />
         </div>
       </div>
     );
@@ -490,6 +503,8 @@ export default function PortfolioPage() {
           onOpenChange={(open) => !open && setListingFor(null)}
         />
       )}
+
+      <DashboardHubLower scopedEstimates={scopedRows} estimatesLoading={isLoading} />
     </div>
   );
 }

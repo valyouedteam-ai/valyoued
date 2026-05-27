@@ -39,7 +39,7 @@ function formatProvisionError(err: unknown): string {
  * Dedicated hub for the inheritance ledger: explains how it differs from the primary portfolio,
  * links into workspace actions once the add-on is active, or Billing to enable it.
  *
- * With the dev Subscription strip, `/inheritance` redirects to `/portfolio` unless the inheritance toggle is on.
+ * With the dev Subscription strip, `/inheritance` redirects to `/dashboard` unless the inheritance toggle is on.
  * When add-on is active but the inheritance portfolio row has not been created yet, POST `/api/portfolios` is triggered once.
  */
 export default function InheritancePage() {
@@ -97,13 +97,13 @@ export default function InheritancePage() {
       : "";
   const inheritancePortfolioHref = inh
     ? inhPortfolioQs
-      ? mergePortfolioHref("/portfolio", inhPortfolioQs)
-      : "/portfolio"
-    : mergePortfolioHref("/portfolio", portfolioQuerySuffix);
+      ? mergePortfolioHref("/dashboard", inhPortfolioQs)
+      : "/dashboard"
+    : mergePortfolioHref("/dashboard", portfolioQuerySuffix);
 
   const shouldRedirectAway = Boolean(isDevBillingUiEnabled() && stubDev !== null && !stubDev.inheritanceAddon);
   if (shouldRedirectAway) {
-    return <Redirect to="/portfolio" />;
+    return <Redirect to="/dashboard" />;
   }
 
   return (

@@ -21,8 +21,10 @@ import {
 } from "lucide-react";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import type { EstimateSummaryTier } from "@workspace/api-client-react";
+import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
 
 export default function MarketsPage() {
+  const { portfolioQuerySuffix } = usePortfolioWorkspace();
   const { code: displayCcy } = useDisplayCurrency();
   const { data: stats, isLoading: statsLoading } = useGetEstimateStats();
   const { data: estimates, isLoading: listLoading } = useListEstimates();
@@ -220,7 +222,7 @@ export default function MarketsPage() {
             </CardTitle>
             <CardDescription>
               Average adjusted value by type, using the same approximate conversion as{" "}
-              <Link href="/portfolio" className="text-accent hover:underline">
+              <Link href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)} className="text-accent hover:underline">
                 your portfolio
               </Link>{" "}
               (totals in {displayCcy} for comparison). Reports still show each item in its own currency.

@@ -11,6 +11,7 @@ import { AuthStubContext } from "@/context/AuthStubContext";
 import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { AppRoutes } from "@/app-routes";
 import { ProTierProvider } from "@/hooks/use-pro-tier";
+import { DocumentSeo } from "@/components/DocumentSeo";
 import { GeoCurrencyBootstrap } from "@/components/GeoCurrencyBootstrap";
 import { useSellerPersonaClerkSync } from "@/hooks/use-persona-sync";
 
@@ -214,6 +215,7 @@ function App() {
         <WouterRouter base={basePath}>
           <ProTierProvider>
             <GeoCurrencyBootstrap />
+            <DocumentSeo />
             <DevStubBillingShell>
               {AUTH_STUB_MODE ? (
                 <AuthStubContext.Provider value={true}>

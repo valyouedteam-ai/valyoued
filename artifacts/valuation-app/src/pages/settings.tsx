@@ -52,6 +52,23 @@ type EmailAlertsInfo = {
 
 type BillingActionJson = { url?: string; error?: string; stub?: boolean };
 
+/** Blob downloads: anchor must be in the document; revoking the object URL immediately can cancel the save. */
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  try {
+    a.click();
+  } finally {
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+}
+
 /** Many proxies and Express defaults return an empty body on 500; `res.json()` then throws. */
 async function parseBillingJsonBody(res: Response): Promise<{ ok: true; body: BillingActionJson } | { ok: false; error: string }> {
   let raw = "";
@@ -283,20 +300,56 @@ function SettingsPageInner({
       const token = await getToken();
       const res = await fetch(apiUrl("/api/me/data-export"), {
         credentials: apiFetchCredentials(),
-        headers: token ? { authorization: `Bearer ${token}` } : {},
+        headers: {
+          accept: "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
       });
+
+      const bodyText = await res.text();
       if (!res.ok) {
-        toast({ title: "Export failed", description: await res.text(), variant: "destructive" });
+        let detail = bodyText.trim();
+        if (!detail) detail = `${res.status} ${res.statusText}`.trim() || "Request failed.";
+        try {
+          const parsed = JSON.parse(bodyText) as { error?: string };
+          if (typeof parsed?.error === "string" && parsed.error.trim()) detail = parsed.error.trim();
+        } catch {
+          /* keep detail as text */
+        }
+        toast({ title: "Export failed", description: detail, variant: "destructive" });
         return;
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `valyoued-export-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+
+      const trimmed = bodyText.trim();
+      if (!trimmed) {
+        toast({
+          title: "Export unavailable",
+          description: "Server returned empty data. Try again or contact support.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        JSON.parse(trimmed);
+      } catch {
+        toast({
+          title: "Export failed",
+          description: "Response was not valid JSON (check API URL and authentication).",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const blob = new Blob([trimmed], { type: "application/json;charset=utf-8" });
+      triggerBlobDownload(blob, `valyoued-export-${new Date().toISOString().slice(0, 10)}.json`);
       toast({ title: "Export ready", description: "Your JSON download should begin shortly." });
+    } catch (e) {
+      toast({
+        title: "Export failed",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
     } finally {
       setBusy(null);
     }

@@ -70,12 +70,11 @@ export default function LandingPage() {
             <span className="brand-gradient">sell when the window is right.</span>
           </motion.h1>
           <motion.p variants={reduceMotion ? undefined : item} className="max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Structured valuations, portfolio buckets, listing drafts tuned for everyday collectors and resale desks alike. Full tier
-            detail lives on{" "}
+            Structured valuations and listing drafts on one ledger.{" "}
             <Link href="/pricing#plans" className="font-medium text-accent underline-offset-4 hover:underline">
               Pricing
             </Link>
-            . Then jump into onboarding or a guest valuation below.
+            .
           </motion.p>
           <motion.div
             variants={reduceMotion ? undefined : item}
@@ -165,17 +164,14 @@ export default function LandingPage() {
             {
               icon: Globe2,
               title: "Compare markets",
-              body: "Everyday keeps a focused regional pulse. Everyday+ unfolds the fuller multi-market tables so you pick where to ship from.",
             },
             {
               icon: Zap,
               title: "Your photo fills the blanks",
-              body: "Upload a snapshot when you can so the wizard skips obvious fields. Finish the nuanced bits only you know.",
             },
             {
               icon: ShieldCheck,
               title: "Listing drafts that feel human",
-              body: "We shape seller-ready copy tuned to plan tier, from straightforward blurbs through Professional polish.",
             },
           ].map((f) => (
             <motion.div
@@ -186,11 +182,10 @@ export default function LandingPage() {
               transition={{ duration: reduceMotion ? 0 : 0.35 }}
               className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm transition-shadow hover:shadow-md"
             >
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-accent">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-accent">
                 <f.icon className="h-5 w-5" />
               </div>
-              <h3 className="mb-2 font-semibold tracking-tight">{f.title}</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">{f.body}</p>
+              <h3 className="mt-4 font-semibold tracking-tight">{f.title}</h3>
             </motion.div>
           ))}
         </div>
