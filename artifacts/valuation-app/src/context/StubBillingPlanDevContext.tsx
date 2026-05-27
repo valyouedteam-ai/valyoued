@@ -38,6 +38,15 @@ function readStoredInheritance(): boolean {
   return false;
 }
 
+/** Session keys shared with `main.tsx` so stub headers exist before the first React commit. */
+export function peekDevStubBillingFetchHeaders(): HeadersInit {
+  const planSlug = readStoredSlug() ?? "free";
+  return {
+    "X-Stub-Billing-Plan": planSlug,
+    "X-Stub-Inheritance-Addon": readStoredInheritance() ? "1" : "0",
+  };
+}
+
 export type StubBillingPlanDevContextValue = {
   planSlug: StubBillingPlanSlug;
   setPlanSlug: (slug: StubBillingPlanSlug) => void;
@@ -76,13 +85,20 @@ export function StubBillingPlanDevProvider({ children }: { children: ReactNode }
     }
   }, []);
 
-  useEffect(() => {
+  /**
+   * Child effects run before parent effects on each commit. Keeping the getter in sync during render guarantees
+   * the first `/api/portfolios`, mutations, etc. attach stub headers instead of firing before this provider's effects.
+   */
+  if (typeof window !== "undefined") {
     setExtraRequestHeadersGetter(() => ({
       "X-Stub-Billing-Plan": planSlug,
       "X-Stub-Inheritance-Addon": inheritanceAddon ? "1" : "0",
     }));
+  }
+
+  useEffect(() => {
     return () => setExtraRequestHeadersGetter(null);
-  }, [planSlug, inheritanceAddon]);
+  }, []);
 
   useEffect(() => {
     try {

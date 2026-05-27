@@ -305,6 +305,23 @@ function requestPathname(url: string): string {
   }
 }
 
+/**
+ * Cross-origin calls (Vercel app to remote API) omit cookies by default. Clerk can fall back to cookie
+ * session on some setups, so opt into credentialed fetches when origins differ. Explicit `credentials`
+ * in options always wins.
+ */
+function resolveFetchCredentials(resolvedUrl: string, explicit?: RequestCredentials): RequestCredentials | undefined {
+  if (explicit !== undefined) return explicit;
+  if (typeof window === "undefined") return undefined;
+  try {
+    const u = new URL(resolvedUrl, window.location.href);
+    if (u.origin !== window.location.origin) return "include";
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+}
+
 function inferResponseType(response: Response, requestUrl: string): "json" | "text" | "blob" {
   const mediaType = getMediaType(response.headers);
   const path = requestPathname(requestUrl);
@@ -395,7 +412,15 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const resolvedUrl = resolveUrl(input);
+  const credentials = resolveFetchCredentials(resolvedUrl, init.credentials);
+
+  const response = await fetch(input, {
+    ...init,
+    method,
+    headers,
+    ...(credentials !== undefined ? { credentials } : {}),
+  });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

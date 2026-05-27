@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  ApiError,
   getListPortfoliosQueryKey,
   useCreatePortfolio,
   type EstimateSummary,
@@ -24,7 +25,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
+import { useOptionalStubBillingPlanDev } from "@/context/StubBillingPlanDevContext";
 import { portfolioWorkspaceButtonLabel } from "@/components/layout/PortfolioWorkspaceStrip";
+import { AUTH_STUB_MODE } from "@/lib/auth-stub";
+import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { cn } from "@/lib/utils";
 
 function estimateInWorkspace(
@@ -66,6 +70,9 @@ export function ProfessionalWorkspaceRollup({
 }: ProfessionalWorkspaceRollupProps) {
   const { data: billing } = useBillingSummary();
   const professionalPlan = billing?.planSlug === "professional";
+  const stubDev = useOptionalStubBillingPlanDev();
+  const clerkDevBillingStrip =
+    Boolean(isDevBillingUiEnabled() && stubDev !== null && !AUTH_STUB_MODE);
   const { portfolios, primaryPortfolio, activePortfolio, selectPortfolioById } = usePortfolioWorkspace();
   const primaryLabel = portfolios?.find((p) => p.purpose === "primary")?.label ?? null;
   const primaryId = primaryPortfolio?.id ?? null;
@@ -88,7 +95,11 @@ export function ProfessionalWorkspaceRollup({
         });
       },
       onError: (err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err ?? "");
+        let msg = err instanceof Error ? err.message : String(err ?? "");
+        if (clerkDevBillingStrip && err instanceof ApiError && err.status === 403) {
+          msg =
+            `${msg} The Subscription strip only simulates billing in the browser until the valuation API trusts stub billing headers. From the repo root run pnpm dev (API in development mode), or set ALLOW_DEV_STUB_BILLING_HEADERS=1 on a private local API.`;
+        }
         toast({
           title: "Could not create desk",
           description: msg || "Confirm your Professional plan is active, then try again.",

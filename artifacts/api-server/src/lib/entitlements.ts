@@ -13,6 +13,7 @@ import {
   currentAuthStubInheritanceAddon,
   currentDevelopmentBillingPlanOverlay,
 } from "./authStubBillingPlan";
+import { currentStripeStubEntitlementsOverlay, stripeStubPlanResolutionMode } from "./stripeStub";
 
 const FREE_MONTHLY_VALUATION_CAP = 5;
 
@@ -207,8 +208,20 @@ export async function resolveUserEntitlements(userId: string, req?: Request): Pr
   };
 
   const devOverlay = currentDevelopmentBillingPlanOverlay(req);
-  if (devOverlay) {
+  const stripeStubOverlay = currentStripeStubEntitlementsOverlay();
+
+  function applyStripeStub(): void {
+    if (!stripeStubOverlay) return;
+    ent = applyDevelopmentBillingOverlay(ent, stripeStubOverlay);
+    ent = { ...ent, subscriptionStatus: "dev_plan_env_overlay" };
+  }
+
+  if (stripeStubPlanResolutionMode() === "env_first" && stripeStubOverlay) {
+    applyStripeStub();
+  } else if (devOverlay) {
     ent = applyDevelopmentBillingOverlay(ent, devOverlay);
+  } else {
+    applyStripeStub();
   }
 
   return ent;

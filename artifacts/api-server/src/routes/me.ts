@@ -133,12 +133,12 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
     .from(billingSubscriptionsTable)
     .where(eq(billingSubscriptionsTable.userId, userId));
   res.json({
-    tier: sub?.tier ?? "free",
-    status: sub?.status ?? "inactive",
+    tier: ent.tier,
+    status: ent.subscriptionStatus,
     stripeCustomerId: sub?.stripeCustomerId ?? null,
     stripeStub: isStripeStubMode(),
-    planSlug: ent.planSlug,
-    hasInheritanceAddon: Boolean(sub?.hasInheritanceAddon),
+    planSlug: ent.planSlug === "none" ? "none" : ent.planSlug,
+    hasInheritanceAddon: Boolean(ent.hasInheritanceAddon),
     valuationsThisMonth: ent.valuationsThisMonth,
     valuationsMonthLimit: ent.valuationsMonthLimit,
     valuationsRemainingFree: ent.valuationsRemainingFree,

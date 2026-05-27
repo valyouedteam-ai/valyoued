@@ -111,6 +111,11 @@ function mapTokenToSlug(token: string): AuthStubResolvedPlanSlug | null {
   }
 }
 
+/** Stub tokens from `X-Stub-Billing-Plan`, `AUTH_STUB_BILLING_TIER`, or `STRIPE_STUB_PLAN` (aliases: plus, pro, seller, …). */
+export function mapBillingStubPlanTokenToSlug(raw: string | undefined): AuthStubResolvedPlanSlug | null {
+  return mapTokenToSlug(normalizeHeaderOrEnvToken(raw));
+}
+
 function parseEnvAuthStubBillingTier(): AuthStubResolvedPlanSlug {
   const slug = mapTokenToSlug(normalizeHeaderOrEnvToken(process.env.AUTH_STUB_BILLING_TIER));
   return slug ?? "none";
