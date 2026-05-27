@@ -92,7 +92,9 @@ export default function InheritancePage() {
   const primaryLabel = portfolios?.find((p) => p.purpose === "primary")?.label ?? null;
   const inh = portfolios?.find((p) => p.purpose === "inheritance");
   const inhPortfolioQs =
-    inh && primaryPortfolio && inh.id !== primaryPortfolio.id ? `?portfolio=${encodeURIComponent(inh.id)}` : "";
+    inh && (!primaryPortfolio || inh.id !== primaryPortfolio.id)
+      ? `?portfolio=${encodeURIComponent(inh.id)}`
+      : "";
   const inheritancePortfolioHref = inh
     ? inhPortfolioQs
       ? mergePortfolioHref("/portfolio", inhPortfolioQs)

@@ -40,13 +40,8 @@ import { useSellerPersona } from "@/hooks/use-seller-persona";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import type { HomeBucketKey } from "@/lib/home-buckets";
 import { HOME_BUCKET_LABEL, HOME_BUCKET_ORDER, bucketForAssetTypeName, countItemsByBucket } from "@/lib/home-buckets";
+import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
 import { PaidFeatureTeaser } from "@/components/home/PaidFeatureTeaser";
-
-function inActiveWorkspace(e: EstimateSummary, activeId: string | null, primaryId: string | null): boolean {
-  if (!activeId || !primaryId) return true;
-  if (activeId === primaryId) return !e.portfolioId || e.portfolioId === primaryId;
-  return e.portfolioId === activeId;
-}
 
 type IntentFilterKey = "all" | PatchEstimateBodyIntent | "unset";
 type ShelfFilterKey = "all" | EstimateSummary["portfolioShelf"];
@@ -89,7 +84,7 @@ export default function HomePage() {
     const rows = Array.isArray(estimates) ? estimates : [];
     const act = activePortfolio?.id ?? null;
     const prim = primaryPortfolio?.id ?? null;
-    return rows.filter((e) => inActiveWorkspace(e, act, prim));
+    return rows.filter((e) => estimateInActiveWorkspace(e, act, prim));
   }, [estimates, activePortfolio?.id, primaryPortfolio?.id]);
 
   const bucketCounts = useMemo(() => countItemsByBucket(filtered.map((f) => f.assetTypeName)), [filtered]);

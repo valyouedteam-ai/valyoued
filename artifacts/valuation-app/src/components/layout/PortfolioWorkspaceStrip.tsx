@@ -25,7 +25,7 @@ export function PortfolioWorkspaceStrip() {
     portfolios,
     isLoading,
     activePortfolio,
-    primaryPortfolio,
+    searchPortfolioId,
     selectPortfolioById,
   } = usePortfolioWorkspace();
 
@@ -75,7 +75,7 @@ export function PortfolioWorkspaceStrip() {
             );
           })}
         </div>
-        {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id ? (
+        {searchPortfolioId && activePortfolio ? (
           <span className="text-[11px] text-muted-foreground sm:ml-auto">
             Viewing{" "}
             <span

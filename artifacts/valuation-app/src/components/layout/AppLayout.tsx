@@ -128,9 +128,15 @@ function isResolvedNavActive(pathname: string, rawSearchParam: string, resolvedH
   return pathname === pathOnly || (pathOnly !== "/dashboard" && pathname.startsWith(pathOnly));
 }
 
-function portfolioWorkspaceHref(portfolio: Portfolio | undefined, primary: Portfolio | null | undefined): string {
+function portfolioWorkspaceHref(
+  portfolio: Portfolio | undefined,
+  primary: Portfolio | null | undefined,
+  allPortfolios: Portfolio[] | undefined,
+): string {
   const primId = primary?.id ?? null;
-  if (!portfolio?.id || !primId || portfolio.id === primId) return "/portfolio";
+  const defaultId = primId ?? allPortfolios?.[0]?.id ?? null;
+  if (!portfolio?.id) return "/portfolio";
+  if (defaultId != null && portfolio.id === defaultId) return "/portfolio";
   return mergePortfolioHref("/portfolio", `?portfolio=${encodeURIComponent(portfolio.id)}`);
 }
 
@@ -152,7 +158,7 @@ function buildInsightNavigation(input: {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     const desk = desks[0];
-    const href = desk?.id ? portfolioWorkspaceHref(desk, primaryPortfolio) : "/portfolio";
+    const href = desk?.id ? portfolioWorkspaceHref(desk, primaryPortfolio, portfolios) : "/portfolio";
     rows.push({
       href,
       label: "Desk",

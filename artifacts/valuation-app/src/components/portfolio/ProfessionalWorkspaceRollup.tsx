@@ -25,20 +25,27 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
+import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
 import { useOptionalStubBillingPlanDev } from "@/context/StubBillingPlanDevContext";
 import { portfolioWorkspaceButtonLabel } from "@/components/layout/PortfolioWorkspaceStrip";
 import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { cn } from "@/lib/utils";
 
-function estimateInWorkspace(
-  e: EstimateSummary,
-  workspaceId: string | null,
-  primaryId: string | null,
-): boolean {
-  if (!workspaceId || !primaryId) return true;
-  if (workspaceId === primaryId) return !e.portfolioId || e.portfolioId === primaryId;
-  return e.portfolioId === workspaceId;
+function openPortfolioWorkspaceLink(
+  semanticPrimaryId: string | null | undefined,
+  urlDefaultPortfolioId: string | null | undefined,
+  workspaceId: string,
+): string {
+  if (semanticPrimaryId != null && workspaceId === semanticPrimaryId) return "/portfolio";
+  if (
+    semanticPrimaryId == null &&
+    urlDefaultPortfolioId != null &&
+    workspaceId === urlDefaultPortfolioId
+  ) {
+    return "/portfolio";
+  }
+  return mergePortfolioHref("/portfolio", `?portfolio=${encodeURIComponent(workspaceId)}`);
 }
 
 function purposeWorkspaceKind(purpose: Portfolio["purpose"]): string {
@@ -46,11 +53,6 @@ function purposeWorkspaceKind(purpose: Portfolio["purpose"]): string {
   if (purpose === "pro_board") return "Trading desk";
   if (purpose === "inheritance") return "Inheritance";
   return "Workspace";
-}
-
-function openWorkspaceHref(primaryId: string | null | undefined, workspaceId: string): string {
-  if (primaryId && workspaceId === primaryId) return "/portfolio";
-  return mergePortfolioHref("/portfolio", `?portfolio=${encodeURIComponent(workspaceId)}`);
 }
 
 type ProfessionalWorkspaceRollupProps = {
@@ -76,6 +78,7 @@ export function ProfessionalWorkspaceRollup({
   const { portfolios, primaryPortfolio, activePortfolio, selectPortfolioById } = usePortfolioWorkspace();
   const primaryLabel = portfolios?.find((p) => p.purpose === "primary")?.label ?? null;
   const primaryId = primaryPortfolio?.id ?? null;
+  const defaultWorkspaceIdForUrl = primaryId ?? portfolios?.[0]?.id ?? null;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [deskDialogOpen, setDeskDialogOpen] = useState(false);
@@ -112,7 +115,7 @@ export function ProfessionalWorkspaceRollup({
   const rows = useMemo(() => {
     if (!portfolios?.length) return [];
     return portfolios.map((p) => {
-      const scoped = estimateRows.filter((e) => estimateInWorkspace(e, p.id, primaryId));
+      const scoped = estimateRows.filter((e) => estimateInActiveWorkspace(e, p.id, primaryId));
       const totalUsd = scoped.reduce((s, e) => s + convertToUsdApprox(e.adjustedMid, e.currency, fxMult), 0);
       return {
         id: p.id,
@@ -195,7 +198,7 @@ export function ProfessionalWorkspaceRollup({
                     <td className="py-3 pr-3 font-sans tabular-nums text-foreground">{formatRollup(row.totalUsd)}</td>
                     <td className="py-3 text-right">
                       <Button variant="ghost" size="sm" className="h-8" asChild>
-                        <Link href={openWorkspaceHref(primaryId, row.id)}>Open</Link>
+                        <Link href={openPortfolioWorkspaceLink(primaryId, defaultWorkspaceIdForUrl, row.id)}>Open</Link>
                       </Button>
                     </td>
                   </tr>

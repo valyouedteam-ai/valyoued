@@ -34,6 +34,7 @@ import {
   mergePortfolioHref,
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
+import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
 import { useSellerPersona } from "@/hooks/use-seller-persona";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { ProfessionalWorkspaceRollup } from "@/components/portfolio/ProfessionalWorkspaceRollup";
@@ -52,16 +53,6 @@ type ClassAlbum = {
 };
 
 type PortfolioShelf = EstimateSummary["portfolioShelf"];
-
-function inPortfolioWorkspaceRow(
-  e: EstimateSummary,
-  activeId: string | null,
-  primaryId: string | null,
-): boolean {
-  if (!activeId || !primaryId) return true;
-  if (activeId === primaryId) return !e.portfolioId || e.portfolioId === primaryId;
-  return e.portfolioId === activeId;
-}
 
 function buildClassAlbums(
   items: PortfolioItem[],
@@ -165,7 +156,7 @@ export default function PortfolioPage() {
   const scopedRows = useMemo(() => {
     const act = activePortfolio?.id ?? null;
     const prim = primaryPortfolio?.id ?? null;
-    return estimateRows.filter((e) => inPortfolioWorkspaceRow(e, act, prim));
+    return estimateRows.filter((e) => estimateInActiveWorkspace(e, act, prim));
   }, [estimateRows, activePortfolio?.id, primaryPortfolio?.id]);
 
   const [listingFor, setListingFor] = useState<EstimateSummary | null>(null);
@@ -259,13 +250,13 @@ export default function PortfolioPage() {
             <Briefcase className="h-8 w-8 text-accent" />
           </div>
           <h3 className="text-2xl font-sans mb-2">
-            {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id
-              ? `${activePortfolio.label ?? "This workspace"} is empty`
+            {inheritanceWorkspace || deskWorkspace
+              ? `${activePortfolio?.label ?? "This workspace"} is empty`
               : "Your portfolio is empty"}
           </h3>
           <p className="text-muted-foreground max-w-md mb-6">
             Run a valuation and attach it to this workspace{" "}
-            {activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id
+            {inheritanceWorkspace || deskWorkspace
               ? "Use the workspace pills under the navigation bar to return to your primary ledger."
               : "to see holdings, shelf mix, and listing shortcuts."}
           </p>

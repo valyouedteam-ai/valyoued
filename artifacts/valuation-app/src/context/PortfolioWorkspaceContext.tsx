@@ -14,7 +14,10 @@ export type PortfolioWorkspaceContextValue = {
   portfolios: Portfolio[] | undefined;
   isLoading: boolean;
   activePortfolio: Portfolio | null;
+  /** Only the `purpose === "primary"` row; null if absent (never inferred from `portfolios[0]`). */
   primaryPortfolio: Portfolio | null;
+  /** Raw `portfolio` URL param when present (drives workspace strip "Viewing …" hints). */
+  searchPortfolioId: string | null;
   portfolioQuerySuffix: string;
   selectPortfolioById: (id: string) => void;
 };
@@ -36,31 +39,37 @@ export function PortfolioWorkspaceProvider({ children }: { children: ReactNode }
   const search = useSearch();
   const { data: portfolios, isLoading } = useListPortfolios();
 
-  const primaryPortfolio =
-    portfolios?.find((p) => p.purpose === "primary") ?? portfolios?.[0] ?? null;
+  const primaryPortfolio = portfolios?.find((p) => p.purpose === "primary") ?? null;
 
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
 
-  const requestedPortfolioId = searchParams.get("portfolio");
+  const searchPortfolioId = useMemo(() => {
+    const raw = searchParams.get("portfolio")?.trim();
+    return raw ? raw : null;
+  }, [searchParams]);
 
   const activePortfolio = useMemo(() => {
     if (!portfolios?.length) return null;
-    if (!requestedPortfolioId) return primaryPortfolio ?? portfolios[0] ?? null;
-    const hit = portfolios.find((p) => p.id === requestedPortfolioId);
+    if (!searchPortfolioId) return primaryPortfolio ?? portfolios[0] ?? null;
+    const hit = portfolios.find((p) => p.id === searchPortfolioId);
     return hit ?? primaryPortfolio ?? portfolios[0] ?? null;
-  }, [portfolios, requestedPortfolioId, primaryPortfolio]);
+  }, [portfolios, searchPortfolioId, primaryPortfolio]);
 
   const portfolioQuerySuffix = useMemo(() => {
-    if (!activePortfolio || !primaryPortfolio) return "";
-    if (activePortfolio.id === primaryPortfolio.id) return "";
+    if (!activePortfolio) return "";
+    const primaryId = primaryPortfolio?.id ?? null;
+    if (primaryId != null && activePortfolio.id === primaryId) return "";
+    const firstId = portfolios?.[0]?.id ?? null;
+    if (primaryId == null && firstId != null && activePortfolio.id === firstId) return "";
     return `?portfolio=${encodeURIComponent(activePortfolio.id)}`;
-  }, [activePortfolio, primaryPortfolio]);
+  }, [activePortfolio, primaryPortfolio, portfolios]);
 
   const selectPortfolioById = useCallback(
     (id: string) => {
       const qs = new URLSearchParams(search);
-      const prim = portfolios?.find((p) => p.purpose === "primary");
-      if (!prim || id === prim.id) {
+      const primary = portfolios?.find((p) => p.purpose === "primary");
+      const defaultWorkspaceId = primary?.id ?? portfolios?.[0]?.id ?? null;
+      if (!defaultWorkspaceId || id === defaultWorkspaceId) {
         qs.delete("portfolio");
       } else if (portfolios?.some((p) => p.id === id)) {
         qs.set("portfolio", id);
@@ -77,6 +86,7 @@ export function PortfolioWorkspaceProvider({ children }: { children: ReactNode }
       isLoading,
       activePortfolio,
       primaryPortfolio,
+      searchPortfolioId,
       portfolioQuerySuffix,
       selectPortfolioById,
     }),
@@ -85,6 +95,7 @@ export function PortfolioWorkspaceProvider({ children }: { children: ReactNode }
       isLoading,
       activePortfolio,
       primaryPortfolio,
+      searchPortfolioId,
       portfolioQuerySuffix,
       selectPortfolioById,
     ],
