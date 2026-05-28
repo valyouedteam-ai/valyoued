@@ -17,14 +17,14 @@ export function PhoneFrame({ children, className, size = "default" }: PhoneFrame
   return (
     <div
       className={cn(
-        "relative mx-auto",
-        compact ? "w-[min(100%,220px)]" : "w-[min(100%,280px)]",
+        "relative mx-auto shrink-0",
+        compact ? "w-[220px]" : "w-[280px]",
         className,
       )}
     >
       <div
         className={cn(
-          "relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-[hsl(222,32%,8%)] shadow-2xl ring-1 ring-black/20",
+          "relative w-full overflow-hidden rounded-[2.25rem] border border-white/10 bg-[hsl(222,32%,8%)] shadow-2xl ring-1 ring-black/20",
           compact ? "rounded-[2rem]" : "rounded-[2.5rem]",
         )}
       >

@@ -39,19 +39,19 @@ function WalkthroughPhone({
   reduceMotion: boolean | null;
 }) {
   return (
-    <PhoneFrame className="w-[min(100%,280px)]">
+    <PhoneFrame>
       <div
         className="relative overflow-hidden"
-        style={{ height: WALKTHROUGH_SCREEN_HEIGHT_PX }}
+        style={{ height: `${WALKTHROUGH_SCREEN_HEIGHT_PX}px` }}
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={stepId}
-            className="absolute inset-0"
-            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
-            transition={{ duration: 0.35 }}
+            className="h-full w-full"
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+            transition={{ duration: reduceMotion ? 0 : 0.35 }}
           >
             {screen}
           </motion.div>
@@ -282,11 +282,11 @@ export function ProductWalkthrough({
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsPaused(false);
         }}
       >
-        <div className="grid items-center gap-10 lg:grid-cols-[1fr_minmax(240px,300px)] lg:gap-16">
-          <div className="space-y-8">
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-16">
+          <div className="min-w-0 space-y-8">
             {heroLeading}
 
-            <div className="flex justify-center lg:hidden">
+            <div className="flex w-full justify-center lg:hidden">
               <WalkthroughPhone stepId={activeStep.id} screen={activeStep.screen} reduceMotion={reduceMotion} />
             </div>
 
@@ -295,7 +295,7 @@ export function ProductWalkthrough({
             {heroTrailing}
           </div>
 
-          <div className="hidden justify-self-center lg:block lg:justify-self-end">
+          <div className="hidden w-[280px] shrink-0 justify-self-end lg:block">
             <WalkthroughPhone stepId={activeStep.id} screen={activeStep.screen} reduceMotion={reduceMotion} />
           </div>
         </div>
