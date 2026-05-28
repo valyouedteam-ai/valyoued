@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { Camera, Globe2, Megaphone, TrendingUp } from "lucide-react";
 
+export const WALKTHROUGH_SCREEN_HEIGHT_PX = 360;
+
+const mockScreenClass = "flex h-[360px] flex-col overflow-hidden bg-[hsl(222,26%,12%)] p-4 text-white";
+
 export type WalkthroughStep = {
   id: string;
   title: string;
@@ -11,7 +15,7 @@ export type WalkthroughStep = {
 
 function MockCaptureScreen() {
   return (
-    <div className="flex min-h-[360px] flex-col bg-[hsl(222,26%,12%)] p-4 text-white">
+    <div className={mockScreenClass}>
       <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">Valuate</p>
       <p className="mt-1 text-sm font-semibold">Add your asset</p>
       <div className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-6">
@@ -29,7 +33,7 @@ function MockCaptureScreen() {
 
 function MockValuationScreen() {
   return (
-    <div className="flex min-h-[360px] flex-col bg-[hsl(222,26%,12%)] p-4 text-white">
+    <div className={mockScreenClass}>
       <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">Report</p>
       <p className="mt-1 text-sm font-semibold">Hermès Birkin 30</p>
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -54,7 +58,7 @@ function MockValuationScreen() {
 
 function MockRegionsScreen() {
   return (
-    <div className="flex min-h-[360px] flex-col bg-[hsl(222,26%,12%)] p-4 text-white">
+    <div className={mockScreenClass}>
       <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">Markets</p>
       <p className="mt-1 text-sm font-semibold">Compare regions</p>
       <div className="mt-4 space-y-2">
@@ -84,7 +88,7 @@ function MockRegionsScreen() {
 
 function MockListingScreen() {
   return (
-    <div className="flex min-h-[360px] flex-col bg-[hsl(222,26%,12%)] p-4 text-white">
+    <div className={mockScreenClass}>
       <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">Ads</p>
       <p className="mt-1 text-sm font-semibold">Listing draft</p>
       <div className="mt-4 flex-1 rounded-2xl border border-white/10 bg-white/5 p-3">
