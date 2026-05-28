@@ -19,7 +19,6 @@ import {
   INHERITANCE_ADDON_CARD,
   PLAN_COMPARE_ROWS,
   PRICING_FAQ,
-  PROFESSIONAL_TRIAL_DAYS_DEFAULT,
 } from "@/lib/marketing-plan-tiers";
 
 function resolveAddonForAuth(card: MarketingPlanCardDef | null | undefined, isSignedIn: boolean): MarketingPlanCardDef | null | undefined {
@@ -61,11 +60,8 @@ function MarketingPlanCardsInner({
       <div className="mb-10 max-w-2xl">
         <p className="text-ui-caps text-accent">Simple pricing</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Start free. Upgrade when your portfolio grows.
+          Start free and upgrade when your portfolio grows.
         </h1>
-        <p className="mt-3 text-lg leading-relaxed text-muted-foreground">
-          Cancel or switch plans anytime. Professional includes a {PROFESSIONAL_TRIAL_DAYS_DEFAULT}-day trial.
-        </p>
       </div>
 
       <div className="mb-8 flex flex-wrap items-center gap-3">

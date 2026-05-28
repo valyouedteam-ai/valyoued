@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   Briefcase,
@@ -224,22 +224,10 @@ export default function PortfolioPage() {
 
   const portfolioHeaderSubtitle = portfolioWorkspaceSubtitle(activePortfolio);
 
-  useEffect(() => {
-    const el = document.getElementById("recent-valuations");
-    if (!el) return;
-
-    const reduceMotion =
-      typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    const scrollToRecent = () => {
-      if (window.location.hash !== "#recent-valuations") return;
-      el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-    };
-
-    scrollToRecent();
-    window.addEventListener("hashchange", scrollToRecent);
-    return () => window.removeEventListener("hashchange", scrollToRecent);
-  }, []);
+  const hubLowerProps = {
+    scopedEstimates: scopedRows,
+    estimatesLoading: isLoading,
+  };
 
   if (isLoading) {
     return (
@@ -283,7 +271,7 @@ export default function PortfolioPage() {
               </Button>
             </Link>
           </div>
-          <DashboardHubLower scopedEstimates={scopedRows} estimatesLoading={isLoading} />
+          <DashboardHubLower {...hubLowerProps} />
         </div>
       </div>
     );
@@ -457,7 +445,7 @@ export default function PortfolioPage() {
       />
 
       {/* Collection: single grouped view (by valuation track), highest approximate value first */}
-      <section className="space-y-8" data-testid="collection-section">
+      <section className="space-y-8" id="collection-section" data-testid="collection-section">
         <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
 
         <div className="space-y-12">
@@ -511,7 +499,7 @@ export default function PortfolioPage() {
         />
       )}
 
-      <DashboardHubLower scopedEstimates={scopedRows} estimatesLoading={isLoading} />
+      <DashboardHubLower {...hubLowerProps} />
     </div>
   );
 }

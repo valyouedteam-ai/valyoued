@@ -131,24 +131,6 @@ export default function InheritancePage() {
         </p>
       </header>
 
-      <Card className="border-violet-500/25 bg-gradient-to-br from-violet-500/[0.06] via-transparent to-transparent">
-        <CardHeader className="space-y-1.5 pb-4">
-          <CardTitle className="text-lg">How it behaves in ValYoued</CardTitle>
-          <CardDescription>
-            You switch workspaces from the pills under the top navigation bar. Inheritance-focused screens use violet
-            hints so it is obvious which ledger you are in.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <ul className="list-inside list-disc space-y-2 pl-0.5 marker:text-violet-600">
-            <li>Your primary dashboard and portfolio listings show only valuations attached to each workspace.</li>
-            <li>When you run a valuation, pick <span className="font-medium text-foreground">portfolio workspace</span> on{' '}
-              the Region step so the asset lands on the ledger you intend.</li>
-            <li>The inheritance workspace is billed as an optional add-on in Settings when you need it permanently.</li>
-          </ul>
-        </CardContent>
-      </Card>
-
       {!portfoliosLoading && portfolios != null && portfolios.length > 1 ? (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Switch workspace</p>

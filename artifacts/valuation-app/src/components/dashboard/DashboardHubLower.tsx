@@ -1,19 +1,15 @@
 import { useMemo, useState } from "react";
-import { Link } from "wouter";
-import { formatDistanceToNow } from "date-fns";
-import type { EstimateSummary, PatchEstimateBodyIntent } from "@workspace/api-client-react";
+import { Link, useLocation } from "wouter";
+import type { EstimateSummary } from "@workspace/api-client-react";
 import { useGetEstimateStats } from "@workspace/api-client-react";
 import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
-import { formatPercent, formatMoney } from "@/lib/format";
+import { formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Car,
-  ChevronRight,
-  FileText,
   Gem,
   Globe2,
   Lock,
@@ -31,12 +27,9 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useSellerPersona } from "@/hooks/use-seller-persona";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import type { HomeBucketKey } from "@/lib/home-buckets";
-import { HOME_BUCKET_LABEL, HOME_BUCKET_ORDER, bucketForAssetTypeName, countItemsByBucket } from "@/lib/home-buckets";
+import { HOME_BUCKET_LABEL, HOME_BUCKET_ORDER, countItemsByBucket } from "@/lib/home-buckets";
 import { PaidFeatureTeaser } from "@/components/home/PaidFeatureTeaser";
 import { buildEstimateNewHref } from "@/components/dashboard/DashboardNextStep";
-
-type IntentFilterKey = "all" | PatchEstimateBodyIntent | "unset";
-type ShelfFilterKey = "all" | EstimateSummary["portfolioShelf"];
 
 const BUCKET_ICONS: Record<HomeBucketKey, typeof Gem> = {
   jewellery: Watch,
@@ -49,14 +42,15 @@ const BUCKET_ICONS: Record<HomeBucketKey, typeof Gem> = {
   other: Package,
 };
 
-/** Bottom-of-hub sections: buckets, paid/regional teaser, ads, recent valuations (replaces `/estimates`). */
+/** Bottom-of-hub sections: buckets, paid/regional teaser, ads, inheritance. */
 export function DashboardHubLower({
   scopedEstimates,
-  estimatesLoading,
+  estimatesLoading: _estimatesLoading,
 }: {
   scopedEstimates: EstimateSummary[];
   estimatesLoading: boolean;
 }) {
+  const [, navigate] = useLocation();
   const reduceMotion = useReducedMotion();
   const { isProfessional } = useSellerPersona();
   const { data: billing } = useBillingSummary();
@@ -70,37 +64,12 @@ export function DashboardHubLower({
     [scopedEstimates],
   );
 
-  const [intentFilter, setIntentFilter] = useState<IntentFilterKey>("all");
-  const [shelfFilter, setShelfFilter] = useState<ShelfFilterKey>("all");
   const [pickedRegionIdx, setPickedRegionIdx] = useState<number | null>(null);
-  const [recentOpen, setRecentOpen] = useState(true);
-  const [activeBucket, setActiveBucket] = useState<HomeBucketKey | null>(null);
-
-  const sortedRecent = useMemo(
-    () => [...scopedEstimates].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [scopedEstimates],
-  );
-
-  const displayedRecent = useMemo(() => {
-    return sortedRecent.filter((e) => {
-      if (activeBucket && bucketForAssetTypeName(e.assetTypeName) !== activeBucket) return false;
-      if (shelfFilter !== "all" && e.portfolioShelf !== shelfFilter) return false;
-      if (intentFilter === "all") return true;
-      if (intentFilter === "unset") return !e.intent;
-      return e.intent === intentFilter;
-    });
-  }, [sortedRecent, shelfFilter, intentFilter, activeBucket]);
 
   const showingInheritanceUpsell = !isProfessional && !billing?.hasInheritanceAddon;
 
-  function resetFilters() {
-    setIntentFilter("all");
-    setShelfFilter("all");
-    setActiveBucket(null);
-  }
-
-  function scrollToCollection() {
-    document.getElementById("collection-section")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  function openRecentForBucket(key: HomeBucketKey) {
+    navigate(mergePortfolioHref(`/estimates?bucket=${encodeURIComponent(key)}`, portfolioQuerySuffix));
   }
 
   return (
@@ -109,7 +78,7 @@ export function DashboardHubLower({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-foreground">Asset buckets</h2>
-            <p className="mt-1 text-base text-muted-foreground">Tap a bucket to add items or filter your collection.</p>
+            <p className="mt-1 text-base text-muted-foreground">Tap a bucket to add items or open recent valuations.</p>
           </div>
           <Button size="sm" variant="secondary" className="rounded-full" asChild>
             <Link href={buildEstimateNewHref(portfolioQuerySuffix)}>Add item</Link>
@@ -120,7 +89,6 @@ export function DashboardHubLower({
             const Icon = BUCKET_ICONS[key];
             const count = bucketCounts[key];
             const empty = count === 0;
-            const isActive = activeBucket === key;
             return (
               <motion.div
                 key={key}
@@ -142,16 +110,10 @@ export function DashboardHubLower({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveBucket((prev) => (prev === key ? null : key));
-                      setRecentOpen(true);
-                      scrollToCollection();
-                    }}
+                    onClick={() => openRecentForBucket(key)}
                     className={cn(
-                      "block w-full rounded-2xl border bg-dashboard-elevated p-4 text-left shadow-sm transition-colors",
-                      isActive
-                        ? "border-accent/50 ring-2 ring-accent/25"
-                        : "border-border/60 hover:border-accent/35 hover:bg-card/85",
+                      "block w-full rounded-2xl border border-border/60 bg-dashboard-elevated p-4 text-left shadow-sm transition-colors",
+                      "hover:border-accent/35 hover:bg-card/85",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35",
                     )}
                   >
@@ -242,177 +204,6 @@ export function DashboardHubLower({
             description="Everyday+ opens the fuller regional payout grids on each valuation alongside the markets cockpit previews you already skim."
           />
         )}
-      </section>
-
-      <section id="recent-valuations" className="scroll-mt-28 space-y-3">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between rounded-2xl border border-border/60 bg-card/50 px-4 py-3 text-left text-sm font-semibold backdrop-blur-sm transition-colors hover:bg-card/80"
-          onClick={() => setRecentOpen((o) => !o)}
-          aria-expanded={recentOpen}
-        >
-          <span className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            Recent valuations ({displayedRecent.length}
-            {(intentFilter !== "all" || shelfFilter !== "all") && sortedRecent.length !== displayedRecent.length ? (
-              <span className="font-normal text-muted-foreground"> of {sortedRecent.length}</span>
-            ) : null}
-            )
-          </span>
-          <ChevronRight className={cn("h-4 w-4 transition-transform", recentOpen && "rotate-90")} />
-        </button>
-
-        {recentOpen ? (
-          <div className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Shelf</span>
-                <ToggleGroup
-                  type="single"
-                  value={shelfFilter}
-                  variant="outline"
-                  size="sm"
-                  className="flex-wrap justify-start"
-                  onValueChange={(v) => {
-                    if (!v || v === "all") {
-                      setShelfFilter("all");
-                      return;
-                    }
-                    if (v === "everyday" || v === "luxury" || v === "other") setShelfFilter(v);
-                  }}
-                >
-                  <ToggleGroupItem value="all" className="rounded-full px-3 text-xs">
-                    All shelves
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="everyday" className="rounded-full px-3 text-xs">
-                    Everyday
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="luxury" className="rounded-full px-3 text-xs">
-                    Luxury
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="other" className="rounded-full px-3 text-xs">
-                    Other
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Intent</span>
-                <ToggleGroup
-                  type="single"
-                  value={intentFilter}
-                  variant="outline"
-                  size="sm"
-                  className="flex-wrap justify-start"
-                  onValueChange={(v) => {
-                    if (
-                      v === "" ||
-                      v === "all" ||
-                      v === "sell" ||
-                      v === "monitor" ||
-                      v === "hold" ||
-                      v === "unset"
-                    ) {
-                      setIntentFilter(v === "" ? "all" : (v as IntentFilterKey));
-                    }
-                  }}
-                >
-                  <ToggleGroupItem value="all" className="rounded-full px-3 text-xs">
-                    All
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="hold" className="rounded-full px-3 text-xs">
-                    Hold
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="monitor" className="rounded-full px-3 text-xs">
-                    Monitor
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="sell" className="rounded-full px-3 text-xs">
-                    Prep sell
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="unset" className="rounded-full px-3 text-xs">
-                    No intent
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-            </div>
-
-            <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
-              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-2">
-                {intentFilter !== "all" || shelfFilter !== "all" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-full text-xs"
-                    onClick={() => resetFilters()}
-                  >
-                    Clear filters
-                  </Button>
-                ) : null}
-              </CardHeader>
-              <CardContent>
-                {estimatesLoading ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-16 w-full rounded-xl" />
-                    ))}
-                  </div>
-                ) : displayedRecent.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-                    Nothing matches those filters yet.{" "}
-                    {intentFilter !== "all" || shelfFilter !== "all" ? (
-                      <button
-                        type="button"
-                        className="font-medium text-accent underline-offset-4 hover:underline"
-                        onClick={resetFilters}
-                      >
-                        Reset filters
-                      </button>
-                    ) : null}
-                    {intentFilter === "all" && shelfFilter === "all" ? (
-                      <>
-                        {" "}
-                        <Link
-                          href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}
-                          className="font-medium text-accent underline-offset-4 hover:underline"
-                        >
-                          Run a valuation
-                        </Link>
-                        .
-                      </>
-                    ) : null}
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-border/50 rounded-xl border border-border/60">
-                    {displayedRecent.map((e) => (
-                      <li key={e.id}>
-                        <div className="flex flex-col gap-2 px-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-                          <Link
-                            href={mergePortfolioHref(`/estimates/${e.id}`, portfolioQuerySuffix)}
-                            className="min-w-0 flex-1 px-1 text-sm outline-none ring-offset-background transition-colors hover:text-accent focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-accent/40 sm:py-0.5"
-                          >
-                            <div className="truncate font-medium text-foreground">{e.title}</div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 truncate text-xs text-muted-foreground">
-                              <span>{HOME_BUCKET_LABEL[bucketForAssetTypeName(e.assetTypeName)]}</span>
-                              <span className="rounded-full bg-muted px-2 py-px text-[10px] uppercase tracking-wide">
-                                {e.portfolioShelf}
-                              </span>
-                              <span className="tabular-nums text-muted-foreground">
-                                Adj. {formatMoney(e.adjustedMid, e.currency, true)}
-                              </span>
-                            </div>
-                          </Link>
-                          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground sm:text-right">
-                            {formatDistanceToNow(new Date(e.createdAt), { addSuffix: true })}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        ) : null}
       </section>
 
       <section aria-label="Ads and monitors">

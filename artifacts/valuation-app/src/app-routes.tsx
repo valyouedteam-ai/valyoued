@@ -3,7 +3,6 @@ import { useAuth } from "@clerk/react";
 import { useListEstimates } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PersonaOnboardingGate } from "@/components/onboarding/PersonaOnboardingGate";
-import { mergePortfolioHref } from "@/context/PortfolioWorkspaceContext";
 import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
 import WelcomePersonaPage from "@/pages/welcome";
@@ -13,6 +12,7 @@ import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import NewEstimatePage from "@/pages/estimates/new";
 import EstimateReportPage from "@/pages/estimates/[id]";
+import EstimatesPage from "@/pages/estimates/index";
 import EstimateWelcomePage from "@/pages/estimates/welcome";
 import InheritancePage from "@/pages/inheritance";
 import PortfolioPage from "@/pages/portfolio";
@@ -65,12 +65,6 @@ function LegacyDashboardPathRedirect() {
   return <Redirect to={normalizeSearch(search) ? `/dashboard${normalizeSearch(search)}` : "/dashboard"} />;
 }
 
-function EstimatesToRecentRedirect() {
-  const search = useSearch();
-  const qs = normalizeSearch(search);
-  return <Redirect to={mergePortfolioHref("/dashboard#recent-valuations", qs)} />;
-}
-
 function StubFullBleedSwitch() {
   return (
     <Switch>
@@ -95,7 +89,7 @@ function AppShellSwitch() {
       <Route path="/welcome/continue" component={WelcomeContinuePage} />
       <Route path="/dashboard" component={PortfolioPage} />
       <Route path="/estimate/new" component={NewEstimatePage} />
-      <Route path="/estimates" component={EstimatesToRecentRedirect} />
+      <Route path="/estimates" component={EstimatesPage} />
       <Route path="/estimates/:id/welcome" component={EstimateWelcomePage} />
       <Route path="/estimates/:id" component={EstimateReportPage} />
       <Route path="/inheritance" component={InheritancePage} />

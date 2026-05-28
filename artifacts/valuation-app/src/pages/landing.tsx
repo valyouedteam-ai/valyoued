@@ -5,7 +5,6 @@ import { ArrowRight } from "lucide-react";
 import { LandingIntroOverlay } from "@/components/marketing/LandingIntroOverlay";
 import { ProductWalkthrough } from "@/components/marketing/ProductWalkthrough";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const Globe = lazy(() => import("@/components/Globe").then((m) => ({ default: m.Globe })));
@@ -89,11 +88,6 @@ export default function LandingPage() {
           variants={reduceMotion ? undefined : container}
           className="space-y-8"
         >
-          <motion.div variants={reduceMotion ? undefined : item}>
-            <Badge variant="secondary" className="rounded-full border border-border/80 px-3 py-1 text-ui-caps">
-              Multi-asset valuations in motion
-            </Badge>
-          </motion.div>
           <motion.h1
             variants={reduceMotion ? undefined : item}
             className="text-balance text-4xl font-semibold leading-[1.12] tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05]"
@@ -102,11 +96,7 @@ export default function LandingPage() {
             <span className="brand-gradient">sell when the window is right.</span>
           </motion.h1>
           <motion.p variants={reduceMotion ? undefined : item} className="max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Structured valuations and listing drafts on one ledger.{" "}
-            <Link href="/pricing#plans" className="font-medium text-accent underline-offset-4 hover:underline">
-              Pricing
-            </Link>
-            .
+            Structured valuations and listing drafts on one ledger.
           </motion.p>
           <motion.div
             variants={reduceMotion ? undefined : item}
@@ -187,7 +177,10 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      <ProductWalkthrough />
+      <ProductWalkthrough
+        autoAdvance
+        onCycleComplete={() => setLandingIntroUnlocked(true)}
+      />
 
       <div ref={landingIntroSentinelRef} className="h-px w-full max-w-6xl mx-auto shrink-0" aria-hidden />
 

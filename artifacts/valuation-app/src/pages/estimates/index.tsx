@@ -1,106 +1,63 @@
-import { Link } from "wouter";
-import { formatDistanceToNow } from "date-fns";
-import { FileText, ArrowRight, AlertCircle, Plus } from "lucide-react";
+import { useMemo } from "react";
+import { Link, useSearch } from "wouter";
+import { Plus } from "lucide-react";
 import { useListEstimates } from "@workspace/api-client-react";
-import type { EstimateSummaryTier } from "@workspace/api-client-react";
-import { formatMoney } from "@/lib/format";
-import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
+import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
+import { DashboardRecentValuations } from "@/components/dashboard/DashboardRecentValuations";
+import { buildEstimateNewHref } from "@/components/dashboard/DashboardNextStep";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import type { HomeBucketKey } from "@/lib/home-buckets";
+import { HOME_BUCKET_ORDER } from "@/lib/home-buckets";
+
+function parseBucketFilter(search: string): HomeBucketKey | null {
+  const q = search.startsWith("?") ? search.slice(1) : search;
+  const val = new URLSearchParams(q).get("bucket");
+  if (val && (HOME_BUCKET_ORDER as readonly string[]).includes(val)) {
+    return val as HomeBucketKey;
+  }
+  return null;
+}
 
 export default function EstimatesPage() {
+  const search = useSearch();
+  const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
   const { data: estimates, isLoading } = useListEstimates();
-  const { data: billing } = useBillingSummary();
-  const billingPaid = Boolean(billing?.hasPaidValuationTier);
 
-  function canSeeTopMarketHint(tier: EstimateSummaryTier) {
-    return billingPaid || tier === "pro";
-  }
+  const activeBucket = useMemo(() => parseBucketFilter(search), [search]);
+
+  const scopedRows = useMemo(() => {
+    const rows = Array.isArray(estimates) ? estimates : [];
+    const act = activePortfolio?.id ?? null;
+    const prim = primaryPortfolio?.id ?? null;
+    return rows.filter((e) => estimateInActiveWorkspace(e, act, prim));
+  }, [estimates, activePortfolio?.id, primaryPortfolio?.id]);
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-16">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto w-full max-w-5xl space-y-8 pb-16">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-sans font-bold text-foreground">Recent Estimates</h1>
-          <p className="text-muted-foreground mt-1">History of appraised assets across the network.</p>
+          <h1 className="text-3xl font-sans font-bold text-foreground">Recent valuations</h1>
+          <p className="mt-1 text-muted-foreground">
+            Saved runs for this workspace, newest first. Filter by shelf, intent, or asset bucket.
+          </p>
         </div>
-        <Link href="/estimate/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Estimate
-          </Button>
-        </Link>
+        <Button asChild>
+          <Link href={buildEstimateNewHref(portfolioQuerySuffix)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New valuation
+          </Link>
+        </Button>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : !estimates || estimates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-card/30">
-          <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">
-            <AlertCircle className="h-8 w-8 text-accent" />
-          </div>
-          <h3 className="text-xl font-sans mb-2">No estimates found</h3>
-          <p className="text-muted-foreground max-w-sm mb-6">
-            You haven't run any valuations yet. Create your first estimate to see market analysis.
-          </p>
-          <Link href="/estimate/new">
-            <Button size="lg">Create Estimate</Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {estimates.map((est) => (
-            <Link key={est.id} href={`/estimates/${est.id}`}>
-              <div className="group flex items-center justify-between p-5 rounded-lg border border-border bg-card/50 hover:bg-card hover:border-accent/40 hover:shadow-md transition-all cursor-pointer">
-                <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center text-accent shrink-0 mt-0.5">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-sans text-lg text-foreground group-hover:text-accent transition-colors">{est.title}</h3>
-                    <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
-                      <Badge variant="secondary" className="font-sans text-xs rounded-sm bg-secondary text-secondary-foreground">{est.assetTypeName}</Badge>
-                      <span className="text-muted-foreground flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-border"></span>
-                        {formatDistanceToNow(new Date(est.createdAt), { addSuffix: true })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="text-right hidden sm:flex flex-col items-end">
-                  <div className="text-xl font-sans font-bold text-foreground">
-                    {formatMoney(est.adjustedMid, est.currency)}
-                  </div>
-                  {canSeeTopMarketHint(est.tier) ? (
-                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                      <span className="uppercase tracking-wider">Top Market:</span>
-                      <span className="font-medium text-foreground">{est.bestArbitrageRegion}</span>
-                    </div>
-                  ) : (
-                    <div className="mt-1 max-w-[15rem] space-y-2 text-right text-xs text-muted-foreground">
-                      <p className="font-medium text-foreground">Top market</p>
-                      <p>Included with a paid plan or after a Pro valuation run.</p>
-                      <Link href="/settings" className="font-medium text-accent hover:underline">
-                        Settings
-                      </Link>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="sm:hidden text-accent">
-                  <ArrowRight className="h-5 w-5" />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      <DashboardRecentValuations
+        scopedEstimates={scopedRows}
+        estimatesLoading={isLoading}
+        activeBucket={activeBucket}
+        onClearBucketFilter={() => {
+          window.history.replaceState(null, "", mergePortfolioHref("/estimates", portfolioQuerySuffix));
+        }}
+      />
     </div>
   );
 }

@@ -64,8 +64,7 @@ export default function MarketWatchPage() {
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">Market Watch</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Track niches like Cars → BMW → 3 Series or Luxury Bags → Chanel → Classic Flap. Analytics use ValYoued comp
-          archive snapshots until live feeds ship.
+          Track by class, brand, and model (BMW 3 Series, Chanel Classic Flap). Uses comp archive snapshots for now.
         </p>
       </header>
 

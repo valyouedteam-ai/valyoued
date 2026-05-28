@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { PortfolioWorkspaceStrip } from "@/components/layout/PortfolioWorkspaceStrip";
+import { WorkspaceBehaviorInfoCallout } from "@/components/layout/WorkspaceBehaviorInfoCallout";
 import {
   mergePortfolioHref,
   PortfolioWorkspaceProvider,
@@ -70,7 +71,7 @@ const navWorkspace: NavItem[] = [
   { href: "/dashboard", label: "Portfolio", icon: Briefcase },
   { href: "/estimate/new", label: "Valuate", icon: Calculator },
   {
-    href: "/dashboard#recent-valuations",
+    href: "/estimates",
     label: "Recent",
     icon: LayoutDashboard,
     navTitle: "Recent valuations on this workspace (formerly History).",
@@ -122,14 +123,6 @@ function routeMatchesNavHref(pathname: string, rawSearchParam: string, navHref: 
     return window.location.hash === `#${hashNeedle}`;
   }
 
-  if (
-    pathPart === "/dashboard" &&
-    typeof window !== "undefined" &&
-    window.location.hash === "#recent-valuations"
-  ) {
-    return false;
-  }
-
   return true;
 }
 
@@ -139,16 +132,7 @@ function isResolvedNavActive(pathname: string, rawSearchParam: string, resolvedH
     return routeMatchesNavHref(pathname, rawSearchParam, resolvedHref);
   }
   const pathOnly = resolvedHref.split("?")[0]?.split("#")[0] ?? resolvedHref;
-  const pathMatches = pathname === pathOnly || (pathOnly !== "/dashboard" && pathname.startsWith(pathOnly));
-  if (!pathMatches) return false;
-  if (
-    pathOnly === "/dashboard" &&
-    typeof window !== "undefined" &&
-    window.location.hash === "#recent-valuations"
-  ) {
-    return false;
-  }
-  return true;
+  return pathname === pathOnly || (pathOnly !== "/dashboard" && pathname.startsWith(pathOnly));
 }
 
 function portfolioWorkspaceHref(
@@ -580,7 +564,10 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]">
           <div className="grid-bg absolute inset-0" />
         </div>
-        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">{children}</div>
+        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+          <WorkspaceBehaviorInfoCallout className="mb-8" />
+          {children}
+        </div>
       </main>
     </div>
   );
