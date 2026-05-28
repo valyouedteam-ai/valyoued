@@ -20,6 +20,10 @@ tags:
     description: Vision extract
   - name: listing
     description: Listing drafts
+  - name: alerts
+    description: Portfolio alerts and notifications
+  - name: trader
+    description: Professional trader workspace
 paths:
   /healthz:
     get:
@@ -159,6 +163,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EstimateResult"
+  /estimates/{id}/refine:
+    post:
+      operationId: refineEstimate
+      tags: [estimate]
+      summary: Re-run valuation with enriched input (Everyday+ or Professional)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefineEstimateBody"
+      responses:
+        "200":
+          description: Refined estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateResult"
+        "403":
+          description: Paid tier required
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
   /portfolios:
     get:
       operationId: listPortfolios
@@ -221,6 +259,199 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EstimateStats"
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [alerts]
+      summary: List in-app portfolio alerts
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserNotification"
+    patch:
+      operationId: patchNotifications
+      tags: [alerts]
+      summary: Mark notifications read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchNotificationsBody"
+      responses:
+        "200":
+          description: Updated count
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated]
+                properties:
+                  updated:
+                    type: integer
+  /market-watches:
+    get:
+      operationId: listMarketWatches
+      tags: [trader]
+      summary: List Market Watch targets (Professional)
+      responses:
+        "200":
+          description: Watches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketWatch"
+    post:
+      operationId: createMarketWatch
+      tags: [trader]
+      summary: Create a Market Watch target (Professional)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMarketWatchBody"
+      responses:
+        "200":
+          description: Watch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketWatch"
+        "403":
+          description: Professional plan required
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+  /market-watches/{id}:
+    delete:
+      operationId: deleteMarketWatch
+      tags: [trader]
+      summary: Remove a Market Watch target
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+  /inventory:
+    get:
+      operationId: listInventoryItems
+      tags: [trader]
+      summary: List inventory pipeline items (Professional)
+      responses:
+        "200":
+          description: Inventory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+    post:
+      operationId: createInventoryItem
+      tags: [trader]
+      summary: Add item to inventory pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInventoryItemBody"
+      responses:
+        "200":
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+  /inventory/{id}:
+    patch:
+      operationId: patchInventoryItem
+      tags: [trader]
+      summary: Update inventory stage or pricing fields
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchInventoryItemBody"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+  /reports/business:
+    get:
+      operationId: getBusinessReport
+      tags: [trader]
+      summary: Exportable business report snapshot (Professional)
+      parameters:
+        - in: query
+          name: month
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: Business report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessReport"
+  /estimates/batch-reprice-check:
+    post:
+      operationId: batchRepriceCheck
+      tags: [trader]
+      summary: Batch repricing check for inventory (Professional)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchRepriceCheckBody"
+      responses:
+        "200":
+          description: Repricing suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RepriceSuggestion"
   /vision/extract:
     post:
       operationId: extractFromPhoto
@@ -760,6 +991,10 @@ components:
           $ref: "#/components/schemas/ValuationOutcome"
         valuationFeedback:
           $ref: "#/components/schemas/ValuationFeedback"
+        portfolioAnalytics:
+          $ref: "#/components/schemas/PortfolioAnalytics"
+        traderAnalytics:
+          $ref: "#/components/schemas/TraderAnalytics"
     EstimateSummary:
       type: object
       required:
@@ -816,6 +1051,28 @@ components:
           type: string
           nullable: true
           enum: [hold, monitor, sell]
+        adjustedLow:
+          type: number
+        adjustedHigh:
+          type: number
+        confidenceScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        resalePotential:
+          type: string
+          enum: [low, moderate, strong]
+        actionRecommendation:
+          type: string
+          enum: [sell, hold, insure]
+        valuationFreshness:
+          type: string
+          enum: [fresh, aging, stale]
+        receiptStatus:
+          type: string
+          enum: [documented, partial, missing]
+        insuranceGap:
+          type: boolean
     EstimateStats:
       type: object
       required: [count, averageBaselineUsd, averageAdjustedUsd, averageUplift, byAssetType, topArbitrageRegions]
@@ -854,6 +1111,355 @@ components:
                 type: string
               count:
                 type: integer
+        portfolioHealth:
+          $ref: "#/components/schemas/PortfolioHealth"
+    PortfolioAnalytics:
+      type: object
+      required:
+        [confidenceScore, fieldCompleteness, resalePotential, actionRecommendation, valuationFreshness, receiptStatus]
+      properties:
+        confidenceScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        fieldCompleteness:
+          $ref: "#/components/schemas/FieldCompleteness"
+        resalePotential:
+          type: string
+          enum: [low, moderate, strong]
+        actionRecommendation:
+          type: string
+          enum: [sell, hold, insure]
+        valuationFreshness:
+          type: string
+          enum: [fresh, aging, stale]
+        receiptStatus:
+          type: string
+          enum: [documented, partial, missing]
+        insuranceGap:
+          type: boolean
+        confidenceBreakdown:
+          type: object
+          properties:
+            fieldCompleteness:
+              type: integer
+            compQuality:
+              type: integer
+            marketStability:
+              type: integer
+    FieldCompleteness:
+      type: object
+      required: [completed, missing, pct]
+      properties:
+        completed:
+          type: array
+          items:
+            type: string
+        missing:
+          type: array
+          items:
+            type: string
+        pct:
+          type: integer
+          minimum: 0
+          maximum: 100
+    PortfolioHealth:
+      type: object
+      required:
+        [totalPortfolioUsd, valueGrowthPct, resaleStrengthIndex, diversificationScore, underinsuredCount, missingReceiptsCount, needsRevaluationCount]
+      properties:
+        totalPortfolioUsd:
+          type: number
+        valueGrowthPct:
+          type: number
+        resaleStrengthIndex:
+          type: number
+        diversificationScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        underinsuredCount:
+          type: integer
+        missingReceiptsCount:
+          type: integer
+        needsRevaluationCount:
+          type: integer
+    TraderAnalytics:
+      type: object
+      required: [dealScore, maxBuyPrice, expectedResale]
+      properties:
+        dealScore:
+          type: string
+          enum: [strong_buy, good_margin, fair, risky, overpriced, avoid]
+        maxBuyPrice:
+          type: number
+        expectedResale:
+          type: number
+        expectedMargin:
+          type: number
+          description: Percent margin when cost basis is known
+        costBasis:
+          type: number
+    RefineEstimateBody:
+      type: object
+      properties:
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: number
+        purchasePrice:
+          type: number
+        condition:
+          type: number
+        attributes:
+          type: string
+        extraFields:
+          type: object
+          additionalProperties: true
+    UserNotification:
+      type: object
+      required: [id, kind, title, body, createdAt, read]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [value_up, value_down, revalue, receipt, milestone, reprice]
+        title:
+          type: string
+        body:
+          type: string
+        estimateId:
+          type: string
+          nullable: true
+        href:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+    PatchNotificationsBody:
+      type: object
+      properties:
+        markAllRead:
+          type: boolean
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+    MarketWatch:
+      type: object
+      required: [id, label, assetClass, createdAt, snapshot]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        assetClass:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        yearFrom:
+          type: integer
+        yearTo:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        snapshot:
+          $ref: "#/components/schemas/MarketWatchSnapshot"
+    MarketWatchSnapshot:
+      type: object
+      required: [trendPoints, recentSales, demandMovement, avgDaysToSell, bestPlatform, suggestedListingPrice, buyBelowPrice, expectedMarginPct]
+      properties:
+        trendPoints:
+          type: array
+          items:
+            type: object
+            required: [month, medianPrice]
+            properties:
+              month:
+                type: string
+              medianPrice:
+                type: number
+        recentSales:
+          type: array
+          items:
+            type: object
+            required: [price, platform, condition]
+            properties:
+              price:
+                type: number
+              soldAt:
+                type: string
+              platform:
+                type: string
+              condition:
+                type: string
+              daysToSell:
+                type: integer
+              detail:
+                type: string
+        demandMovement:
+          type: string
+          enum: [rising, stable, softening]
+        avgDaysToSell:
+          type: integer
+        bestPlatform:
+          type: string
+        suggestedListingPrice:
+          type: number
+        buyBelowPrice:
+          type: number
+        expectedMarginPct:
+          type: number
+        analyticsNote:
+          type: string
+    CreateMarketWatchBody:
+      type: object
+      required: [assetClass, label]
+      properties:
+        assetClass:
+          type: string
+        label:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        yearFrom:
+          type: integer
+        yearTo:
+          type: integer
+    InventoryItem:
+      type: object
+      required: [id, title, stage, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        estimateId:
+          type: string
+          nullable: true
+        title:
+          type: string
+        stage:
+          type: string
+          enum: [sourced, purchased, in_prep, photographed, listed, offer_received, sold, unsold, returned]
+        costBasis:
+          type: number
+        listPrice:
+          type: number
+        currency:
+          type: string
+        listedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        repriceHint:
+          type: string
+    CreateInventoryItemBody:
+      type: object
+      required: [title, stage]
+      properties:
+        title:
+          type: string
+        stage:
+          type: string
+          enum: [sourced, purchased, in_prep, photographed, listed, offer_received, sold, unsold, returned]
+        estimateId:
+          type: string
+        costBasis:
+          type: number
+        listPrice:
+          type: number
+        currency:
+          type: string
+    PatchInventoryItemBody:
+      type: object
+      properties:
+        stage:
+          type: string
+          enum: [sourced, purchased, in_prep, photographed, listed, offer_received, sold, unsold, returned]
+        costBasis:
+          type: number
+        listPrice:
+          type: number
+        listedAt:
+          type: string
+          format: date-time
+    BusinessReport:
+      type: object
+      required: [month, inventoryValue, slowMovingCount, bestCategories]
+      properties:
+        month:
+          type: string
+        monthlyProfit:
+          type: number
+        inventoryValue:
+          type: number
+        slowMovingCount:
+          type: integer
+        bestCategories:
+          type: array
+          items:
+            type: object
+            required: [name, profit]
+            properties:
+              name:
+                type: string
+              profit:
+                type: number
+        taxExportRows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        insuranceStockRows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    BatchRepriceCheckBody:
+      type: object
+      properties:
+        inventoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        estimateIds:
+          type: array
+          items:
+            type: string
+    RepriceSuggestion:
+      type: object
+      required: [id, title, message, suggestedPrice]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        suggestedPrice:
+          type: number
+        currentPrice:
+          type: number
     VisionExtractInput:
       type: object
       required: [assetTypeId, imageBase64, mimeType]
