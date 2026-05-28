@@ -7,6 +7,7 @@
  */
 import type { EstimateStatsByAssetTypeItem } from "./estimateStatsByAssetTypeItem";
 import type { EstimateStatsTopArbitrageRegionsItem } from "./estimateStatsTopArbitrageRegionsItem";
+import type { PortfolioHealth } from "./portfolioHealth";
 
 export interface EstimateStats {
   count: number;
@@ -18,4 +19,5 @@ export interface EstimateStats {
   averageUplift: number;
   byAssetType: EstimateStatsByAssetTypeItem[];
   topArbitrageRegions: EstimateStatsTopArbitrageRegionsItem[];
+  portfolioHealth?: PortfolioHealth;
 }

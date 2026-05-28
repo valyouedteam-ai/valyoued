@@ -2,6 +2,7 @@ import { Switch, Route, useLocation, Redirect, useSearch } from "wouter";
 import { useAuth } from "@clerk/react";
 import { useListEstimates } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PersonaOnboardingGate } from "@/components/onboarding/PersonaOnboardingGate";
 import { mergePortfolioHref } from "@/context/PortfolioWorkspaceContext";
 import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
@@ -12,9 +13,13 @@ import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import NewEstimatePage from "@/pages/estimates/new";
 import EstimateReportPage from "@/pages/estimates/[id]";
+import EstimateWelcomePage from "@/pages/estimates/welcome";
 import InheritancePage from "@/pages/inheritance";
 import PortfolioPage from "@/pages/portfolio";
 import MarketsPage from "@/pages/markets";
+import MarketWatchPage from "@/pages/market-watch";
+import InventoryPage from "@/pages/inventory";
+import AlertsPage from "@/pages/alerts";
 import ListingsPage from "@/pages/listings";
 import SettingsPage from "@/pages/settings";
 import ProfilePage from "@/pages/profile";
@@ -91,11 +96,15 @@ function AppShellSwitch() {
       <Route path="/dashboard" component={PortfolioPage} />
       <Route path="/estimate/new" component={NewEstimatePage} />
       <Route path="/estimates" component={EstimatesToRecentRedirect} />
+      <Route path="/estimates/:id/welcome" component={EstimateWelcomePage} />
       <Route path="/estimates/:id" component={EstimateReportPage} />
       <Route path="/inheritance" component={InheritancePage} />
       <Route path="/portfolio" component={LegacyDashboardPathRedirect} />
       <Route path="/stats" component={LegacyDashboardPathRedirect} />
       <Route path="/markets" component={MarketsPage} />
+      <Route path="/market-watch" component={MarketWatchPage} />
+      <Route path="/inventory" component={InventoryPage} />
+      <Route path="/alerts" component={AlertsPage} />
       <Route path="/listings" component={ListingsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/profile" component={ProfilePage} />
@@ -140,7 +149,9 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
 
   const shell = (
     <AppLayout>
-      <AppShellSwitch />
+      <PersonaOnboardingGate>
+        <AppShellSwitch />
+      </PersonaOnboardingGate>
     </AppLayout>
   );
 

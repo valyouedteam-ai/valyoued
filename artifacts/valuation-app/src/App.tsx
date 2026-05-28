@@ -13,7 +13,6 @@ import { AppRoutes } from "@/app-routes";
 import { ProTierProvider } from "@/hooks/use-pro-tier";
 import { DocumentSeo } from "@/components/DocumentSeo";
 import { GeoCurrencyBootstrap } from "@/components/GeoCurrencyBootstrap";
-import { useSellerPersonaClerkSync } from "@/hooks/use-persona-sync";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -134,12 +133,6 @@ function ClerkApiAuthBridge() {
   return null;
 }
 
-/** Applies session persona to Clerk everywhere the user is logged in (not only Home). */
-function ClerkPersonaSync() {
-  useSellerPersonaClerkSync();
-  return null;
-}
-
 /** Avoid mounting any route until Clerk has finished loading, to prevent blank shells in production. */
 function ClerkBootstrapGate({ children }: { children: ReactNode }) {
   const { isLoaded } = useAuth();
@@ -194,7 +187,6 @@ function ClerkProviderWithRouter() {
       }}
     >
       <ClerkApiAuthBridge />
-      <ClerkPersonaSync />
       <ClerkBootstrapGate>
         <AppRoutes authStub={false} />
       </ClerkBootstrapGate>

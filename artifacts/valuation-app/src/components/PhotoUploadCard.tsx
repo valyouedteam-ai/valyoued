@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { compressJpegIfLarge, preparePhotoUploadFile } from "@/lib/prepare-photo-upload";
+
+const MAX_BYTES = 5 * 1024 * 1024; // 5MB raw file (becomes ~6.7MB base64)
 
 interface Props {
   assetTypeId: string | undefined;
@@ -17,38 +20,6 @@ interface Props {
   /** Top-level category from asset type (e.g. "Real Estate"). Adjusts instructional copy. */
   assetCategory?: string;
   onAutoFill: (extracted: Record<string, string>, suggestedTitle?: string) => void;
-}
-
-const ALLOWED_TYPES: VisionExtractInputMimeType[] = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB raw file (becomes ~6.7MB base64)
-
-function inferMimeFromFilename(name: string): VisionExtractInputMimeType | null {
-  const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
-  switch (ext) {
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".png":
-      return "image/png";
-    case ".webp":
-      return "image/webp";
-    case ".gif":
-      return "image/gif";
-    default:
-      return null;
-  }
-}
-
-/** Some browsers report `image/jpg` or an empty `type`; Zod only allows a fixed enum. */
-function normalizeUploadedMime(file: File): VisionExtractInputMimeType | null {
-  let raw = (file.type ?? "").trim().toLowerCase();
-  if (raw === "image/jpg" || raw === "image/pjpeg" || raw === "image/x-citrix-jpeg") {
-    raw = "image/jpeg";
-  }
-  if (ALLOWED_TYPES.includes(raw as VisionExtractInputMimeType)) {
-    return raw as VisionExtractInputMimeType;
-  }
-  return inferMimeFromFilename(file.name);
 }
 
 export function PhotoUploadCard({
@@ -91,16 +62,22 @@ export function PhotoUploadCard({
 
   const handleFile = async (file: File) => {
     requestTokenRef.current += 1;
-    const normalizedMime = normalizeUploadedMime(file);
-    if (!normalizedMime) {
+    let workingFile = file;
+    let normalizedMime: VisionExtractInputMimeType | null = null;
+    try {
+      const prepared = await preparePhotoUploadFile(file);
+      workingFile = await compressJpegIfLarge(prepared.file, MAX_BYTES);
+      normalizedMime = prepared.mimeType;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unsupported file type";
       toast({
         title: "Unsupported file type",
-        description: "Please upload a JPG, PNG, WebP or GIF photo.",
+        description: msg.includes("iPhone") ? msg : "Please upload a JPG, PNG, WebP, GIF, or iPhone photo.",
         variant: "destructive",
       });
       return;
     }
-    if (file.size > MAX_BYTES) {
+    if (workingFile.size > MAX_BYTES) {
       toast({
         title: "Photo is too large",
         description: "Please upload an image under 5MB.",
@@ -109,7 +86,7 @@ export function PhotoUploadCard({
       return;
     }
 
-    setFilename(file.name);
+    setFilename(workingFile.name);
     setMimeType(normalizedMime);
     setResult(null);
     // Mark this upload as eligible for auto-extraction. The effect will pick it
@@ -124,7 +101,7 @@ export function PhotoUploadCard({
       const idx = dataUrl.indexOf(",");
       setBase64(idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(workingFile);
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -288,11 +265,12 @@ export function PhotoUploadCard({
           >
             <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm font-medium">Click to upload or drag and drop</p>
-            <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP up to 5MB</p>
+            <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP, or iPhone HEIC (converted automatically)</p>
             <input
               ref={inputRef}
               type="file"
-              accept={ALLOWED_TYPES.join(",")}
+              accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
+              capture="environment"
               onChange={onPick}
               className="hidden"
               data-testid="photo-file-input"
@@ -349,7 +327,8 @@ export function PhotoUploadCard({
               <input
                 ref={inputRef}
                 type="file"
-                accept={ALLOWED_TYPES.join(",")}
+                accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
+                capture="environment"
                 onChange={onPick}
                 className="hidden"
               />

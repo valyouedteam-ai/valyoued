@@ -1,11 +1,9 @@
 import { useMemo, useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import {
-  ArrowRight,
   Briefcase,
   Plus,
   Activity,
-  Megaphone,
   PieChart as PieIcon,
 } from "lucide-react";
 import {
@@ -16,7 +14,7 @@ import {
   Tooltip as RechartsTooltip,
 } from "recharts";
 import type { UseQueryOptions } from "@tanstack/react-query";
-import { useListEstimates, listEstimates, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
+import { useListEstimates, listEstimates, useGetFxRates, getGetFxRatesQueryKey, useGetEstimateStats } from "@workspace/api-client-react";
 import type { EstimateSummary } from "@workspace/api-client-react";
 import { convertToUsdApprox } from "@workspace/fx-usd";
 import { formatMoney, formatPercent } from "@/lib/format";
@@ -29,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { PortfolioFolders } from "@/components/PortfolioFolders";
-import { iconForAssetType } from "@/lib/asset-icons";
 import {
   mergePortfolioHref,
   usePortfolioWorkspace,
@@ -39,6 +36,9 @@ import { useSellerPersona } from "@/hooks/use-seller-persona";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { ProfessionalWorkspaceRollup } from "@/components/portfolio/ProfessionalWorkspaceRollup";
 import { DashboardHubLower } from "@/components/dashboard/DashboardHubLower";
+import { DashboardNextStep } from "@/components/dashboard/DashboardNextStep";
+import { PortfolioHealthStrip } from "@/components/portfolio/PortfolioHealthStrip";
+import { PortfolioAssetCard } from "@/components/portfolio/PortfolioAssetCard";
 
 type PortfolioItem = EstimateSummary & {
   liveValue: number;
@@ -123,6 +123,7 @@ export default function PortfolioPage() {
   const { code: displayCcy } = useDisplayCurrency();
   const { isProfessional } = useSellerPersona();
   const { data: billing } = useBillingSummary();
+  const portfolioAnalytics = Boolean(billing?.canUsePortfolioAnalytics);
   const professionalPlan = billing?.planSlug === "professional";
   const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
 
@@ -148,6 +149,8 @@ export default function PortfolioPage() {
       retry: 1,
     },
   });
+
+  const { data: stats } = useGetEstimateStats();
 
   const estimateRows = useMemo(
     () => (Array.isArray(estimates) ? estimates : []),
@@ -257,6 +260,7 @@ export default function PortfolioPage() {
       <div className={cn("mx-auto w-full max-w-7xl pt-12", workspaceShellClass)}>
         <div className="space-y-6">
           <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
+          <DashboardNextStep scopedEstimates={scopedRows} />
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-card/30 p-16 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
               <Briefcase className="h-8 w-8 text-accent" />
@@ -288,6 +292,14 @@ export default function PortfolioPage() {
   return (
     <div className={cn("w-full space-y-8 pb-16", workspaceShellClass)}>
       <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
+      <DashboardNextStep scopedEstimates={scopedRows} />
+      {portfolioAnalytics && stats?.portfolioHealth ? (
+        <PortfolioHealthStrip
+          health={stats.portfolioHealth}
+          fxMult={fxMult}
+          estimates={scopedRows}
+        />
+      ) : null}
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
@@ -479,12 +491,7 @@ export default function PortfolioPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((item) => (
-                    <AssetBox
-                      key={item.id}
-                      item={item}
-                      portfolioHrefSuffix={portfolioQuerySuffix}
-                      onListing={() => setListingFor(item)}
-                    />
+                    <PortfolioAssetCard key={item.id} item={item} portfolioAnalytics={portfolioAnalytics} />
                   ))}
                 </div>
               </div>
@@ -505,104 +512,6 @@ export default function PortfolioPage() {
       )}
 
       <DashboardHubLower scopedEstimates={scopedRows} estimatesLoading={isLoading} />
-    </div>
-  );
-}
-
-type BoxItem = PortfolioItem;
-
-function AssetBox({
-  item,
-  onListing,
-  portfolioHrefSuffix,
-}: {
-  item: BoxItem;
-  onListing: () => void;
-  portfolioHrefSuffix: string;
-}) {
-  const isUp = item.changeFromBaseline >= 0;
-  const [, navigate] = useLocation();
-  const goToEstimate = () =>
-    navigate(mergePortfolioHref(`/estimates/${item.id}`, portfolioHrefSuffix));
-
-  return (
-    <div
-      role="link"
-      tabIndex={0}
-      onClick={goToEstimate}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          goToEstimate();
-        }
-      }}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border/70 bg-card/75 p-4 transition-colors hover:bg-card hover:border-border focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      data-testid="asset-box"
-    >
-      <div className="min-h-0 flex-1">
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-start gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-foreground/80">
-              {(() => {
-                const Icon = iconForAssetType(item.assetTypeName);
-                return <Icon className="h-4 w-4" />;
-              })()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="line-clamp-2 font-sans text-sm font-semibold leading-snug text-foreground group-hover:underline group-hover:decoration-muted-foreground/50 group-hover:underline-offset-2">
-                {item.title}
-              </h4>
-              <p className="mt-1 font-sans text-[11px] text-muted-foreground">{item.assetTypeName}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <div className="font-sans text-xl font-semibold tabular-nums leading-none text-foreground">
-            {formatMoney(item.liveValue, item.currency)}
-          </div>
-          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs">
-            <span
-              className={cn(
-                "font-sans tabular-nums font-medium",
-                isUp ? "text-emerald-800/80 dark:text-emerald-400/85" : "text-rose-800/85 dark:text-rose-400/85",
-              )}
-            >
-              {formatPercent(item.changeFromBaseline, true)}
-            </span>
-            <span className="text-muted-foreground">· cost {formatMoney(item.baselineMid, item.currency)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center gap-2 border-t border-border/35 pt-3">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 flex-1 text-xs"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onListing();
-          }}
-          data-testid="box-listing-btn"
-        >
-          <Megaphone className="mr-1.5 h-3 w-3" />
-          List for sale
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 px-2"
-          onClick={(e) => {
-            e.stopPropagation();
-            goToEstimate();
-          }}
-          aria-label="Open estimate"
-        >
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Button>
-      </div>
     </div>
   );
 }

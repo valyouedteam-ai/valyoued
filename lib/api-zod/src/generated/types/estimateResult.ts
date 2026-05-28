@@ -13,7 +13,9 @@ import type { EstimateReport } from "./estimateReport";
 import type { EstimateResultIntent } from "./estimateResultIntent";
 import type { EstimateResultTier } from "./estimateResultTier";
 import type { MarketSignal } from "./marketSignal";
+import type { PortfolioAnalytics } from "./portfolioAnalytics";
 import type { ProInsights } from "./proInsights";
+import type { TraderAnalytics } from "./traderAnalytics";
 import type { ValuationFeedback } from "./valuationFeedback";
 import type { ValuationLineage } from "./valuationLineage";
 import type { ValuationOutcome } from "./valuationOutcome";
@@ -44,4 +46,6 @@ export interface EstimateResult {
   valuationLineage?: ValuationLineage;
   valuationOutcome?: ValuationOutcome;
   valuationFeedback?: ValuationFeedback;
+  portfolioAnalytics?: PortfolioAnalytics;
+  traderAnalytics?: TraderAnalytics;
 }

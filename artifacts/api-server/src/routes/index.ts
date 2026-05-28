@@ -10,6 +10,7 @@ import adminRouter from "./admin";
 import meRouter from "./me";
 import billingRouter from "./billing";
 import deskRouter from "./desk";
+import traderRouter from "./trader";
 import { stubBillingPlanAlsMiddleware } from "../lib/authStubBillingPlan";
 
 const router: IRouter = Router();
@@ -26,5 +27,6 @@ router.use(adminRouter);
 router.use(meRouter);
 router.use(deskRouter);
 router.use(billingRouter);
+router.use(traderRouter);
 
 export default router;

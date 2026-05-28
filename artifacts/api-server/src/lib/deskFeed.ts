@@ -26,7 +26,7 @@ const LIBRARY: DeskFeedItem[] = [
     summary:
       "Marketplace buyers continue to penalize undisclosed hardware wear. Listings that open with flaw photos converge faster toward ask.",
     source: "ValYoued desk briefing",
-    assetTypeSlugHints: ["hermes-handbag", "handbag", "luxury"],
+    assetTypeSlugHints: ["designer-handbag", "handbag", "luxury"],
     tone: "neutral",
   },
   {

@@ -5,9 +5,13 @@
  * ValYoued: multi-asset valuation API
  * OpenAPI spec version: 0.1.0
  */
+import type { EstimateSummaryActionRecommendation } from "./estimateSummaryActionRecommendation";
 import type { EstimateSummaryIntent } from "./estimateSummaryIntent";
 import type { EstimateSummaryPortfolioShelf } from "./estimateSummaryPortfolioShelf";
+import type { EstimateSummaryReceiptStatus } from "./estimateSummaryReceiptStatus";
+import type { EstimateSummaryResalePotential } from "./estimateSummaryResalePotential";
 import type { EstimateSummaryTier } from "./estimateSummaryTier";
+import type { EstimateSummaryValuationFreshness } from "./estimateSummaryValuationFreshness";
 
 export interface EstimateSummary {
   id: string;
@@ -27,4 +31,16 @@ export interface EstimateSummary {
   createdAt: Date;
   portfolioId?: string | null;
   intent?: EstimateSummaryIntent;
+  adjustedLow?: number;
+  adjustedHigh?: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  confidenceScore?: number;
+  resalePotential?: EstimateSummaryResalePotential;
+  actionRecommendation?: EstimateSummaryActionRecommendation;
+  valuationFreshness?: EstimateSummaryValuationFreshness;
+  receiptStatus?: EstimateSummaryReceiptStatus;
+  insuranceGap?: boolean;
 }

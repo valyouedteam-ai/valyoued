@@ -128,6 +128,9 @@
   --app-font-mono: var(--app-font-sans);
   --app-font-display: var(--app-font-sans);
 
+  --dashboard-surface-elevated: 0 0% 100%;
+  --dashboard-surface-muted: 220 20% 96%;
+
   --radius: 0.75rem;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(220 25% 10% / 0.04);
@@ -182,6 +185,9 @@
   --sidebar-accent: 222 18% 14%;
   --sidebar-accent-foreground: 40 20% 97%;
   --sidebar-ring: 175 50% 45%;
+
+  --dashboard-surface-elevated: 222 24% 14%;
+  --dashboard-surface-muted: 222 22% 11%;
 }
 
 @layer base {
@@ -219,9 +225,17 @@
 
   .text-ui-meta {
     font-family: var(--app-font-sans);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 0.01em;
+  }
+
+  .bg-dashboard-elevated {
+    background-color: hsl(var(--dashboard-surface-elevated));
+  }
+
+  .bg-dashboard-muted {
+    background-color: hsl(var(--dashboard-surface-muted));
   }
 
   .scrollbar-none {

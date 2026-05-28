@@ -309,6 +309,94 @@ export const EstimateResultIntent = {
   sell: "sell",
 } as const;
 
+export interface FieldCompleteness {
+  completed: string[];
+  missing: string[];
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  pct: number;
+}
+
+export type PortfolioAnalyticsResalePotential =
+  (typeof PortfolioAnalyticsResalePotential)[keyof typeof PortfolioAnalyticsResalePotential];
+
+export const PortfolioAnalyticsResalePotential = {
+  low: "low",
+  moderate: "moderate",
+  strong: "strong",
+} as const;
+
+export type PortfolioAnalyticsActionRecommendation =
+  (typeof PortfolioAnalyticsActionRecommendation)[keyof typeof PortfolioAnalyticsActionRecommendation];
+
+export const PortfolioAnalyticsActionRecommendation = {
+  sell: "sell",
+  hold: "hold",
+  insure: "insure",
+} as const;
+
+export type PortfolioAnalyticsValuationFreshness =
+  (typeof PortfolioAnalyticsValuationFreshness)[keyof typeof PortfolioAnalyticsValuationFreshness];
+
+export const PortfolioAnalyticsValuationFreshness = {
+  fresh: "fresh",
+  aging: "aging",
+  stale: "stale",
+} as const;
+
+export type PortfolioAnalyticsReceiptStatus =
+  (typeof PortfolioAnalyticsReceiptStatus)[keyof typeof PortfolioAnalyticsReceiptStatus];
+
+export const PortfolioAnalyticsReceiptStatus = {
+  documented: "documented",
+  partial: "partial",
+  missing: "missing",
+} as const;
+
+export type PortfolioAnalyticsConfidenceBreakdown = {
+  fieldCompleteness?: number;
+  compQuality?: number;
+  marketStability?: number;
+};
+
+export interface PortfolioAnalytics {
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  confidenceScore: number;
+  fieldCompleteness: FieldCompleteness;
+  resalePotential: PortfolioAnalyticsResalePotential;
+  actionRecommendation: PortfolioAnalyticsActionRecommendation;
+  valuationFreshness: PortfolioAnalyticsValuationFreshness;
+  receiptStatus: PortfolioAnalyticsReceiptStatus;
+  insuranceGap?: boolean;
+  confidenceBreakdown?: PortfolioAnalyticsConfidenceBreakdown;
+}
+
+export type TraderAnalyticsDealScore =
+  (typeof TraderAnalyticsDealScore)[keyof typeof TraderAnalyticsDealScore];
+
+export const TraderAnalyticsDealScore = {
+  strong_buy: "strong_buy",
+  good_margin: "good_margin",
+  fair: "fair",
+  risky: "risky",
+  overpriced: "overpriced",
+  avoid: "avoid",
+} as const;
+
+export interface TraderAnalytics {
+  dealScore: TraderAnalyticsDealScore;
+  maxBuyPrice: number;
+  expectedResale: number;
+  /** Percent margin when cost basis is known */
+  expectedMargin?: number;
+  costBasis?: number;
+}
+
 export interface EstimateResult {
   id: string;
   createdAt: string;
@@ -334,6 +422,8 @@ export interface EstimateResult {
   valuationLineage?: ValuationLineage;
   valuationOutcome?: ValuationOutcome;
   valuationFeedback?: ValuationFeedback;
+  portfolioAnalytics?: PortfolioAnalytics;
+  traderAnalytics?: TraderAnalytics;
 }
 
 /**
@@ -369,6 +459,42 @@ export const EstimateSummaryIntent = {
   sell: "sell",
 } as const;
 
+export type EstimateSummaryResalePotential =
+  (typeof EstimateSummaryResalePotential)[keyof typeof EstimateSummaryResalePotential];
+
+export const EstimateSummaryResalePotential = {
+  low: "low",
+  moderate: "moderate",
+  strong: "strong",
+} as const;
+
+export type EstimateSummaryActionRecommendation =
+  (typeof EstimateSummaryActionRecommendation)[keyof typeof EstimateSummaryActionRecommendation];
+
+export const EstimateSummaryActionRecommendation = {
+  sell: "sell",
+  hold: "hold",
+  insure: "insure",
+} as const;
+
+export type EstimateSummaryValuationFreshness =
+  (typeof EstimateSummaryValuationFreshness)[keyof typeof EstimateSummaryValuationFreshness];
+
+export const EstimateSummaryValuationFreshness = {
+  fresh: "fresh",
+  aging: "aging",
+  stale: "stale",
+} as const;
+
+export type EstimateSummaryReceiptStatus =
+  (typeof EstimateSummaryReceiptStatus)[keyof typeof EstimateSummaryReceiptStatus];
+
+export const EstimateSummaryReceiptStatus = {
+  documented: "documented",
+  partial: "partial",
+  missing: "missing",
+} as const;
+
 export interface EstimateSummary {
   id: string;
   title: string;
@@ -387,6 +513,18 @@ export interface EstimateSummary {
   createdAt: string;
   portfolioId?: string | null;
   intent?: EstimateSummaryIntent;
+  adjustedLow?: number;
+  adjustedHigh?: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  confidenceScore?: number;
+  resalePotential?: EstimateSummaryResalePotential;
+  actionRecommendation?: EstimateSummaryActionRecommendation;
+  valuationFreshness?: EstimateSummaryValuationFreshness;
+  receiptStatus?: EstimateSummaryReceiptStatus;
+  insuranceGap?: boolean;
 }
 
 export type EstimateStatsByAssetTypeItem = {
@@ -401,6 +539,20 @@ export type EstimateStatsTopArbitrageRegionsItem = {
   count: number;
 };
 
+export interface PortfolioHealth {
+  totalPortfolioUsd: number;
+  valueGrowthPct: number;
+  resaleStrengthIndex: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  diversificationScore: number;
+  underinsuredCount: number;
+  missingReceiptsCount: number;
+  needsRevaluationCount: number;
+}
+
 export interface EstimateStats {
   count: number;
   /** Mean baseline midpoint after converting each row through the same multiplier table as GET /fx/rates into an internal rollup unit for cross-currency averaging (ECB/Frankfurter when FX_LIVE_ENABLED, else static fallbacks; approximate). The SPA shows this in the user's Settings reference currency. */
@@ -411,6 +563,210 @@ export interface EstimateStats {
   averageUplift: number;
   byAssetType: EstimateStatsByAssetTypeItem[];
   topArbitrageRegions: EstimateStatsTopArbitrageRegionsItem[];
+  portfolioHealth?: PortfolioHealth;
+}
+
+export type RefineEstimateBodyExtraFields = { [key: string]: unknown };
+
+export interface RefineEstimateBody {
+  brand?: string;
+  model?: string;
+  year?: number;
+  purchasePrice?: number;
+  condition?: number;
+  attributes?: string;
+  extraFields?: RefineEstimateBodyExtraFields;
+}
+
+export type UserNotificationKind =
+  (typeof UserNotificationKind)[keyof typeof UserNotificationKind];
+
+export const UserNotificationKind = {
+  value_up: "value_up",
+  value_down: "value_down",
+  revalue: "revalue",
+  receipt: "receipt",
+  milestone: "milestone",
+  reprice: "reprice",
+} as const;
+
+export interface UserNotification {
+  id: string;
+  kind: UserNotificationKind;
+  title: string;
+  body: string;
+  estimateId?: string | null;
+  href?: string | null;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface PatchNotificationsBody {
+  markAllRead?: boolean;
+  ids?: string[];
+}
+
+export type MarketWatchSnapshotDemandMovement =
+  (typeof MarketWatchSnapshotDemandMovement)[keyof typeof MarketWatchSnapshotDemandMovement];
+
+export const MarketWatchSnapshotDemandMovement = {
+  rising: "rising",
+  stable: "stable",
+  softening: "softening",
+} as const;
+
+export type MarketWatchSnapshotTrendPointsItem = {
+  month: string;
+  medianPrice: number;
+};
+
+export type MarketWatchSnapshotRecentSalesItem = {
+  price: number;
+  soldAt?: string;
+  platform: string;
+  condition: string;
+  daysToSell?: number;
+  detail?: string;
+};
+
+export interface MarketWatchSnapshot {
+  trendPoints: MarketWatchSnapshotTrendPointsItem[];
+  recentSales: MarketWatchSnapshotRecentSalesItem[];
+  demandMovement: MarketWatchSnapshotDemandMovement;
+  avgDaysToSell: number;
+  bestPlatform: string;
+  suggestedListingPrice: number;
+  buyBelowPrice: number;
+  expectedMarginPct: number;
+  analyticsNote?: string;
+}
+
+export interface MarketWatch {
+  id: string;
+  label: string;
+  assetClass: string;
+  brand?: string;
+  model?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  createdAt: string;
+  snapshot: MarketWatchSnapshot;
+}
+
+export interface CreateMarketWatchBody {
+  assetClass: string;
+  label: string;
+  brand?: string;
+  model?: string;
+  yearFrom?: number;
+  yearTo?: number;
+}
+
+export type InventoryItemStage =
+  (typeof InventoryItemStage)[keyof typeof InventoryItemStage];
+
+export const InventoryItemStage = {
+  sourced: "sourced",
+  purchased: "purchased",
+  in_prep: "in_prep",
+  photographed: "photographed",
+  listed: "listed",
+  offer_received: "offer_received",
+  sold: "sold",
+  unsold: "unsold",
+  returned: "returned",
+} as const;
+
+export interface InventoryItem {
+  id: string;
+  estimateId?: string | null;
+  title: string;
+  stage: InventoryItemStage;
+  costBasis?: number;
+  listPrice?: number;
+  currency?: string;
+  listedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  repriceHint?: string;
+}
+
+export type CreateInventoryItemBodyStage =
+  (typeof CreateInventoryItemBodyStage)[keyof typeof CreateInventoryItemBodyStage];
+
+export const CreateInventoryItemBodyStage = {
+  sourced: "sourced",
+  purchased: "purchased",
+  in_prep: "in_prep",
+  photographed: "photographed",
+  listed: "listed",
+  offer_received: "offer_received",
+  sold: "sold",
+  unsold: "unsold",
+  returned: "returned",
+} as const;
+
+export interface CreateInventoryItemBody {
+  title: string;
+  stage: CreateInventoryItemBodyStage;
+  estimateId?: string;
+  costBasis?: number;
+  listPrice?: number;
+  currency?: string;
+}
+
+export type PatchInventoryItemBodyStage =
+  (typeof PatchInventoryItemBodyStage)[keyof typeof PatchInventoryItemBodyStage];
+
+export const PatchInventoryItemBodyStage = {
+  sourced: "sourced",
+  purchased: "purchased",
+  in_prep: "in_prep",
+  photographed: "photographed",
+  listed: "listed",
+  offer_received: "offer_received",
+  sold: "sold",
+  unsold: "unsold",
+  returned: "returned",
+} as const;
+
+export interface PatchInventoryItemBody {
+  stage?: PatchInventoryItemBodyStage;
+  costBasis?: number;
+  listPrice?: number;
+  listedAt?: string;
+}
+
+export type BusinessReportBestCategoriesItem = {
+  name: string;
+  profit: number;
+};
+
+export type BusinessReportTaxExportRowsItem = { [key: string]: unknown };
+
+export type BusinessReportInsuranceStockRowsItem = { [key: string]: unknown };
+
+export interface BusinessReport {
+  month: string;
+  monthlyProfit?: number;
+  inventoryValue: number;
+  slowMovingCount: number;
+  bestCategories: BusinessReportBestCategoriesItem[];
+  taxExportRows?: BusinessReportTaxExportRowsItem[];
+  insuranceStockRows?: BusinessReportInsuranceStockRowsItem[];
+}
+
+export interface BatchRepriceCheckBody {
+  inventoryIds?: string[];
+  estimateIds?: string[];
+}
+
+export interface RepriceSuggestion {
+  id: string;
+  title: string;
+  message: string;
+  suggestedPrice: number;
+  currentPrice?: number;
 }
 
 export type VisionExtractInputMimeType =
@@ -509,8 +865,31 @@ export type CreateEstimate429 = {
   error: string;
 };
 
+export type RefineEstimate403 = {
+  error: string;
+};
+
 export type CreatePortfolio403 = {
   error: string;
+};
+
+export type PatchNotifications200 = {
+  updated: number;
+};
+
+export type CreateMarketWatch403 = {
+  error: string;
+};
+
+export type DeleteMarketWatch200 = {
+  ok: boolean;
+};
+
+export type GetBusinessReportParams = {
+  /**
+   * @pattern ^\d{4}-\d{2}$
+   */
+  month?: string;
 };
 
 export type DeleteListingDraft200 = {

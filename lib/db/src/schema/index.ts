@@ -7,3 +7,4 @@ export * from "./user-alert-prefs";
 export * from "./portfolios";
 export * from "./estimate-usage";
 export * from "./desk-layout";
+export * from "./trader";

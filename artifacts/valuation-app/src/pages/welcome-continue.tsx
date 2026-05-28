@@ -1,8 +1,9 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Link, Redirect, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
 import { ArrowRight, BriefcaseBusiness, Shirt } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MarketingFullscreenOverlay } from "@/components/marketing/MarketingFullscreenOverlay";
 import { useAuthStubContext } from "@/context/AuthStubContext";
@@ -12,11 +13,13 @@ import {
 } from "@/context/PortfolioWorkspaceContext";
 import {
   type SellerPersonaChoice,
+  isSellerPersonaConfirmed,
   peekSessionSellerPersona,
+  readClerkSellerPersona,
   saveSellerPersonaForSignedInUser,
 } from "@/hooks/use-persona-sync";
 
-/** First authenticated step after Clerk signup: fullscreen overlay phases mirror the landing intro pattern. */
+/** First authenticated step after Clerk signup. Persona must be explicitly confirmed here. */
 export default function WelcomeContinuePage() {
   const authStub = useAuthStubContext();
   if (authStub) {
@@ -31,20 +34,20 @@ function WelcomeContinueSignedIn() {
   const { portfolioQuerySuffix } = usePortfolioWorkspace();
   const [localPersona, setLocalPersona] = useState<SellerPersonaChoice | null>(null);
   const [savingChoice, setSavingChoice] = useState<SellerPersonaChoice | null>(null);
-  const [introSeen, setIntroSeen] = useState(false);
+  const [phase, setPhase] = useState<"primer" | "pick" | "ready">("primer");
   const [pickOverride, setPickOverride] = useState(false);
 
-  const sessionPeek = useMemo(() => peekSessionSellerPersona(), []);
-  const fromClerkRaw = user?.unsafeMetadata?.sellerPersona;
-  const fromClerk: SellerPersonaChoice | undefined =
-    fromClerkRaw === "everyday" || fromClerkRaw === "professional" ? fromClerkRaw : undefined;
-  const persona = localPersona ?? fromClerk ?? sessionPeek ?? null;
+  const sessionHint = useMemo(() => peekSessionSellerPersona(), []);
+  const confirmed = isSellerPersonaConfirmed(user);
+  const clerkPersona = readClerkSellerPersona(user);
+  const persona = localPersona ?? (confirmed ? clerkPersona : null) ?? null;
 
-  /** Skip primer before paint whenever a persona is already persisted (session or Clerk metadata). */
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!isLoaded || !user) return;
-    if (persona) setIntroSeen(true);
-  }, [isLoaded, user, persona]);
+    if (confirmed && persona && !pickOverride) {
+      setPhase("ready");
+    }
+  }, [isLoaded, user, confirmed, persona, pickOverride]);
 
   async function pickPersona(choice: SellerPersonaChoice) {
     if (!user) return;
@@ -53,6 +56,7 @@ function WelcomeContinueSignedIn() {
       await saveSellerPersonaForSignedInUser(user, choice);
       setLocalPersona(choice);
       setPickOverride(false);
+      setPhase("ready");
     } catch {
       /* ignore, user can retry */
     } finally {
@@ -80,60 +84,37 @@ function WelcomeContinueSignedIn() {
     return <Redirect to="/sign-in" />;
   }
 
+  if (confirmed && persona && !pickOverride) {
+    return <Redirect to="/dashboard" />;
+  }
+
   const nameGreet = firstName();
-  const showPrimerOverlay = persona == null && !introSeen;
-  const showPick = pickOverride || (introSeen && persona == null);
-  const showPickOverlay = Boolean(showPick);
-  const showReadyOverlay = persona != null && !pickOverride;
-
-  function pickHeadline() {
-    if (pickOverride && persona) return "Pick the option that fits best";
-    return "One quick preference";
-  }
-
-  function readyHeadline(): string {
-    return persona === "professional"
-      ? "We will tune things for resale work"
-      : "We will tune things around your personal holdings";
-  }
-
-  function readyLead(): string {
-    return persona === "professional"
-      ? "Expect quicker paths to sharper listing language, workspaces when you subscribe to Professional, and more density on History and Ads. Swap this anytime under Profile."
-      : "Expect friendlier summaries, snapshots of what is in your vault, and a gentle path from a valuation toward a marketplace draft.";
-  }
+  const showPrimer = phase === "primer";
+  const showPick = phase === "pick" || pickOverride;
+  const showReady = phase === "ready" && persona != null && !pickOverride;
 
   return (
-    <div className="min-h-[30vh]" aria-busy={showPrimerOverlay || showPickOverlay || showReadyOverlay}>
+    <div className="min-h-[30vh]" aria-busy={showPrimer || showPick || showReady}>
       <AnimatePresence mode="wait">
-        {showPrimerOverlay ? (
+        {showPrimer ? (
           <MarketingFullscreenOverlay key="wc-primer" variant="landing" innerMaxWidth="lg">
-            <div className="space-y-8">
+            <div className="space-y-10">
               <header className="space-y-3 text-center sm:text-left">
-                <p className="text-ui-caps text-accent">You are signed in</p>
+                <p className="text-ui-caps text-accent">Welcome</p>
                 <h1
                   id="welcome-primer-title"
-                  className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl"
+                  className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-5xl"
                 >
-                  {nameGreet ? `Nice to meet you, ${nameGreet}` : "Nice to meet you"}
+                  {nameGreet ? `Hi ${nameGreet}` : "Welcome to ValYoued"}
                 </h1>
-              </header>
-              <div className="space-y-6 rounded-3xl border border-border/70 bg-card/98 p-6 shadow-xl">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  ValYoued is a vault for valuations: you capture item details once, revisit numbers later, and can spin up marketplace draft
-                  text when something is ready to move. Paid tiers unlock more rows and alerts, while the guided Home screen keeps tasks in
-                  plain language.
+                <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
+                  One vault for valuations, portfolio snapshots, and listing drafts when you are ready to sell.
                 </p>
-                <ul className="list-inside list-disc space-y-2 text-sm text-muted-foreground">
-                  <li>Save finished reports alongside photos and notes instead of juggling spreadsheets.</li>
-                  <li>Jump between a valuation wizard, portfolio snapshots, and ad drafts whenever you need them.</li>
-                  <li>Switch or refine how the app speaks to you at any point from Profile.</li>
-                </ul>
-              </div>
+              </header>
               <Button
                 size="lg"
                 className="w-full rounded-full shadow-lg sm:w-auto gap-2"
-                onClick={() => setIntroSeen(true)}
+                onClick={() => setPhase("pick")}
               >
                 Continue
                 <ArrowRight className="h-5 w-5 shrink-0" aria-hidden />
@@ -142,105 +123,68 @@ function WelcomeContinueSignedIn() {
           </MarketingFullscreenOverlay>
         ) : null}
 
-        {showPickOverlay ? (
+        {showPick ? (
           <MarketingFullscreenOverlay key="wc-pick" variant="landing" innerMaxWidth="xl">
             <div className="space-y-8">
               <header className="space-y-2 text-center sm:text-left">
-                <p className="text-ui-caps text-accent">You are signed in</p>
+                <p className="text-ui-caps text-accent">One quick choice</p>
                 <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  {pickHeadline()}
+                  How will you mostly use ValYoued?
                 </h1>
+                <p className="text-base leading-relaxed text-muted-foreground">
+                  This shapes wording and shortcuts, not billing. You can change it later in Profile.
+                </p>
               </header>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1 text-center sm:text-left">
-                  <p className="text-sm font-medium text-foreground">Which sounds closest to you right now?</p>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Pick the option that matches most days. Labels only change wording and shortcuts, not billing.
-                  </p>
-                </div>
-                {pickOverride ? (
-                  <button
-                    type="button"
-                    className="shrink-0 text-sm font-medium text-accent underline-offset-4 hover:underline mx-auto sm:mx-0"
-                    onClick={() => setPickOverride(false)}
-                  >
-                    Keep current setting
-                  </button>
-                ) : null}
-              </div>
+              {pickOverride ? (
+                <button
+                  type="button"
+                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+                  onClick={() => setPickOverride(false)}
+                >
+                  Keep current setting
+                </button>
+              ) : null}
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl border border-border/70 bg-card/98 p-5 shadow-lg">
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/15 text-accent">
-                    <Shirt className="h-5 w-5" aria-hidden />
-                  </div>
-                  <h2 className="text-base font-semibold tracking-tight text-foreground">Everyday steward</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Personal collections, wardrobes, resale side-hustles, and single big-ticket buys you want monitored.
-                  </p>
-                  <Button
-                    className="mt-5 w-full rounded-2xl"
-                    disabled={savingChoice !== null}
-                    onClick={() => pickPersona("everyday")}
-                  >
-                    {savingChoice === "everyday" ? (
-                      <>Saving...</>
-                    ) : (
-                      <>
-                        Continue · Everyday track
-                        <ArrowRight className="ml-2 h-5 w-5 shrink-0" aria-hidden />
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="rounded-3xl border border-accent/35 bg-accent/12 p-5 shadow-lg ring-1 ring-accent/25">
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-card text-accent">
-                    <BriefcaseBusiness className="h-5 w-5" aria-hidden />
-                  </div>
-                  <h2 className="text-base font-semibold tracking-tight text-foreground">Professional desks</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Brokers, heirs, boutiques, desks that need sharper arbitrage wording, workspace separation, and listing-heavy flows.
-                  </p>
-                  <Button
-                    className="mt-5 w-full rounded-2xl shadow-md"
-                    disabled={savingChoice !== null}
-                    onClick={() => pickPersona("professional")}
-                  >
-                    {savingChoice === "professional" ? (
-                      <>Saving...</>
-                    ) : (
-                      <>
-                        Continue · Professional track
-                        <ArrowRight className="ml-2 h-5 w-5 shrink-0" aria-hidden />
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <PersonaCard
+                  title="Everyday steward"
+                  description="Personal collections, wardrobes, and side-hustle resale."
+                  icon={Shirt}
+                  hint={sessionHint === "everyday"}
+                  disabled={savingChoice !== null}
+                  loading={savingChoice === "everyday"}
+                  onPick={() => pickPersona("everyday")}
+                />
+                <PersonaCard
+                  title="Professional desks"
+                  description="Brokers, boutiques, and listing-heavy resale work."
+                  icon={BriefcaseBusiness}
+                  hint={sessionHint === "professional"}
+                  highlighted
+                  disabled={savingChoice !== null}
+                  loading={savingChoice === "professional"}
+                  onPick={() => pickPersona("professional")}
+                />
               </div>
             </div>
           </MarketingFullscreenOverlay>
         ) : null}
 
-        {showReadyOverlay ? (
+        {showReady ? (
           <MarketingFullscreenOverlay key="wc-ready" variant="landing" innerMaxWidth="lg">
             <div className="space-y-8 text-center sm:text-left">
               <header className="space-y-2">
-                <p className="text-ui-caps text-accent">You are signed in</p>
-                <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{readyHeadline()}</h1>
-                <p className="text-pretty leading-relaxed text-muted-foreground">{readyLead()}</p>
-              </header>
-              <div className="rounded-3xl border border-border/70 bg-card/98 p-5 shadow-md">
-                <p className="text-sm text-muted-foreground">
-                  Prefer the other option?{" "}
-                  <button
-                    type="button"
-                    className="font-medium text-accent underline-offset-4 hover:underline"
-                    onClick={() => setPickOverride(true)}
-                  >
-                    Choose again
-                  </button>
+                <p className="text-ui-caps text-accent">All set</p>
+                <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                  {persona === "professional"
+                    ? "Tuned for resale work"
+                    : "Tuned for personal holdings"}
+                </h1>
+                <p className="text-pretty text-base leading-relaxed text-muted-foreground">
+                  {persona === "professional"
+                    ? "Sharper listing language, desk workspaces when you subscribe, and denser History and Ads flows."
+                    : "Friendlier summaries, portfolio snapshots, and a gentle path from valuation to listing draft."}
                 </p>
-              </div>
+              </header>
               <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
                 <Button size="lg" className="rounded-full shadow-lg gap-2" onClick={() => setLocation("/dashboard")}>
                   Continue to Home
@@ -254,6 +198,58 @@ function WelcomeContinueSignedIn() {
           </MarketingFullscreenOverlay>
         ) : null}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function PersonaCard({
+  title,
+  description,
+  icon: Icon,
+  hint,
+  highlighted,
+  disabled,
+  loading,
+  onPick,
+}: {
+  title: string;
+  description: string;
+  icon: typeof Shirt;
+  hint?: boolean;
+  highlighted?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-3xl border p-5 shadow-lg transition-shadow",
+        highlighted ? "border-accent/35 bg-accent/12 ring-1 ring-accent/25" : "border-border/70 bg-card/98",
+        hint && "ring-2 ring-accent/50",
+      )}
+    >
+      <div
+        className={cn(
+          "mb-3 flex h-11 w-11 items-center justify-center rounded-2xl",
+          highlighted ? "bg-card text-accent" : "bg-accent/15 text-accent",
+        )}
+      >
+        <Icon className="h-5 w-5" aria-hidden />
+      </div>
+      {hint ? <p className="mb-2 text-xs font-medium text-accent">Suggested from earlier</p> : null}
+      <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+      <Button className="mt-5 w-full rounded-2xl" disabled={disabled} onClick={onPick}>
+        {loading ? (
+          <>Saving...</>
+        ) : (
+          <>
+            Continue
+            <ArrowRight className="ml-2 h-5 w-5 shrink-0" aria-hidden />
+          </>
+        )}
+      </Button>
     </div>
   );
 }

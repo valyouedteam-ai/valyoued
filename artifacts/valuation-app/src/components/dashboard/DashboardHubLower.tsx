@@ -33,6 +33,7 @@ import { useBillingSummary } from "@/hooks/use-billing-summary";
 import type { HomeBucketKey } from "@/lib/home-buckets";
 import { HOME_BUCKET_LABEL, HOME_BUCKET_ORDER, bucketForAssetTypeName, countItemsByBucket } from "@/lib/home-buckets";
 import { PaidFeatureTeaser } from "@/components/home/PaidFeatureTeaser";
+import { buildEstimateNewHref } from "@/components/dashboard/DashboardNextStep";
 
 type IntentFilterKey = "all" | PatchEstimateBodyIntent | "unset";
 type ShelfFilterKey = "all" | EstimateSummary["portfolioShelf"];
@@ -73,6 +74,7 @@ export function DashboardHubLower({
   const [shelfFilter, setShelfFilter] = useState<ShelfFilterKey>("all");
   const [pickedRegionIdx, setPickedRegionIdx] = useState<number | null>(null);
   const [recentOpen, setRecentOpen] = useState(true);
+  const [activeBucket, setActiveBucket] = useState<HomeBucketKey | null>(null);
 
   const sortedRecent = useMemo(
     () => [...scopedEstimates].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -81,30 +83,36 @@ export function DashboardHubLower({
 
   const displayedRecent = useMemo(() => {
     return sortedRecent.filter((e) => {
+      if (activeBucket && bucketForAssetTypeName(e.assetTypeName) !== activeBucket) return false;
       if (shelfFilter !== "all" && e.portfolioShelf !== shelfFilter) return false;
       if (intentFilter === "all") return true;
       if (intentFilter === "unset") return !e.intent;
       return e.intent === intentFilter;
     });
-  }, [sortedRecent, shelfFilter, intentFilter]);
+  }, [sortedRecent, shelfFilter, intentFilter, activeBucket]);
 
   const showingInheritanceUpsell = !isProfessional && !billing?.hasInheritanceAddon;
 
   function resetFilters() {
     setIntentFilter("all");
     setShelfFilter("all");
+    setActiveBucket(null);
+  }
+
+  function scrollToCollection() {
+    document.getElementById("collection-section")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
   }
 
   return (
-    <div className="mt-14 space-y-12 border-t border-border/40 pt-12">
-      <section className="space-y-3">
+    <div className="mt-14 space-y-12 border-t border-border/50 pt-12">
+      <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">Asset buckets</h2>
-            <p className="text-sm text-muted-foreground">Counts follow the asset class label on each saved run.</p>
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">Asset buckets</h2>
+            <p className="mt-1 text-base text-muted-foreground">Tap a bucket to add items or filter your collection.</p>
           </div>
           <Button size="sm" variant="secondary" className="rounded-full" asChild>
-            <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>Add item</Link>
+            <Link href={buildEstimateNewHref(portfolioQuerySuffix)}>Add item</Link>
           </Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -112,6 +120,7 @@ export function DashboardHubLower({
             const Icon = BUCKET_ICONS[key];
             const count = bucketCounts[key];
             const empty = count === 0;
+            const isActive = activeBucket === key;
             return (
               <motion.div
                 key={key}
@@ -120,34 +129,35 @@ export function DashboardHubLower({
                 viewport={{ once: true, margin: "-5%" }}
                 transition={{ duration: 0.3 }}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
-                  }}
-                  className={cn(
-                    "block w-full rounded-2xl border border-border/60 bg-card/60 p-4 text-left shadow-sm backdrop-blur-sm transition-colors",
-                    "hover:border-accent/35 hover:bg-card/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35",
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                      <Icon className="h-5 w-5" aria-hidden />
-                    </span>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-snug text-foreground">{HOME_BUCKET_LABEL[key]}</p>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold tabular-nums text-foreground">{count}</span>
-                        <span className="text-ui-caps text-muted-foreground">items</span>
-                      </div>
-                      <p className={cn("text-xs", empty ? "text-accent" : "text-muted-foreground")}>
-                        {empty
-                          ? "Scroll up to your collection once you capture something here."
-                          : `${count} valuation${count === 1 ? "" : "s"} tagged like ${HOME_BUCKET_LABEL[key].toLowerCase()}.`}
-                      </p>
-                    </div>
-                  </div>
-                </button>
+                {empty ? (
+                  <Link
+                    href={buildEstimateNewHref(portfolioQuerySuffix, key)}
+                    className={cn(
+                      "block w-full rounded-2xl border border-dashed border-accent/35 bg-accent/5 p-4 text-left shadow-sm transition-colors",
+                      "hover:border-accent/55 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35",
+                    )}
+                  >
+                    <BucketCardInner Icon={Icon} keyName={key} count={count} empty />
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveBucket((prev) => (prev === key ? null : key));
+                      setRecentOpen(true);
+                      scrollToCollection();
+                    }}
+                    className={cn(
+                      "block w-full rounded-2xl border bg-dashboard-elevated p-4 text-left shadow-sm transition-colors",
+                      isActive
+                        ? "border-accent/50 ring-2 ring-accent/25"
+                        : "border-border/60 hover:border-accent/35 hover:bg-card/85",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35",
+                    )}
+                  >
+                    <BucketCardInner Icon={Icon} keyName={key} count={count} empty={false} />
+                  </button>
+                )}
               </motion.div>
             );
           })}
@@ -405,15 +415,6 @@ export function DashboardHubLower({
         ) : null}
       </section>
 
-      {showingInheritanceUpsell ? (
-        <PaidFeatureTeaser
-          eyebrow="Everyday steward boost"
-          title="Separate inheritance ledger"
-          description="Activate the add-on in Settings to spin up a second workspace for estate rehearsal, heirs, or heirloom tracking."
-          href="/settings"
-        />
-      ) : null}
-
       <section aria-label="Ads and monitors">
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader>
@@ -457,6 +458,47 @@ export function DashboardHubLower({
           </CardContent>
         </Card>
       </section>
+
+      {showingInheritanceUpsell ? (
+        <PaidFeatureTeaser
+          eyebrow="Everyday steward boost"
+          title="Separate inheritance ledger"
+          description="Activate the add-on in Settings to spin up a second workspace for estate rehearsal, heirs, or heirloom tracking."
+          href="/settings"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function BucketCardInner({
+  Icon,
+  keyName,
+  count,
+  empty,
+}: {
+  Icon: typeof Gem;
+  keyName: HomeBucketKey;
+  count: number;
+  empty: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <div className="space-y-1">
+        <p className="text-base font-medium leading-snug text-foreground">{HOME_BUCKET_LABEL[keyName]}</p>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-semibold tabular-nums text-foreground">{count}</span>
+          <span className="text-sm text-muted-foreground">items</span>
+        </div>
+        <p className={cn("text-sm", empty ? "font-medium text-accent" : "text-muted-foreground")}>
+          {empty
+            ? `Add your first ${HOME_BUCKET_LABEL[keyName].toLowerCase()} item`
+            : `${count} saved here · tap to filter collection`}
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useForm, type UseFormReturn, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -430,6 +430,7 @@ function NewEstimatePageInner({
   isSignedIn: boolean;
 }) {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const authStubMode = useAuthStubContext();
@@ -503,7 +504,7 @@ function NewEstimatePageInner({
         onSuccess: (result) => {
           queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
-          setLocation(`/estimates/${result.id}`);
+          setLocation(`/estimates/${result.id}/welcome`);
         },
         onError: (err: unknown) => {
           const capped = describeValuationGateError(err);
@@ -689,6 +690,37 @@ function NewEstimatePageInner({
   useEffect(() => {
     setWizardStep(0);
   }, [selectedTier]);
+
+  const deepLinkAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!assetTypes?.length || deepLinkAppliedRef.current) return;
+    const params = new URLSearchParams(searchString.startsWith("?") ? searchString.slice(1) : searchString);
+    const tierParam = params.get("tier");
+    const assetTypeParam = params.get("assetType");
+    if (tierParam !== "everyday" && tierParam !== "luxury" && !assetTypeParam) return;
+
+    deepLinkAppliedRef.current = true;
+    if (tierParam === "everyday" || tierParam === "luxury") {
+      form.setValue("assetTier", tierParam);
+    }
+    if (assetTypeParam && isWizardSupportedAssetTypeId(assetTypeParam)) {
+      let tierForType: "everyday" | "luxury" | undefined =
+        tierParam === "everyday" || tierParam === "luxury" ? tierParam : undefined;
+      if (!tierForType) {
+        const luxuryOk = assetTypeAllowedForSellerTier(assetTypeParam, "luxury");
+        const everydayOk = assetTypeAllowedForSellerTier(assetTypeParam, "everyday");
+        if (luxuryOk && !everydayOk) tierForType = "luxury";
+        else if (everydayOk && !luxuryOk) tierForType = "everyday";
+      }
+      if (tierForType) form.setValue("assetTier", tierForType);
+      form.setValue("assetTypeId", assetTypeParam);
+      const match = assetTypes.find((t) => t.id === assetTypeParam);
+      if (match?.category) setSelectedCategory(match.category);
+      setWizardStep(2);
+    } else if (tierParam) {
+      setWizardStep(1);
+    }
+  }, [assetTypes, form, searchString]);
 
   useEffect(() => {
     setWizardStep((i) => Math.min(i, Math.max(0, wizardSteps.length - 1)));
@@ -918,7 +950,7 @@ function NewEstimatePageInner({
         onSuccess: (result) => {
           queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetEstimateStatsQueryKey() });
-          setLocation(`/estimates/${result.id}`);
+          setLocation(`/estimates/${result.id}/welcome`);
         },
         onError: (err: unknown) => {
           const capped = describeValuationGateError(err);

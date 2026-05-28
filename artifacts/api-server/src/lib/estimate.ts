@@ -14,6 +14,8 @@ import type {
 import { logger } from "./logger";
 import { searchNews, buildNewsQueries, type NewsArticle } from "./news";
 import { sanitizeComparables } from "./comparables";
+import { computePortfolioAnalytics } from "./portfolioAnalytics";
+import { computeTraderAnalytics } from "./traderAnalytics";
 import { fetchInternalArchiveContext } from "./internalArchiveSignals";
 import { buildStoredLineage } from "./valuationLineage";
 
@@ -641,6 +643,28 @@ export async function generateEstimate(
     report: core.report,
     tier,
     ...(tier === "pro" && includeSellerPlaybook ? { proInsights: core.proInsights } : {}),
+    portfolioAnalytics: computePortfolioAnalytics({
+      input,
+      assetType,
+      comparables: sanitizeComparables(core.comparables),
+      marketSignals: core.marketSignals ?? [],
+      baselineMid: Math.round(core.baselineMid),
+      adjustedMid,
+      adjustedLow,
+      adjustedHigh,
+      createdAt: new Date(),
+    }),
+    ...(includeSellerPlaybook
+      ? {
+          traderAnalytics: computeTraderAnalytics({
+            input,
+            adjustedMid,
+            adjustedLow,
+            adjustedHigh,
+            baselineMid: Math.round(core.baselineMid),
+          }),
+        }
+      : {}),
   };
 
   return { estimate, lineage };

@@ -82,6 +82,7 @@
     "@clerk/react": "^6.4.5",
     "@clerk/themes": "^2.4.57",
     "@workspace/marketplace-regions": "workspace:*",
+    "heic2any": "0.0.4",
     "react-globe.gl": "^2.37.1",
     "three": "^0.184.0"
   }

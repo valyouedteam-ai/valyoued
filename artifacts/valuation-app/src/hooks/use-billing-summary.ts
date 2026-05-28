@@ -25,6 +25,8 @@ function devSimulatedMeBilling(planSlug: StubBillingPlanSlug, hasInheritanceAddo
     valuationsMonthLimit,
     valuationsRemainingFree,
     hasPaidValuationTier,
+    canUsePortfolioAnalytics: hasPaidValuationTier,
+    canUseTraderWorkspace: planSlug === "professional",
     hasInheritanceAddon,
     comparableUiMode: hasPaidValuationTier ? "full" : "preview",
   };
@@ -41,6 +43,8 @@ export type MeBillingResponse = {
   valuationsMonthLimit: number | null;
   valuationsRemainingFree: number | null;
   hasPaidValuationTier: boolean;
+  canUsePortfolioAnalytics?: boolean;
+  canUseTraderWorkspace?: boolean;
   /** Separate inheritance ledger billing (standalone Stripe subscription). */
   hasInheritanceAddon?: boolean;
   /** comparable grid: preview shows first two comps for unsubscribed Everyday accounts on free-tier snapshots. */

@@ -18,21 +18,37 @@ import type {
 
 import type {
   AssetType,
+  BatchRepriceCheckBody,
+  BusinessReport,
   CreateEstimate429,
+  CreateInventoryItemBody,
+  CreateMarketWatch403,
+  CreateMarketWatchBody,
   CreatePortfolio403,
   CreatePortfolioBody,
   DeleteListingDraft200,
+  DeleteMarketWatch200,
   EstimateInput,
   EstimateResult,
   EstimateStats,
   EstimateSummary,
   FxRatesResponse,
   GenerateListingInput,
+  GetBusinessReportParams,
   HealthStatus,
+  InventoryItem,
   ListingDraft,
+  MarketWatch,
   PatchEstimateBody,
+  PatchInventoryItemBody,
+  PatchNotifications200,
+  PatchNotificationsBody,
   Portfolio,
+  RefineEstimate403,
+  RefineEstimateBody,
   Region,
+  RepriceSuggestion,
+  UserNotification,
   VisionExtractInput,
   VisionExtractResult,
 } from "./api.schemas";
@@ -684,6 +700,93 @@ export const usePatchEstimate = <
 };
 
 /**
+ * @summary Re-run valuation with enriched input (Everyday+ or Professional)
+ */
+export const getRefineEstimateUrl = (id: string) => {
+  return `/api/estimates/${id}/refine`;
+};
+
+export const refineEstimate = async (
+  id: string,
+  refineEstimateBody: RefineEstimateBody,
+  options?: RequestInit,
+): Promise<EstimateResult> => {
+  return customFetch<EstimateResult>(getRefineEstimateUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(refineEstimateBody),
+  });
+};
+
+export const getRefineEstimateMutationOptions = <
+  TError = ErrorType<RefineEstimate403>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refineEstimate>>,
+    TError,
+    { id: string; data: BodyType<RefineEstimateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof refineEstimate>>,
+  TError,
+  { id: string; data: BodyType<RefineEstimateBody> },
+  TContext
+> => {
+  const mutationKey = ["refineEstimate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof refineEstimate>>,
+    { id: string; data: BodyType<RefineEstimateBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return refineEstimate(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RefineEstimateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof refineEstimate>>
+>;
+export type RefineEstimateMutationBody = BodyType<RefineEstimateBody>;
+export type RefineEstimateMutationError = ErrorType<RefineEstimate403>;
+
+/**
+ * @summary Re-run valuation with enriched input (Everyday+ or Professional)
+ */
+export const useRefineEstimate = <
+  TError = ErrorType<RefineEstimate403>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refineEstimate>>,
+    TError,
+    { id: string; data: BodyType<RefineEstimateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof refineEstimate>>,
+  TError,
+  { id: string; data: BodyType<RefineEstimateBody> },
+  TContext
+> => {
+  return useMutation(getRefineEstimateMutationOptions(options));
+};
+
+/**
  * @summary List portfolio workspaces (primary is auto-created)
  */
 export const getListPortfoliosUrl = () => {
@@ -927,6 +1030,843 @@ export function useGetEstimateStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List in-app portfolio alerts
+ */
+export const getListNotificationsUrl = () => {
+  return `/api/notifications`;
+};
+
+export const listNotifications = async (
+  options?: RequestInit,
+): Promise<UserNotification[]> => {
+  return customFetch<UserNotification[]>(getListNotificationsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListNotificationsQueryKey = () => {
+  return [`/api/notifications`] as const;
+};
+
+export const getListNotificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listNotifications>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listNotifications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListNotificationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listNotifications>>
+  > = ({ signal }) => listNotifications({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listNotifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListNotificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listNotifications>>
+>;
+export type ListNotificationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List in-app portfolio alerts
+ */
+
+export function useListNotifications<
+  TData = Awaited<ReturnType<typeof listNotifications>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listNotifications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListNotificationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark notifications read
+ */
+export const getPatchNotificationsUrl = () => {
+  return `/api/notifications`;
+};
+
+export const patchNotifications = async (
+  patchNotificationsBody: PatchNotificationsBody,
+  options?: RequestInit,
+): Promise<PatchNotifications200> => {
+  return customFetch<PatchNotifications200>(getPatchNotificationsUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchNotificationsBody),
+  });
+};
+
+export const getPatchNotificationsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchNotifications>>,
+    TError,
+    { data: BodyType<PatchNotificationsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchNotifications>>,
+  TError,
+  { data: BodyType<PatchNotificationsBody> },
+  TContext
+> => {
+  const mutationKey = ["patchNotifications"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchNotifications>>,
+    { data: BodyType<PatchNotificationsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchNotifications(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchNotificationsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchNotifications>>
+>;
+export type PatchNotificationsMutationBody = BodyType<PatchNotificationsBody>;
+export type PatchNotificationsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark notifications read
+ */
+export const usePatchNotifications = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchNotifications>>,
+    TError,
+    { data: BodyType<PatchNotificationsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchNotifications>>,
+  TError,
+  { data: BodyType<PatchNotificationsBody> },
+  TContext
+> => {
+  return useMutation(getPatchNotificationsMutationOptions(options));
+};
+
+/**
+ * @summary List Market Watch targets (Professional)
+ */
+export const getListMarketWatchesUrl = () => {
+  return `/api/market-watches`;
+};
+
+export const listMarketWatches = async (
+  options?: RequestInit,
+): Promise<MarketWatch[]> => {
+  return customFetch<MarketWatch[]>(getListMarketWatchesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMarketWatchesQueryKey = () => {
+  return [`/api/market-watches`] as const;
+};
+
+export const getListMarketWatchesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMarketWatches>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMarketWatches>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMarketWatchesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMarketWatches>>
+  > = ({ signal }) => listMarketWatches({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMarketWatches>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMarketWatchesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMarketWatches>>
+>;
+export type ListMarketWatchesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List Market Watch targets (Professional)
+ */
+
+export function useListMarketWatches<
+  TData = Awaited<ReturnType<typeof listMarketWatches>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMarketWatches>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMarketWatchesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a Market Watch target (Professional)
+ */
+export const getCreateMarketWatchUrl = () => {
+  return `/api/market-watches`;
+};
+
+export const createMarketWatch = async (
+  createMarketWatchBody: CreateMarketWatchBody,
+  options?: RequestInit,
+): Promise<MarketWatch> => {
+  return customFetch<MarketWatch>(getCreateMarketWatchUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createMarketWatchBody),
+  });
+};
+
+export const getCreateMarketWatchMutationOptions = <
+  TError = ErrorType<CreateMarketWatch403>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMarketWatch>>,
+    TError,
+    { data: BodyType<CreateMarketWatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMarketWatch>>,
+  TError,
+  { data: BodyType<CreateMarketWatchBody> },
+  TContext
+> => {
+  const mutationKey = ["createMarketWatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMarketWatch>>,
+    { data: BodyType<CreateMarketWatchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createMarketWatch(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMarketWatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMarketWatch>>
+>;
+export type CreateMarketWatchMutationBody = BodyType<CreateMarketWatchBody>;
+export type CreateMarketWatchMutationError = ErrorType<CreateMarketWatch403>;
+
+/**
+ * @summary Create a Market Watch target (Professional)
+ */
+export const useCreateMarketWatch = <
+  TError = ErrorType<CreateMarketWatch403>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMarketWatch>>,
+    TError,
+    { data: BodyType<CreateMarketWatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMarketWatch>>,
+  TError,
+  { data: BodyType<CreateMarketWatchBody> },
+  TContext
+> => {
+  return useMutation(getCreateMarketWatchMutationOptions(options));
+};
+
+/**
+ * @summary Remove a Market Watch target
+ */
+export const getDeleteMarketWatchUrl = (id: string) => {
+  return `/api/market-watches/${id}`;
+};
+
+export const deleteMarketWatch = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeleteMarketWatch200> => {
+  return customFetch<DeleteMarketWatch200>(getDeleteMarketWatchUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMarketWatchMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMarketWatch>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMarketWatch>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteMarketWatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMarketWatch>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteMarketWatch(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMarketWatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMarketWatch>>
+>;
+
+export type DeleteMarketWatchMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a Market Watch target
+ */
+export const useDeleteMarketWatch = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMarketWatch>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMarketWatch>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteMarketWatchMutationOptions(options));
+};
+
+/**
+ * @summary List inventory pipeline items (Professional)
+ */
+export const getListInventoryItemsUrl = () => {
+  return `/api/inventory`;
+};
+
+export const listInventoryItems = async (
+  options?: RequestInit,
+): Promise<InventoryItem[]> => {
+  return customFetch<InventoryItem[]>(getListInventoryItemsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListInventoryItemsQueryKey = () => {
+  return [`/api/inventory`] as const;
+};
+
+export const getListInventoryItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listInventoryItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listInventoryItems>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListInventoryItemsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listInventoryItems>>
+  > = ({ signal }) => listInventoryItems({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listInventoryItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListInventoryItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listInventoryItems>>
+>;
+export type ListInventoryItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List inventory pipeline items (Professional)
+ */
+
+export function useListInventoryItems<
+  TData = Awaited<ReturnType<typeof listInventoryItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listInventoryItems>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListInventoryItemsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add item to inventory pipeline
+ */
+export const getCreateInventoryItemUrl = () => {
+  return `/api/inventory`;
+};
+
+export const createInventoryItem = async (
+  createInventoryItemBody: CreateInventoryItemBody,
+  options?: RequestInit,
+): Promise<InventoryItem> => {
+  return customFetch<InventoryItem>(getCreateInventoryItemUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createInventoryItemBody),
+  });
+};
+
+export const getCreateInventoryItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInventoryItem>>,
+    TError,
+    { data: BodyType<CreateInventoryItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createInventoryItem>>,
+  TError,
+  { data: BodyType<CreateInventoryItemBody> },
+  TContext
+> => {
+  const mutationKey = ["createInventoryItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createInventoryItem>>,
+    { data: BodyType<CreateInventoryItemBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createInventoryItem(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateInventoryItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createInventoryItem>>
+>;
+export type CreateInventoryItemMutationBody = BodyType<CreateInventoryItemBody>;
+export type CreateInventoryItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add item to inventory pipeline
+ */
+export const useCreateInventoryItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInventoryItem>>,
+    TError,
+    { data: BodyType<CreateInventoryItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createInventoryItem>>,
+  TError,
+  { data: BodyType<CreateInventoryItemBody> },
+  TContext
+> => {
+  return useMutation(getCreateInventoryItemMutationOptions(options));
+};
+
+/**
+ * @summary Update inventory stage or pricing fields
+ */
+export const getPatchInventoryItemUrl = (id: string) => {
+  return `/api/inventory/${id}`;
+};
+
+export const patchInventoryItem = async (
+  id: string,
+  patchInventoryItemBody: PatchInventoryItemBody,
+  options?: RequestInit,
+): Promise<InventoryItem> => {
+  return customFetch<InventoryItem>(getPatchInventoryItemUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchInventoryItemBody),
+  });
+};
+
+export const getPatchInventoryItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchInventoryItem>>,
+    TError,
+    { id: string; data: BodyType<PatchInventoryItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchInventoryItem>>,
+  TError,
+  { id: string; data: BodyType<PatchInventoryItemBody> },
+  TContext
+> => {
+  const mutationKey = ["patchInventoryItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchInventoryItem>>,
+    { id: string; data: BodyType<PatchInventoryItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return patchInventoryItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchInventoryItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchInventoryItem>>
+>;
+export type PatchInventoryItemMutationBody = BodyType<PatchInventoryItemBody>;
+export type PatchInventoryItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update inventory stage or pricing fields
+ */
+export const usePatchInventoryItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchInventoryItem>>,
+    TError,
+    { id: string; data: BodyType<PatchInventoryItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchInventoryItem>>,
+  TError,
+  { id: string; data: BodyType<PatchInventoryItemBody> },
+  TContext
+> => {
+  return useMutation(getPatchInventoryItemMutationOptions(options));
+};
+
+/**
+ * @summary Exportable business report snapshot (Professional)
+ */
+export const getGetBusinessReportUrl = (params?: GetBusinessReportParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/business?${stringifiedParams}`
+    : `/api/reports/business`;
+};
+
+export const getBusinessReport = async (
+  params?: GetBusinessReportParams,
+  options?: RequestInit,
+): Promise<BusinessReport> => {
+  return customFetch<BusinessReport>(getGetBusinessReportUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBusinessReportQueryKey = (
+  params?: GetBusinessReportParams,
+) => {
+  return [`/api/reports/business`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetBusinessReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBusinessReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetBusinessReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBusinessReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetBusinessReportQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBusinessReport>>
+  > = ({ signal }) => getBusinessReport(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBusinessReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBusinessReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBusinessReport>>
+>;
+export type GetBusinessReportQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Exportable business report snapshot (Professional)
+ */
+
+export function useGetBusinessReport<
+  TData = Awaited<ReturnType<typeof getBusinessReport>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetBusinessReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBusinessReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBusinessReportQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Batch repricing check for inventory (Professional)
+ */
+export const getBatchRepriceCheckUrl = () => {
+  return `/api/estimates/batch-reprice-check`;
+};
+
+export const batchRepriceCheck = async (
+  batchRepriceCheckBody: BatchRepriceCheckBody,
+  options?: RequestInit,
+): Promise<RepriceSuggestion[]> => {
+  return customFetch<RepriceSuggestion[]>(getBatchRepriceCheckUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(batchRepriceCheckBody),
+  });
+};
+
+export const getBatchRepriceCheckMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof batchRepriceCheck>>,
+    TError,
+    { data: BodyType<BatchRepriceCheckBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof batchRepriceCheck>>,
+  TError,
+  { data: BodyType<BatchRepriceCheckBody> },
+  TContext
+> => {
+  const mutationKey = ["batchRepriceCheck"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof batchRepriceCheck>>,
+    { data: BodyType<BatchRepriceCheckBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return batchRepriceCheck(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BatchRepriceCheckMutationResult = NonNullable<
+  Awaited<ReturnType<typeof batchRepriceCheck>>
+>;
+export type BatchRepriceCheckMutationBody = BodyType<BatchRepriceCheckBody>;
+export type BatchRepriceCheckMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Batch repricing check for inventory (Professional)
+ */
+export const useBatchRepriceCheck = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof batchRepriceCheck>>,
+    TError,
+    { data: BodyType<BatchRepriceCheckBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof batchRepriceCheck>>,
+  TError,
+  { data: BodyType<BatchRepriceCheckBody> },
+  TContext
+> => {
+  return useMutation(getBatchRepriceCheckMutationOptions(options));
+};
 
 /**
  * @summary Extract asset attributes from an uploaded photo

@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Globe2, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { LandingIntroOverlay } from "@/components/marketing/LandingIntroOverlay";
+import { ProductWalkthrough } from "@/components/marketing/ProductWalkthrough";
 import { MarketingTopNav } from "@/components/layout/MarketingTopNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,23 +23,54 @@ const item = {
   hidden: { opacity: 0, y: 12 },
 };
 
+const SCROLL_DEPTH_TO_UNLOCK = 0.58;
+
 export default function LandingPage() {
   const reduceMotion = useReducedMotion();
   const landingIntroSentinelRef = useRef<HTMLDivElement | null>(null);
   const [landingIntroUnlocked, setLandingIntroUnlocked] = useState(false);
 
   useEffect(() => {
-    if (reduceMotion) return;
+    if (reduceMotion) {
+      setLandingIntroUnlocked(true);
+      return;
+    }
+
+    function scrollDepth(): number {
+      const doc = document.documentElement;
+      const maxScroll = doc.scrollHeight - window.innerHeight;
+      if (maxScroll <= 0) return 1;
+      return window.scrollY / maxScroll;
+    }
+
+    function maybeUnlock(fromSentinel: boolean) {
+      if (fromSentinel && scrollDepth() >= SCROLL_DEPTH_TO_UNLOCK) {
+        setLandingIntroUnlocked(true);
+      }
+    }
+
     const el = landingIntroSentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) setLandingIntroUnlocked(true);
-      },
-      { root: null, rootMargin: "0px 0px -8% 0px", threshold: 0 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    let obs: IntersectionObserver | null = null;
+    if (el) {
+      obs = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) maybeUnlock(true);
+        },
+        { root: null, rootMargin: "0px 0px 0px 0px", threshold: 0.1 },
+      );
+      obs.observe(el);
+    }
+
+    const onScroll = () => {
+      if (scrollDepth() >= SCROLL_DEPTH_TO_UNLOCK) setLandingIntroUnlocked(true);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      obs?.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [reduceMotion]);
 
   return (
@@ -155,41 +187,9 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* The intro overlay only arms after viewers scroll toward the story strip below so the headline and Globe stay first-run. */}
-      <div ref={landingIntroSentinelRef} className="h-px w-full max-w-6xl mx-auto shrink-0" aria-hidden />
+      <ProductWalkthrough />
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 pb-24 sm:px-6">
-        <div className="grid gap-5 md:grid-cols-3">
-          {[
-            {
-              icon: Globe2,
-              title: "Compare markets",
-            },
-            {
-              icon: Zap,
-              title: "Your photo fills the blanks",
-            },
-            {
-              icon: ShieldCheck,
-              title: "Listing drafts that feel human",
-            },
-          ].map((f) => (
-            <motion.div
-              key={f.title}
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: reduceMotion ? 0 : 0.35 }}
-              className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                <f.icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 font-semibold tracking-tight">{f.title}</h3>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      <div ref={landingIntroSentinelRef} className="h-px w-full max-w-6xl mx-auto shrink-0" aria-hidden />
 
       <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-border/70 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:px-6">
         <span>© {new Date().getFullYear()} ValYoued</span>

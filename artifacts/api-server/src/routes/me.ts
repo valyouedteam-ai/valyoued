@@ -123,6 +123,8 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
       valuationsMonthLimit: ent.valuationsMonthLimit,
       valuationsRemainingFree: ent.valuationsRemainingFree,
       hasPaidValuationTier: ent.hasPaidValuationTier,
+      canUsePortfolioAnalytics: ent.canUsePortfolioAnalytics,
+      canUseTraderWorkspace: ent.canUseTraderWorkspace,
       comparableUiMode: ent.hasPaidValuationTier ? ("full" as const) : ("preview" as const),
     });
     return;
@@ -143,6 +145,8 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
     valuationsMonthLimit: ent.valuationsMonthLimit,
     valuationsRemainingFree: ent.valuationsRemainingFree,
     hasPaidValuationTier: ent.hasPaidValuationTier,
+    canUsePortfolioAnalytics: ent.canUsePortfolioAnalytics,
+    canUseTraderWorkspace: ent.canUseTraderWorkspace,
     comparableUiMode: ent.hasPaidValuationTier ? ("full" as const) : ("preview" as const),
   });
 });

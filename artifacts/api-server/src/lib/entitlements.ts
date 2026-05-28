@@ -52,6 +52,10 @@ export interface UserEntitlements {
   canUseAdvancedSellingReco: boolean;
   /** Portfolio value-change alerts: Everyday+ or Professional. */
   canUseMonitorEmailAlerts: boolean;
+  /** Portfolio analytics, refine flow, health strip: Everyday+ or Professional. */
+  canUsePortfolioAnalytics: boolean;
+  /** Market Watch, inventory pipeline, business reports: Professional only. */
+  canUseTraderWorkspace: boolean;
 }
 
 export function classifyInheritanceAddonPrice(priceId: string): boolean {
@@ -143,6 +147,8 @@ function applyDevelopmentBillingOverlay(ent: UserEntitlements, overlay: { planSl
     canUseInternationalArbitrage: hasPaidValuationTier,
     canUseAdvancedSellingReco: planSlug === "professional",
     canUseMonitorEmailAlerts: hasPaidValuationTier,
+    canUsePortfolioAnalytics: hasPaidValuationTier,
+    canUseTraderWorkspace: planSlug === "professional",
   };
 }
 
@@ -166,6 +172,8 @@ async function resolveAuthStubBillingEntitlements(userId: string, planSlug: Plan
     canUseInternationalArbitrage: hasPaidValuationTier,
     canUseAdvancedSellingReco: planSlug === "professional",
     canUseMonitorEmailAlerts: hasPaidValuationTier,
+    canUsePortfolioAnalytics: hasPaidValuationTier,
+    canUseTraderWorkspace: planSlug === "professional",
   };
 }
 
@@ -205,6 +213,8 @@ export async function resolveUserEntitlements(userId: string, req?: Request): Pr
     canUseInternationalArbitrage: hasPaidValuationTier,
     canUseAdvancedSellingReco: planSlug === "professional",
     canUseMonitorEmailAlerts: hasPaidValuationTier,
+    canUsePortfolioAnalytics: hasPaidValuationTier,
+    canUseTraderWorkspace: planSlug === "professional",
   };
 
   const devOverlay = currentDevelopmentBillingPlanOverlay(req);

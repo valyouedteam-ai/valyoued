@@ -12,12 +12,15 @@ export const CURATED_ASSET_TYPE_IDS = [
   "tablet",
   "laptop",
   "luxury-watch",
+  "vintage-watch",
   "camera",
   "car",
   "sneakers",
   "designer-handbag",
   "fine-jewelry",
   "fine-art",
+  "wine-spirits",
+  "trading-cards",
 ] as const;
 
 export type CuratedAssetTypeId = (typeof CURATED_ASSET_TYPE_IDS)[number];

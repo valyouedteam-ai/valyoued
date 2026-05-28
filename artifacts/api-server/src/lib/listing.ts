@@ -89,7 +89,8 @@ const PROFILES: Record<Platform, PlatformProfile> = {
     toneRules:
       "Spec-led and credible. One short first-person intro is fine, then service history, MOT, key features, mileage, owner count. No emojis.",
     titleHint: "Year Make Model Trim, such as '2019 BMW M2 Competition DCT'.",
-    bodyHint: "Personal intro if natural, then history, condition and any known issues, mods, paperwork, viewing.",
+    bodyHint:
+      "Personal intro if natural, then history, condition and any known issues with explicit defect wording (scratches, dents, warning lights), mods, paperwork, viewing.",
   },
   chrono24: {
     name: "Chrono24",

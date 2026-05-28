@@ -13,6 +13,7 @@ import {
   ListAssetTypesResponse,
   ListEstimatesResponse,
   ListRegionsResponse,
+  RefineEstimateBody,
 } from "@workspace/api-zod";
 import { ASSET_TYPES, getAssetType } from "../lib/assetTypes";
 import { REGIONS, getRegion } from "../lib/regions";
@@ -32,6 +33,7 @@ import {
 } from "../lib/entitlements";
 import { getPortfolioByIdForUser, resolveDefaultPortfolioId } from "../lib/portfoliosService";
 import { computeEstimateStatsFromRows } from "../lib/estimateStatsRollup";
+import { summaryFieldsFromStored } from "../lib/portfolioAnalytics";
 import { mergeEstimateResultFromRow } from "../lib/estimateResultMerge";
 
 const router: IRouter = Router();
@@ -68,6 +70,12 @@ router.get("/estimates", async (req, res): Promise<void> => {
   const summaries = rows.map((r) => {
     const attrs = readAttributesFromStoredResult(r.result);
     const portfolioShelf = portfolioShelfFromEstimate(attrs, r.assetTypeId);
+    const extra = summaryFieldsFromStored(r.result, {
+      baselineMid: r.baselineMid,
+      adjustedMid: r.adjustedMid,
+      assetTypeId: r.assetTypeId,
+      createdAt: r.createdAt,
+    });
     return {
       id: r.id,
       title: r.title,
@@ -83,6 +91,7 @@ router.get("/estimates", async (req, res): Promise<void> => {
       createdAt: r.createdAt.toISOString(),
       portfolioId: r.portfolioId ?? null,
       intent: r.intent === "hold" || r.intent === "monitor" || r.intent === "sell" ? r.intent : null,
+      ...extra,
     };
   });
   res.json(ListEstimatesResponse.parse(summaries));
@@ -102,6 +111,9 @@ router.get("/estimates/stats", async (req, res): Promise<void> => {
       currency: r.currency,
       assetTypeName: r.assetTypeName,
       bestArbitrageRegion: r.bestArbitrageRegion,
+      assetTypeId: r.assetTypeId,
+      createdAt: r.createdAt,
+      result: r.result,
     })),
     mult,
   );
@@ -272,6 +284,82 @@ router.patch("/estimates/:id", requireAuth, async (req, res): Promise<void> => {
   }
   const merged = mergeEstimateResultFromRow(updated, updated.result);
   res.json(GetEstimateResponse.parse(merged));
+});
+
+router.post("/estimates/:id/refine", requireAuth, async (req, res): Promise<void> => {
+  const params = GetEstimateParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsedBody = RefineEstimateBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    res.status(400).json({ error: parsedBody.error.message });
+    return;
+  }
+
+  const userId = (req as AuthedRequest).userId!;
+  const ent = await resolveUserEntitlements(userId, req);
+  if (!ent.canUsePortfolioAnalytics) {
+    res.status(403).json({ error: "Refine valuations requires Everyday+ or Professional." });
+    return;
+  }
+
+  const [row] = await db
+    .select()
+    .from(estimatesTable)
+    .where(and(eq(estimatesTable.id, params.data.id), eq(estimatesTable.userId, userId)));
+  if (!row) {
+    res.status(404).json({ error: "Estimate not found" });
+    return;
+  }
+
+  const merged = mergeEstimateResultFromRow(row, row.result);
+  const input = {
+    ...merged.input,
+    ...(parsedBody.data.brand !== undefined ? { brand: parsedBody.data.brand } : {}),
+    ...(parsedBody.data.model !== undefined ? { model: parsedBody.data.model } : {}),
+    ...(parsedBody.data.year !== undefined ? { year: parsedBody.data.year } : {}),
+    ...(parsedBody.data.purchasePrice !== undefined ? { purchasePrice: parsedBody.data.purchasePrice } : {}),
+    ...(parsedBody.data.condition !== undefined ? { condition: parsedBody.data.condition } : {}),
+    ...(parsedBody.data.attributes !== undefined ? { attributes: parsedBody.data.attributes } : {}),
+    ...(parsedBody.data.extraFields !== undefined
+      ? {
+          extraFields: {
+            ...merged.input.extraFields,
+            ...(parsedBody.data.extraFields as Record<string, string>),
+          },
+        }
+      : {}),
+  } satisfies EstimateInput;
+
+  const assetType = getAssetType(input.assetTypeId) ?? merged.assetType;
+  const tier = valuationTierForEstimate(ent);
+  const includePlaybook = includeSellerPlaybookInEstimate(ent);
+  const computed = await generateEstimate(input, assetType, tier, includePlaybook);
+
+  const [updated] = await db
+    .update(estimatesTable)
+    .set({
+      title: input.title,
+      currency: computed.estimate.currency,
+      baselineMid: computed.estimate.baselineMid,
+      adjustedMid: computed.estimate.adjustedMid,
+      bestArbitrageRegion: computed.estimate.bestArbitrageRegion,
+      tier,
+      result: computed.estimate,
+      lineage: computed.lineage,
+    })
+    .where(and(eq(estimatesTable.id, params.data.id), eq(estimatesTable.userId, userId)))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Estimate not found" });
+    return;
+  }
+
+  const result = mergeEstimateResultFromRow(updated, updated.result);
+  res.json(GetEstimateResponse.parse(result));
 });
 
 router.get("/estimates/:id", requireAuth, async (req, res): Promise<void> => {

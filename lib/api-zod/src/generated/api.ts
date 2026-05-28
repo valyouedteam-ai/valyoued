@@ -84,6 +84,9 @@ export const ListRegionsResponse = zod.array(ListRegionsResponseItem);
 /**
  * @summary List recent estimates
  */
+export const listEstimatesResponseConfidenceScoreMin = 0;
+export const listEstimatesResponseConfidenceScoreMax = 100;
+
 export const ListEstimatesResponseItem = zod.object({
   id: zod.string(),
   title: zod.string(),
@@ -110,6 +113,18 @@ export const ListEstimatesResponseItem = zod.object({
   createdAt: zod.coerce.date(),
   portfolioId: zod.string().uuid().nullish(),
   intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
+  adjustedLow: zod.number().optional(),
+  adjustedHigh: zod.number().optional(),
+  confidenceScore: zod
+    .number()
+    .min(listEstimatesResponseConfidenceScoreMin)
+    .max(listEstimatesResponseConfidenceScoreMax)
+    .optional(),
+  resalePotential: zod.enum(["low", "moderate", "strong"]).optional(),
+  actionRecommendation: zod.enum(["sell", "hold", "insure"]).optional(),
+  valuationFreshness: zod.enum(["fresh", "aging", "stale"]).optional(),
+  receiptStatus: zod.enum(["documented", "partial", "missing"]).optional(),
+  insuranceGap: zod.boolean().optional(),
 });
 export const ListEstimatesResponse = zod.array(ListEstimatesResponseItem);
 
@@ -144,6 +159,12 @@ export const CreateEstimateBody = zod.object({
       "Workspace to attach this valuation to; defaults to primary portfolio",
     ),
 });
+
+export const createEstimateResponsePortfolioAnalyticsConfidenceScoreMin = 0;
+export const createEstimateResponsePortfolioAnalyticsConfidenceScoreMax = 100;
+
+export const createEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin = 0;
+export const createEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax = 100;
 
 export const CreateEstimateResponse = zod.object({
   id: zod.string(),
@@ -373,6 +394,53 @@ export const CreateEstimateResponse = zod.object({
     .describe(
       "Helpfulness signal returned by the API (timestamps assigned server-side).",
     ),
+  portfolioAnalytics: zod
+    .object({
+      confidenceScore: zod
+        .number()
+        .min(createEstimateResponsePortfolioAnalyticsConfidenceScoreMin)
+        .max(createEstimateResponsePortfolioAnalyticsConfidenceScoreMax),
+      fieldCompleteness: zod.object({
+        completed: zod.array(zod.string()),
+        missing: zod.array(zod.string()),
+        pct: zod
+          .number()
+          .min(createEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin)
+          .max(createEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax),
+      }),
+      resalePotential: zod.enum(["low", "moderate", "strong"]),
+      actionRecommendation: zod.enum(["sell", "hold", "insure"]),
+      valuationFreshness: zod.enum(["fresh", "aging", "stale"]),
+      receiptStatus: zod.enum(["documented", "partial", "missing"]),
+      insuranceGap: zod.boolean().optional(),
+      confidenceBreakdown: zod
+        .object({
+          fieldCompleteness: zod.number().optional(),
+          compQuality: zod.number().optional(),
+          marketStability: zod.number().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  traderAnalytics: zod
+    .object({
+      dealScore: zod.enum([
+        "strong_buy",
+        "good_margin",
+        "fair",
+        "risky",
+        "overpriced",
+        "avoid",
+      ]),
+      maxBuyPrice: zod.number(),
+      expectedResale: zod.number(),
+      expectedMargin: zod
+        .number()
+        .optional()
+        .describe("Percent margin when cost basis is known"),
+      costBasis: zod.number().optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -381,6 +449,12 @@ export const CreateEstimateResponse = zod.object({
 export const GetEstimateParams = zod.object({
   id: zod.coerce.string(),
 });
+
+export const getEstimateResponsePortfolioAnalyticsConfidenceScoreMin = 0;
+export const getEstimateResponsePortfolioAnalyticsConfidenceScoreMax = 100;
+
+export const getEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin = 0;
+export const getEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax = 100;
 
 export const GetEstimateResponse = zod.object({
   id: zod.string(),
@@ -610,6 +684,53 @@ export const GetEstimateResponse = zod.object({
     .describe(
       "Helpfulness signal returned by the API (timestamps assigned server-side).",
     ),
+  portfolioAnalytics: zod
+    .object({
+      confidenceScore: zod
+        .number()
+        .min(getEstimateResponsePortfolioAnalyticsConfidenceScoreMin)
+        .max(getEstimateResponsePortfolioAnalyticsConfidenceScoreMax),
+      fieldCompleteness: zod.object({
+        completed: zod.array(zod.string()),
+        missing: zod.array(zod.string()),
+        pct: zod
+          .number()
+          .min(getEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin)
+          .max(getEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax),
+      }),
+      resalePotential: zod.enum(["low", "moderate", "strong"]),
+      actionRecommendation: zod.enum(["sell", "hold", "insure"]),
+      valuationFreshness: zod.enum(["fresh", "aging", "stale"]),
+      receiptStatus: zod.enum(["documented", "partial", "missing"]),
+      insuranceGap: zod.boolean().optional(),
+      confidenceBreakdown: zod
+        .object({
+          fieldCompleteness: zod.number().optional(),
+          compQuality: zod.number().optional(),
+          marketStability: zod.number().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  traderAnalytics: zod
+    .object({
+      dealScore: zod.enum([
+        "strong_buy",
+        "good_margin",
+        "fair",
+        "risky",
+        "overpriced",
+        "avoid",
+      ]),
+      maxBuyPrice: zod.number(),
+      expectedResale: zod.number(),
+      expectedMargin: zod
+        .number()
+        .optional()
+        .describe("Percent margin when cost basis is known"),
+      costBasis: zod.number().optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -640,6 +761,12 @@ export const PatchEstimateBody = zod
   .describe(
     "Provide at least one of intent, valuationOutcome, or valuationFeedback (or any combination).",
   );
+
+export const patchEstimateResponsePortfolioAnalyticsConfidenceScoreMin = 0;
+export const patchEstimateResponsePortfolioAnalyticsConfidenceScoreMax = 100;
+
+export const patchEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin = 0;
+export const patchEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax = 100;
 
 export const PatchEstimateResponse = zod.object({
   id: zod.string(),
@@ -869,6 +996,353 @@ export const PatchEstimateResponse = zod.object({
     .describe(
       "Helpfulness signal returned by the API (timestamps assigned server-side).",
     ),
+  portfolioAnalytics: zod
+    .object({
+      confidenceScore: zod
+        .number()
+        .min(patchEstimateResponsePortfolioAnalyticsConfidenceScoreMin)
+        .max(patchEstimateResponsePortfolioAnalyticsConfidenceScoreMax),
+      fieldCompleteness: zod.object({
+        completed: zod.array(zod.string()),
+        missing: zod.array(zod.string()),
+        pct: zod
+          .number()
+          .min(patchEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin)
+          .max(patchEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax),
+      }),
+      resalePotential: zod.enum(["low", "moderate", "strong"]),
+      actionRecommendation: zod.enum(["sell", "hold", "insure"]),
+      valuationFreshness: zod.enum(["fresh", "aging", "stale"]),
+      receiptStatus: zod.enum(["documented", "partial", "missing"]),
+      insuranceGap: zod.boolean().optional(),
+      confidenceBreakdown: zod
+        .object({
+          fieldCompleteness: zod.number().optional(),
+          compQuality: zod.number().optional(),
+          marketStability: zod.number().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  traderAnalytics: zod
+    .object({
+      dealScore: zod.enum([
+        "strong_buy",
+        "good_margin",
+        "fair",
+        "risky",
+        "overpriced",
+        "avoid",
+      ]),
+      maxBuyPrice: zod.number(),
+      expectedResale: zod.number(),
+      expectedMargin: zod
+        .number()
+        .optional()
+        .describe("Percent margin when cost basis is known"),
+      costBasis: zod.number().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Re-run valuation with enriched input (Everyday+ or Professional)
+ */
+export const RefineEstimateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RefineEstimateBody = zod.object({
+  brand: zod.string().optional(),
+  model: zod.string().optional(),
+  year: zod.number().optional(),
+  purchasePrice: zod.number().optional(),
+  condition: zod.number().optional(),
+  attributes: zod.string().optional(),
+  extraFields: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+export const refineEstimateResponsePortfolioAnalyticsConfidenceScoreMin = 0;
+export const refineEstimateResponsePortfolioAnalyticsConfidenceScoreMax = 100;
+
+export const refineEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin = 0;
+export const refineEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax = 100;
+
+export const RefineEstimateResponse = zod.object({
+  id: zod.string(),
+  createdAt: zod.coerce.date(),
+  input: zod.object({
+    assetTypeId: zod.string(),
+    title: zod.string(),
+    brand: zod.string().optional(),
+    model: zod.string().optional(),
+    year: zod.number().optional(),
+    condition: zod.number(),
+    purchasePrice: zod
+      .number()
+      .optional()
+      .describe("Original purchase price in the seller's local currency"),
+    currentRegion: zod.string(),
+    currency: zod
+      .string()
+      .describe("ISO 4217 currency code derived from currentRegion"),
+    attributes: zod.string().optional(),
+    extraFields: zod
+      .record(zod.string(), zod.string())
+      .optional()
+      .describe(
+        "Free-form key\/value attributes captured from the dynamic form",
+      ),
+    portfolioId: zod
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        "Workspace to attach this valuation to; defaults to primary portfolio",
+      ),
+  }),
+  assetType: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    category: zod
+      .string()
+      .describe(
+        'Group label (such as \"Watches & Jewelry\", \"Vehicles\", \"Real Estate\")',
+      ),
+    tagline: zod.string(),
+    fields: zod.array(
+      zod.object({
+        key: zod.string(),
+        label: zod.string(),
+        type: zod.enum(["text", "number", "select", "textarea"]),
+        required: zod.boolean(),
+        placeholder: zod.string().optional(),
+        help: zod.string().optional(),
+        options: zod.array(zod.string()).optional(),
+      }),
+    ),
+    exampleAttributes: zod.string(),
+    internationallyTradeable: zod
+      .boolean()
+      .describe("Whether this asset is practical to ship\/sell across borders"),
+  }),
+  currency: zod.string(),
+  baselineLow: zod.number(),
+  baselineHigh: zod.number(),
+  baselineMid: zod.number(),
+  comparables: zod.array(
+    zod.object({
+      source: zod.string(),
+      description: zod.string(),
+      price: zod.number().describe("Price in the result currency"),
+      year: zod.number(),
+      url: zod.string().optional(),
+      conditionCue: zod
+        .string()
+        .optional()
+        .describe(
+          "Condition \/ completeness shorthand for this comp (not the seller copy)",
+        ),
+      locationOrChannel: zod
+        .string()
+        .optional()
+        .describe(
+          "Geography or outlet shorthand (EU consignment, US auction floor, Japan Yahoo, etc.)",
+        ),
+      transactionTypeGuess: zod
+        .enum(["sold_estimate", "asking_price", "unknown"])
+        .optional(),
+      relevanceExplanation: zod
+        .string()
+        .optional()
+        .describe(
+          "One concise line tying this comp to the wizard inputs or tier hint",
+        ),
+      matchTier: zod.enum(["strong", "moderate", "broadAnalogue"]).optional(),
+      imageUrl: zod
+        .string()
+        .optional()
+        .describe(
+          "Optional HTTPS thumbnail when the cited evidence page has a stable image URL",
+        ),
+    }),
+  ),
+  marketSignals: zod.array(
+    zod.object({
+      label: zod.string(),
+      value: zod.string(),
+      impact: zod.number(),
+      rationale: zod.string(),
+    }),
+  ),
+  worldEvents: zod.array(
+    zod.object({
+      title: zod.string(),
+      summary: zod.string(),
+      sentiment: zod.enum(["positive", "negative", "neutral"]),
+      scope: zod
+        .string()
+        .describe('Typical values: \"Global\", \"United Kingdom\", \"EU\"'),
+      source: zod.string().optional(),
+      url: zod.string().optional(),
+      publishedAt: zod
+        .string()
+        .optional()
+        .describe("Article publication date (RFC 2822 or ISO 8601)"),
+    }),
+  ),
+  netMarketFactor: zod.number(),
+  adjustedLow: zod.number(),
+  adjustedHigh: zod.number(),
+  adjustedMid: zod.number(),
+  arbitrage: zod.array(
+    zod.object({
+      region: zod.string(),
+      marketplace: zod.string(),
+      estimatedSalePrice: zod.number(),
+      estimatedShipping: zod.number(),
+      estimatedFees: zod.number(),
+      estimatedDuties: zod.number(),
+      netToSeller: zod.number(),
+      currency: zod
+        .string()
+        .describe(
+          "Currency for the values in this row (matches result currency)",
+        ),
+      demandNote: zod.string(),
+      recommended: zod.boolean(),
+    }),
+  ),
+  bestArbitrageRegion: zod.string(),
+  report: zod.object({
+    headline: zod.string(),
+    summary: zod.string(),
+    baselineNarrative: zod.string(),
+    marketNarrative: zod.string(),
+    arbitrageNarrative: zod.string(),
+    worldEventsNarrative: zod.string(),
+    finalNarrative: zod.string(),
+  }),
+  tier: zod.enum(["free", "pro"]),
+  proInsights: zod
+    .object({
+      negotiationTactics: zod.array(
+        zod.object({
+          title: zod.string(),
+          detail: zod.string(),
+        }),
+      ),
+      talkingPoints: zod.array(zod.string()),
+      redFlags: zod.array(zod.string()),
+      optimalTiming: zod.string(),
+      listingTips: zod.array(zod.string()),
+      walkAwayPrice: zod.number(),
+      anchorPrice: zod.number(),
+    })
+    .optional(),
+  intent: zod.enum(["hold", "monitor", "sell"]).nullish(),
+  valuationLineage: zod
+    .object({
+      promptVersion: zod.string().optional(),
+      promptSha256: zod.string().optional(),
+      llmProvider: zod.string().optional(),
+      llmModel: zod.string().optional(),
+      retrievalSnapshotId: zod
+        .string()
+        .nullish()
+        .describe(
+          "Stable id over the retrieved internal-comp slice used for prompt context when enabled.",
+        ),
+      internalArchiveMatchCount: zod.number().optional(),
+      newsArticleCount: zod.number().optional(),
+      structuredFallback: zod
+        .boolean()
+        .optional()
+        .describe(
+          "True when heuristic fallback ran instead of a successful structured LLM parse.",
+        ),
+      experimentKey: zod
+        .string()
+        .nullish()
+        .describe(
+          "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
+        ),
+    })
+    .optional()
+    .describe(
+      "Server-computed reproducibility metadata (prompt versioning, hashes, retrieval ids).",
+    ),
+  valuationOutcome: zod
+    .object({
+      soldPrice: zod.number(),
+      currency: zod
+        .string()
+        .optional()
+        .describe(
+          "ISO 4217 when different from valuation currency; omit to match valuation row currency.",
+        ),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "User-reported realized sale as returned by the API (timestamps assigned server-side).",
+    ),
+  valuationFeedback: zod
+    .object({
+      helpful: zod.boolean(),
+      recordedAt: zod.coerce.date(),
+    })
+    .optional()
+    .describe(
+      "Helpfulness signal returned by the API (timestamps assigned server-side).",
+    ),
+  portfolioAnalytics: zod
+    .object({
+      confidenceScore: zod
+        .number()
+        .min(refineEstimateResponsePortfolioAnalyticsConfidenceScoreMin)
+        .max(refineEstimateResponsePortfolioAnalyticsConfidenceScoreMax),
+      fieldCompleteness: zod.object({
+        completed: zod.array(zod.string()),
+        missing: zod.array(zod.string()),
+        pct: zod
+          .number()
+          .min(refineEstimateResponsePortfolioAnalyticsFieldCompletenessPctMin)
+          .max(refineEstimateResponsePortfolioAnalyticsFieldCompletenessPctMax),
+      }),
+      resalePotential: zod.enum(["low", "moderate", "strong"]),
+      actionRecommendation: zod.enum(["sell", "hold", "insure"]),
+      valuationFreshness: zod.enum(["fresh", "aging", "stale"]),
+      receiptStatus: zod.enum(["documented", "partial", "missing"]),
+      insuranceGap: zod.boolean().optional(),
+      confidenceBreakdown: zod
+        .object({
+          fieldCompleteness: zod.number().optional(),
+          compQuality: zod.number().optional(),
+          marketStability: zod.number().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  traderAnalytics: zod
+    .object({
+      dealScore: zod.enum([
+        "strong_buy",
+        "good_margin",
+        "fair",
+        "risky",
+        "overpriced",
+        "avoid",
+      ]),
+      maxBuyPrice: zod.number(),
+      expectedResale: zod.number(),
+      expectedMargin: zod
+        .number()
+        .optional()
+        .describe("Percent margin when cost basis is known"),
+      costBasis: zod.number().optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -917,6 +1391,9 @@ currency (configured in Settings; often labeled alongside portfolio totals).
 
  * @summary Aggregate stats across saved estimates
  */
+export const getEstimateStatsResponsePortfolioHealthDiversificationScoreMin = 0;
+export const getEstimateStatsResponsePortfolioHealthDiversificationScoreMax = 100;
+
 export const GetEstimateStatsResponse = zod.object({
   count: zod.number(),
   averageBaselineUsd: zod
@@ -951,7 +1428,332 @@ export const GetEstimateStatsResponse = zod.object({
       count: zod.number(),
     }),
   ),
+  portfolioHealth: zod
+    .object({
+      totalPortfolioUsd: zod.number(),
+      valueGrowthPct: zod.number(),
+      resaleStrengthIndex: zod.number(),
+      diversificationScore: zod
+        .number()
+        .min(getEstimateStatsResponsePortfolioHealthDiversificationScoreMin)
+        .max(getEstimateStatsResponsePortfolioHealthDiversificationScoreMax),
+      underinsuredCount: zod.number(),
+      missingReceiptsCount: zod.number(),
+      needsRevaluationCount: zod.number(),
+    })
+    .optional(),
 });
+
+/**
+ * @summary List in-app portfolio alerts
+ */
+export const ListNotificationsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  kind: zod.enum([
+    "value_up",
+    "value_down",
+    "revalue",
+    "receipt",
+    "milestone",
+    "reprice",
+  ]),
+  title: zod.string(),
+  body: zod.string(),
+  estimateId: zod.string().nullish(),
+  href: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  read: zod.boolean(),
+});
+export const ListNotificationsResponse = zod.array(
+  ListNotificationsResponseItem,
+);
+
+/**
+ * @summary Mark notifications read
+ */
+export const PatchNotificationsBody = zod.object({
+  markAllRead: zod.boolean().optional(),
+  ids: zod.array(zod.string().uuid()).optional(),
+});
+
+export const PatchNotificationsResponse = zod.object({
+  updated: zod.number(),
+});
+
+/**
+ * @summary List Market Watch targets (Professional)
+ */
+export const ListMarketWatchesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  label: zod.string(),
+  assetClass: zod.string(),
+  brand: zod.string().optional(),
+  model: zod.string().optional(),
+  yearFrom: zod.number().optional(),
+  yearTo: zod.number().optional(),
+  createdAt: zod.coerce.date(),
+  snapshot: zod.object({
+    trendPoints: zod.array(
+      zod.object({
+        month: zod.string(),
+        medianPrice: zod.number(),
+      }),
+    ),
+    recentSales: zod.array(
+      zod.object({
+        price: zod.number(),
+        soldAt: zod.string().optional(),
+        platform: zod.string(),
+        condition: zod.string(),
+        daysToSell: zod.number().optional(),
+        detail: zod.string().optional(),
+      }),
+    ),
+    demandMovement: zod.enum(["rising", "stable", "softening"]),
+    avgDaysToSell: zod.number(),
+    bestPlatform: zod.string(),
+    suggestedListingPrice: zod.number(),
+    buyBelowPrice: zod.number(),
+    expectedMarginPct: zod.number(),
+    analyticsNote: zod.string().optional(),
+  }),
+});
+export const ListMarketWatchesResponse = zod.array(
+  ListMarketWatchesResponseItem,
+);
+
+/**
+ * @summary Create a Market Watch target (Professional)
+ */
+export const CreateMarketWatchBody = zod.object({
+  assetClass: zod.string(),
+  label: zod.string(),
+  brand: zod.string().optional(),
+  model: zod.string().optional(),
+  yearFrom: zod.number().optional(),
+  yearTo: zod.number().optional(),
+});
+
+export const CreateMarketWatchResponse = zod.object({
+  id: zod.string().uuid(),
+  label: zod.string(),
+  assetClass: zod.string(),
+  brand: zod.string().optional(),
+  model: zod.string().optional(),
+  yearFrom: zod.number().optional(),
+  yearTo: zod.number().optional(),
+  createdAt: zod.coerce.date(),
+  snapshot: zod.object({
+    trendPoints: zod.array(
+      zod.object({
+        month: zod.string(),
+        medianPrice: zod.number(),
+      }),
+    ),
+    recentSales: zod.array(
+      zod.object({
+        price: zod.number(),
+        soldAt: zod.string().optional(),
+        platform: zod.string(),
+        condition: zod.string(),
+        daysToSell: zod.number().optional(),
+        detail: zod.string().optional(),
+      }),
+    ),
+    demandMovement: zod.enum(["rising", "stable", "softening"]),
+    avgDaysToSell: zod.number(),
+    bestPlatform: zod.string(),
+    suggestedListingPrice: zod.number(),
+    buyBelowPrice: zod.number(),
+    expectedMarginPct: zod.number(),
+    analyticsNote: zod.string().optional(),
+  }),
+});
+
+/**
+ * @summary Remove a Market Watch target
+ */
+export const DeleteMarketWatchParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DeleteMarketWatchResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List inventory pipeline items (Professional)
+ */
+export const ListInventoryItemsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  estimateId: zod.string().nullish(),
+  title: zod.string(),
+  stage: zod.enum([
+    "sourced",
+    "purchased",
+    "in_prep",
+    "photographed",
+    "listed",
+    "offer_received",
+    "sold",
+    "unsold",
+    "returned",
+  ]),
+  costBasis: zod.number().optional(),
+  listPrice: zod.number().optional(),
+  currency: zod.string().optional(),
+  listedAt: zod.coerce.date().optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  repriceHint: zod.string().optional(),
+});
+export const ListInventoryItemsResponse = zod.array(
+  ListInventoryItemsResponseItem,
+);
+
+/**
+ * @summary Add item to inventory pipeline
+ */
+export const CreateInventoryItemBody = zod.object({
+  title: zod.string(),
+  stage: zod.enum([
+    "sourced",
+    "purchased",
+    "in_prep",
+    "photographed",
+    "listed",
+    "offer_received",
+    "sold",
+    "unsold",
+    "returned",
+  ]),
+  estimateId: zod.string().optional(),
+  costBasis: zod.number().optional(),
+  listPrice: zod.number().optional(),
+  currency: zod.string().optional(),
+});
+
+export const CreateInventoryItemResponse = zod.object({
+  id: zod.string().uuid(),
+  estimateId: zod.string().nullish(),
+  title: zod.string(),
+  stage: zod.enum([
+    "sourced",
+    "purchased",
+    "in_prep",
+    "photographed",
+    "listed",
+    "offer_received",
+    "sold",
+    "unsold",
+    "returned",
+  ]),
+  costBasis: zod.number().optional(),
+  listPrice: zod.number().optional(),
+  currency: zod.string().optional(),
+  listedAt: zod.coerce.date().optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  repriceHint: zod.string().optional(),
+});
+
+/**
+ * @summary Update inventory stage or pricing fields
+ */
+export const PatchInventoryItemParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const PatchInventoryItemBody = zod.object({
+  stage: zod
+    .enum([
+      "sourced",
+      "purchased",
+      "in_prep",
+      "photographed",
+      "listed",
+      "offer_received",
+      "sold",
+      "unsold",
+      "returned",
+    ])
+    .optional(),
+  costBasis: zod.number().optional(),
+  listPrice: zod.number().optional(),
+  listedAt: zod.coerce.date().optional(),
+});
+
+export const PatchInventoryItemResponse = zod.object({
+  id: zod.string().uuid(),
+  estimateId: zod.string().nullish(),
+  title: zod.string(),
+  stage: zod.enum([
+    "sourced",
+    "purchased",
+    "in_prep",
+    "photographed",
+    "listed",
+    "offer_received",
+    "sold",
+    "unsold",
+    "returned",
+  ]),
+  costBasis: zod.number().optional(),
+  listPrice: zod.number().optional(),
+  currency: zod.string().optional(),
+  listedAt: zod.coerce.date().optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  repriceHint: zod.string().optional(),
+});
+
+/**
+ * @summary Exportable business report snapshot (Professional)
+ */
+export const getBusinessReportQueryMonthRegExp = new RegExp("^\\d{4}-\\d{2}$");
+
+export const GetBusinessReportQueryParams = zod.object({
+  month: zod.coerce
+    .string()
+    .regex(getBusinessReportQueryMonthRegExp)
+    .optional(),
+});
+
+export const GetBusinessReportResponse = zod.object({
+  month: zod.string(),
+  monthlyProfit: zod.number().optional(),
+  inventoryValue: zod.number(),
+  slowMovingCount: zod.number(),
+  bestCategories: zod.array(
+    zod.object({
+      name: zod.string(),
+      profit: zod.number(),
+    }),
+  ),
+  taxExportRows: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  insuranceStockRows: zod
+    .array(zod.record(zod.string(), zod.unknown()))
+    .optional(),
+});
+
+/**
+ * @summary Batch repricing check for inventory (Professional)
+ */
+export const BatchRepriceCheckBody = zod.object({
+  inventoryIds: zod.array(zod.string().uuid()).optional(),
+  estimateIds: zod.array(zod.string()).optional(),
+});
+
+export const BatchRepriceCheckResponseItem = zod.object({
+  id: zod.string(),
+  title: zod.string(),
+  message: zod.string(),
+  suggestedPrice: zod.number(),
+  currentPrice: zod.number().optional(),
+});
+export const BatchRepriceCheckResponse = zod.array(
+  BatchRepriceCheckResponseItem,
+);
 
 /**
  * @summary Extract asset attributes from an uploaded photo

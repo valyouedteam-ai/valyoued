@@ -1,117 +1,88 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const INTRO_STORAGE_KEY = "valyoued.landingIntroSeen";
 
-/** Min time before the overlay can arm so hero and Globe paint first. */
-const LANDING_INTRO_ARM_DELAY_MS = 1400;
-
 type LandingIntroOverlayProps = {
   /**
-   * When true, the observer (or landing page) considers the viewer far enough along to show the opener.
-   * Typically flips once the sentinel between hero and feature cards crosses into view after a short dwell.
+   * When true, the viewer has scrolled far enough through the landing story to show the signup nudge.
    */
   unlocked: boolean;
 };
 
 /**
- * One-time per-tab splash plus signup framing. Designed to mount after unlock so the headline and Globe render first.
+ * One-time per-tab bottom banner after the product walkthrough. Non-blocking: users can keep browsing.
  */
 export function LandingIntroOverlay({ unlocked }: LandingIntroOverlayProps) {
   const reduceMotion = useReducedMotion();
-  const [armed, setArmed] = useState(false);
-  const [phase, setPhase] = useState<"splash" | "cta" | "done">("done");
+  const [visible, setVisible] = useState(false);
 
-  /** Arm splash only after landing has had a beat to settle; never block first paint above the fold. */
   useEffect(() => {
     if (reduceMotion || !unlocked) return;
-    const t = window.setTimeout(() => setArmed(true), LANDING_INTRO_ARM_DELAY_MS);
+    try {
+      if (sessionStorage.getItem(INTRO_STORAGE_KEY)) return;
+    } catch {
+      return;
+    }
+    const t = window.setTimeout(() => setVisible(true), 600);
     return () => window.clearTimeout(t);
   }, [reduceMotion, unlocked]);
 
-  useEffect(() => {
-    if (reduceMotion || !armed) return;
-    try {
-      const seen = sessionStorage.getItem(INTRO_STORAGE_KEY);
-      if (!seen) setPhase("splash");
-    } catch {
-      setPhase("done");
-    }
-  }, [reduceMotion, armed]);
-
-  useEffect(() => {
-    if (phase !== "splash" || reduceMotion) return;
-    const t = window.setTimeout(() => setPhase("cta"), 1200);
-    return () => window.clearTimeout(t);
-  }, [phase, reduceMotion]);
-
-  function dismissToLanding() {
+  function dismiss() {
     try {
       sessionStorage.setItem(INTRO_STORAGE_KEY, "done");
     } catch {
       /* ignore */
     }
-    setPhase("done");
+    setVisible(false);
   }
 
-  if (reduceMotion || phase === "done") return null;
+  if (reduceMotion || !visible) return null;
 
   return (
     <AnimatePresence>
       <motion.div
-        key="intro-shell"
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-[hsl(40,22%,96%)]/95 p-4 backdrop-blur-md"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        key="intro-banner"
+        className="fixed inset-x-0 bottom-0 z-[100] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
         transition={{ duration: 0.35 }}
         role="dialog"
-        aria-modal="true"
+        aria-modal="false"
         aria-labelledby="landing-intro-title"
       >
-        <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-8 text-center">
-          {phase === "splash" ? (
-            <motion.div
-              className="space-y-3"
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            >
-              <p id="landing-intro-title" className="font-brand text-4xl font-semibold tracking-tight text-foreground">
-                ValYoued
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Understand what you own, follow value when you want it, draft listings without starting from scratch.
-              </p>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="w-full space-y-5"
-            >
-              <div className="space-y-3">
-                <p className="text-xl font-semibold tracking-tight text-foreground">What happens next</p>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Create a free account when you&apos;re ready. Right after signup we explain the basics in plain language and ask
-                  how you&apos;ll mostly use ValYoued. Nothing here locks you into a paid plan.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Button type="button" variant="outline" size="lg" className="w-full rounded-full sm:w-auto" onClick={dismissToLanding}>
-                  Continue browsing
-                </Button>
-                <Link href="/sign-up" className="w-full sm:w-auto" onClick={dismissToLanding}>
-                  <Button variant="default" size="lg" className="w-full rounded-full">
-                    Create free account
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-          )}
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-border/80 bg-card/95 p-4 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
+          <div className="min-w-0 flex-1 space-y-1 pr-8 sm:pr-0">
+            <p id="landing-intro-title" className="text-base font-semibold tracking-tight text-foreground">
+              Ready when you are
+            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Create a free account to save valuations and pick Everyday or Professional wording. No paid plan required to
+              start.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={dismiss}>
+              Continue browsing
+            </Button>
+            <Link href="/sign-up" onClick={dismiss}>
+              <Button size="sm" className="w-full rounded-full sm:w-auto">
+                Create free account
+              </Button>
+            </Link>
+          </div>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:right-4 sm:top-4"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       </motion.div>
     </AnimatePresence>

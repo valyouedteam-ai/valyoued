@@ -14,6 +14,9 @@ import {
   PanelsTopLeft,
   Settings,
   ShieldHalf,
+  LineChart,
+  Package,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -171,6 +174,27 @@ function buildInsightNavigation(input: {
 
   if (input.paidTier) {
     rows.push(NAV_MARKETS);
+    rows.push({
+      href: "/alerts",
+      label: "Alerts",
+      icon: Bell,
+      navTitle: "Portfolio value and health notifications",
+    });
+  }
+
+  if (input.professionalPlan) {
+    rows.push({
+      href: "/market-watch",
+      label: "Watch",
+      icon: LineChart,
+      navTitle: "Market Watch niches and buy-below targets",
+    });
+    rows.push({
+      href: "/inventory",
+      label: "Inventory",
+      icon: Package,
+      navTitle: "Inventory pipeline and business exports",
+    });
   }
 
   if (input.professionalPlan) {

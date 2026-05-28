@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ArbitrageOption } from "@workspace/api-client-react";
 import {
@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
+import { RefineEstimateSheet } from "@/components/estimates/RefineEstimateSheet";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -197,9 +198,12 @@ export default function EstimateReportPage() {
   const id = params.id as string;
   const { data: billing } = useBillingSummary();
   const billingPaid = Boolean(billing?.hasPaidValuationTier);
+  const portfolioAnalytics = Boolean(billing?.canUsePortfolioAnalytics);
+  const search = useSearch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [listingOpen, setListingOpen] = useState(false);
+  const [refineOpen, setRefineOpen] = useState(false);
   const [intentCoachOpen, setIntentCoachOpen] = useState(false);
   const [openedBreakdownIdx, setOpenedBreakdownIdx] = useState<number | null>(null);
 
@@ -236,6 +240,13 @@ export default function EstimateReportPage() {
       },
     );
   }
+
+  useEffect(() => {
+    if (!estimate) return;
+    const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+    if (params.get("refine") === "1" && portfolioAnalytics) setRefineOpen(true);
+    if (params.get("listing") === "1") setListingOpen(true);
+  }, [estimate, search, portfolioAnalytics]);
 
   useEffect(() => {
     setOpenedBreakdownIdx(null);
@@ -359,6 +370,11 @@ export default function EstimateReportPage() {
         >
           <Megaphone className="mr-2 h-4 w-4" /> Draft an ad
         </Button>
+        {portfolioAnalytics ? (
+          <Button size="sm" variant="secondary" className="sm:shrink-0" onClick={() => setRefineOpen(true)}>
+            <Sparkles className="mr-2 h-4 w-4" /> Improve accuracy
+          </Button>
+        ) : null}
       </div>
 
       <GenerateListingDialog
@@ -369,6 +385,10 @@ export default function EstimateReportPage() {
         open={listingOpen}
         onOpenChange={setListingOpen}
       />
+
+      {estimate && portfolioAnalytics ? (
+        <RefineEstimateSheet estimate={estimate} open={refineOpen} onOpenChange={setRefineOpen} />
+      ) : null}
 
       <AlertDialog open={intentCoachOpen} onOpenChange={setIntentCoachOpen}>
         <AlertDialogContent className="max-w-md">
@@ -480,6 +500,27 @@ export default function EstimateReportPage() {
           <div className="border-b border-border/50 bg-gradient-to-br from-accent/[0.07] via-transparent to-transparent px-4 py-4 sm:px-5">
             <p className="text-xs font-medium text-muted-foreground sm:text-sm">Estimate today</p>
             <p className="mt-1 text-4xl font-semibold tabular-nums tracking-tight text-foreground sm:text-5xl">{fmt(estimate.adjustedMid)}</p>
+            {estimate.portfolioAnalytics ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Confidence {estimate.portfolioAnalytics.confidenceScore}/100 ·{" "}
+                <span className="capitalize">{estimate.portfolioAnalytics.resalePotential}</span> resale potential ·
+                Suggested{" "}
+                <span className="capitalize text-foreground">{estimate.portfolioAnalytics.actionRecommendation}</span>
+              </p>
+            ) : null}
+            {estimate.traderAnalytics ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Deal score:{" "}
+                <span className="font-medium capitalize text-foreground">
+                  {estimate.traderAnalytics.dealScore.replace(/_/g, " ")}
+                </span>
+                {" · "}
+                Buy below {fmt(estimate.traderAnalytics.maxBuyPrice)}
+                {estimate.traderAnalytics.expectedMargin != null
+                  ? ` · Margin ${estimate.traderAnalytics.expectedMargin}%`
+                  : ""}
+              </p>
+            ) : null}
             {uplift !== 0 ? (
               <p
                 className={cn(
