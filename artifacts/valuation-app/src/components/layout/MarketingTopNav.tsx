@@ -10,7 +10,7 @@ export type MarketingTopNavVariant = "light" | "dark";
 
 /**
  * Persistent marketing chrome (logged-out funnel). Matches landing affordances across /, /pricing, /welcome,
- * Clerk pages, About, Privacy, Start, etc.
+ * Clerk pages, Privacy, Start, etc.
  */
 export function MarketingTopNav({ variant }: { variant: MarketingTopNavVariant }) {
   const isDark = variant === "dark";
@@ -39,19 +39,6 @@ export function MarketingTopNav({ variant }: { variant: MarketingTopNavVariant }
       </Link>
 
       <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-        <Link href="/about">
-          <Button
-            variant="ghost"
-            className={
-              isDark
-                ? "text-white/80 hover:bg-white/10 hover:text-white"
-                : "text-muted-foreground hover:text-foreground"
-            }
-            data-testid="nav-about"
-          >
-            How it works
-          </Button>
-        </Link>
         <Link href="/pricing#plans">
           <Button
             variant="ghost"

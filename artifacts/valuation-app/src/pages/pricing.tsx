@@ -32,8 +32,8 @@ export default function PricingPage() {
           <Link href="/privacy" className="transition-colors hover:text-foreground">
             Privacy
           </Link>
-          <Link href="/about" className="transition-colors hover:text-foreground">
-            How it works
+          <Link href="/start" className="transition-colors hover:text-foreground">
+            Guest valuation
           </Link>
           <Link href="/welcome" className="transition-colors hover:text-foreground">
             Tailor signup

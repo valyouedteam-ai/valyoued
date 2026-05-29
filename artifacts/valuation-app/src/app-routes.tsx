@@ -7,7 +7,6 @@ import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
 import WelcomePersonaPage from "@/pages/welcome";
 import StartPage from "@/pages/start";
-import AboutPage from "@/pages/about";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import NewEstimatePage from "@/pages/estimates/new";
@@ -76,7 +75,7 @@ function StubFullBleedSwitch() {
       <Route path="/start" component={StartPage} />
       <Route path="/pricing" component={PricingPage} />
       <Route path="/welcome" component={WelcomePersonaPage} />
-      <Route path="/about" component={AboutPage} />
+      <Route path="/about" component={() => <Redirect to="/" />} />
       <Route path="/privacy" component={PrivacyPage} />
     </Switch>
   );
@@ -118,7 +117,6 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
     location === "/welcome" ||
     location.startsWith("/start") ||
     location.startsWith("/pricing") ||
-    location.startsWith("/about") ||
     location.startsWith("/privacy");
 
   if (fullBleed) {
@@ -135,7 +133,7 @@ export function AppRoutes({ authStub }: { authStub: boolean }) {
         <Route path="/start" component={StartPage} />
         <Route path="/pricing" component={PricingPage} />
         <Route path="/welcome" component={WelcomePersonaPage} />
-        <Route path="/about" component={AboutPage} />
+        <Route path="/about" component={() => <Redirect to="/" />} />
         <Route path="/privacy" component={PrivacyPage} />
       </Switch>
     );

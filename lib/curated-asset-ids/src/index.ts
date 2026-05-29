@@ -5,7 +5,7 @@ export const GENERAL_ITEM_ASSET_TYPE_ID = "general-item" as const;
 
 /**
  * Guided wizard templates shown in `/estimates/new`.
- * Must stay aligned with UX copy (`WIZARD_CURATED_PRIMARY_COUNT`).
+ * Count of curated wizard templates (internal; do not surface in user-facing copy).
  */
 export const CURATED_ASSET_TYPE_IDS = [
   "smartphone",

@@ -9,7 +9,6 @@ const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 
 const NAV_LINKS = [
-  { href: "/about", label: "How it works" },
   { href: "/pricing#plans", label: "Pricing" },
   { href: "/welcome", label: "Tracks" },
 ] as const;
@@ -132,11 +131,6 @@ export function LandingScrollNav() {
               <Link href="/sign-in" onClick={() => setMenuOpen(false)}>
                 <Button variant="ghost" className="w-full justify-start rounded-2xl font-medium">
                   Log in
-                </Button>
-              </Link>
-              <Link href="/start" onClick={() => setMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start rounded-2xl font-medium">
-                  Guest valuation
                 </Button>
               </Link>
             </nav>

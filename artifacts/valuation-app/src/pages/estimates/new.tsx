@@ -63,7 +63,7 @@ import {
 } from "@workspace/api-client-react";
 import type { EstimateInput, AssetType, AssetField, Portfolio } from "@workspace/api-client-react";
 import { assetTypeAllowedForSellerTier } from "@workspace/asset-shelf-tier";
-import { GENERAL_ITEM_ASSET_TYPE_ID, isWizardSupportedAssetTypeId, pickAssetTypesForWizardPicker, WIZARD_CURATED_PRIMARY_COUNT } from "@workspace/curated-asset-ids";
+import { GENERAL_ITEM_ASSET_TYPE_ID, isWizardSupportedAssetTypeId, pickAssetTypesForWizardPicker } from "@workspace/curated-asset-ids";
 import { inferVehicleFuelHint, matchFuelDropdownOption } from "@workspace/marketplace-regions";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -484,7 +484,7 @@ function NewEstimatePageInner({
       if (pending?.input?.assetTypeId && !isWizardSupportedAssetTypeId(pending.input.assetTypeId)) {
         toast({
           title: "Could not resume",
-          description: `That valuation used a retired category. Please start again and pick one of the ${WIZARD_CURATED_PRIMARY_COUNT} supported types, or Anything Else.`,
+          description: "That valuation used a retired category. Please start again and pick a supported type, or Anything Else.",
           variant: "destructive",
         });
       }
@@ -554,7 +554,7 @@ function NewEstimatePageInner({
           errors: {
             assetTypeId: {
               type: "validate",
-              message: `Choose one of the ${WIZARD_CURATED_PRIMARY_COUNT} supported item types, or Anything Else.`,
+              message: "Choose a supported item type, or Anything Else.",
             },
           },
         };
@@ -786,7 +786,7 @@ function NewEstimatePageInner({
         if (!isWizardSupportedAssetTypeId(v.assetTypeId)) {
           toast({
             title: "Pick a supported item type",
-            description: `Choose one of the ${WIZARD_CURATED_PRIMARY_COUNT} guided templates we support, or Anything Else.`,
+            description: "Pick a guided template, or choose Anything Else.",
             variant: "destructive",
           });
           return false;
@@ -883,7 +883,7 @@ function NewEstimatePageInner({
     if (!isWizardSupportedAssetTypeId(data.assetTypeId)) {
       toast({
         title: "Unsupported item type",
-        description: `Choose one of the ${WIZARD_CURATED_PRIMARY_COUNT} guided templates we support, or Anything Else.`,
+        description: "Pick a guided template, or choose Anything Else.",
         variant: "destructive",
       });
       return;
@@ -1128,9 +1128,8 @@ function NewEstimatePageInner({
                         </p>
                         {!selectedCategory ? (
                           <p className="text-xs leading-relaxed text-muted-foreground">
-                            We support <span className="font-medium text-foreground">{WIZARD_CURATED_PRIMARY_COUNT}</span>{" "}
-                            guided item templates (electronics, watches, cameras, jewelry, fine art, cars, handbags, and
-                            sneakers). Everyday vs Luxury only hides picks that clash with that framing. Anything Else is
+                            Guided item templates cover electronics, watches, cameras, jewelry, fine art, cars, handbags, and
+                            sneakers. Everyday vs Luxury only hides picks that clash with that framing. Anything Else is
                             for everything outside those templates.
                           </p>
                         ) : null}

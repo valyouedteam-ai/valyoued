@@ -11,20 +11,15 @@ import {
 import {
   ArrowRight,
   Briefcase,
-  Camera,
   ChevronRight,
-  Globe2,
   Landmark,
   Megaphone,
   Shield,
   Sparkles,
-  TrendingUp,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PhoneFrame } from "@/components/marketing/PhoneFrame";
-import { PRODUCT_WALKTHROUGH_STEPS, WALKTHROUGH_SCREEN_HEIGHT_PX } from "@/components/marketing/walkthrough-steps";
 import {
   Carousel,
   CarouselContent,
@@ -32,6 +27,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { UseCaseFeaturePreview } from "@/components/marketing/landing/UseCaseFeaturePreviews";
 
 function Reveal({
   children,
@@ -63,37 +59,6 @@ function Reveal({
 
 const LOGO_STRIP = ["Collectors", "Resellers", "Estates", "Desks", "Markets", "Insurance"];
 
-const FEATURE_BLOCKS = [
-  {
-    id: "capture",
-    title: "Capture",
-    body: "Photo or describe the item once. Brand, model, and condition cues flow into the run.",
-    icon: Camera,
-    tint: "from-teal-500/15 to-transparent",
-  },
-  {
-    id: "value",
-    title: "Value",
-    body: "Baseline bands, adjusted mid, and comp context on one report.",
-    icon: TrendingUp,
-    tint: "from-emerald-500/15 to-transparent",
-  },
-  {
-    id: "compare",
-    title: "Compare",
-    body: "Region rows and arbitrage hints before you pick where to sell.",
-    icon: Globe2,
-    tint: "from-cyan-500/15 to-transparent",
-  },
-  {
-    id: "export",
-    title: "Export",
-    body: "Listing drafts and portfolio exports when you are ready to move.",
-    icon: Megaphone,
-    tint: "from-sky-500/15 to-transparent",
-  },
-] as const;
-
 const COLLAB_CARDS = [
   {
     title: "Shared portfolio view",
@@ -121,28 +86,24 @@ const USE_CASE_TABS = [
     label: "Resellers",
     headline: "Price stock before you buy",
     body: "Deal scores, margin hints, and repricing alerts for inventory that turns quickly.",
-    mockLabel: "Trading desk",
   },
   {
     id: "collect",
     label: "Collectors",
     headline: "One ledger for what you keep",
     body: "Track luxury, everyday, and collectible shelves with confidence and receipt status.",
-    mockLabel: "Portfolio",
   },
   {
     id: "inherit",
     label: "Inheritance",
     headline: "A separate ledger for heirs",
     body: "Violet-scoped workspace for estates and heirlooms that stay off your primary holdings.",
-    mockLabel: "Inheritance",
   },
   {
     id: "pro",
     label: "Professionals",
     headline: "Desks built for volume",
     body: "Market watch, inventory pipeline, and exportable reports for active traders.",
-    mockLabel: "Market watch",
   },
 ] as const;
 
@@ -155,46 +116,19 @@ const TEMPLATE_CARDS = [
   { title: "Collectibles", tone: "bg-cyan-700" },
 ] as const;
 
-function DemoPhone({ stepIndex }: { stepIndex: number }) {
-  const step = PRODUCT_WALKTHROUGH_STEPS[stepIndex] ?? PRODUCT_WALKTHROUGH_STEPS[0];
-  return (
-    <PhoneFrame>
-      <div className="overflow-hidden" style={{ height: `${WALKTHROUGH_SCREEN_HEIGHT_PX}px` }}>
-        {step.screen}
-      </div>
-    </PhoneFrame>
-  );
-}
-
-function FloatingChip({ children, className }: { children: ReactNode; className?: string }) {
-  const reduceMotion = useReducedMotion();
-  return (
-    <motion.div
-      animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
-      transition={reduceMotion ? undefined : { duration: 4, repeat: Infinity, ease: "easeInOut" }}
-      className={cn(
-        "absolute flex items-center gap-2 rounded-2xl border border-black/5 bg-white px-3 py-2 text-xs font-semibold shadow-lg",
-        className,
-      )}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 export function LandingHero() {
   return (
     <section className="mx-auto max-w-6xl px-4 pb-8 pt-16 text-center sm:px-6 sm:pt-20 lg:pb-16 lg:pt-24">
       <Reveal>
         <span className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70 shadow-sm">
           <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
-          New: portfolio health strip
+          Free guest valuation · no signup required
         </span>
       </Reveal>
 
       <Reveal delay={0.08} className="mx-auto mt-8 max-w-4xl">
         <h1 className="text-balance text-[2.75rem] font-bold leading-[1.02] tracking-[-0.03em] text-foreground sm:text-6xl lg:text-[4.5rem]">
-          Super clear valuations for every team.
+          One calm ledger for what you own and sell.
         </h1>
       </Reveal>
 
@@ -221,81 +155,6 @@ export function LandingHero() {
               {name}
             </span>
           ))}
-        </div>
-      </Reveal>
-    </section>
-  );
-}
-
-export function LandingDemoReveal({ onVisible }: { onVisible?: () => void }) {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-15% 0px" });
-  const [step, setStep] = useState(0);
-  const reduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    if (inView) onVisible?.();
-  }, [inView, onVisible]);
-
-  return (
-    <section ref={ref} className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-28">
-      <Reveal className="relative">
-        <div className="relative overflow-hidden rounded-[2rem] border border-black/5 bg-white p-6 shadow-2xl shadow-black/10 sm:rounded-[2.5rem] sm:p-10 lg:p-14">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(175_55%_45%/0.08),transparent_55%)]" />
-
-          <FloatingChip className="left-6 top-8 hidden sm:flex">
-            <Camera className="h-4 w-4 text-accent" />
-            Capture
-          </FloatingChip>
-          <FloatingChip className="right-8 top-16 hidden sm:flex">
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
-            Live range
-          </FloatingChip>
-          <FloatingChip className="bottom-20 left-10 hidden lg:flex">
-            <Globe2 className="h-4 w-4 text-cyan-600" />
-            Regions
-          </FloatingChip>
-
-          <div className="relative mx-auto flex max-w-4xl flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-md space-y-4 text-left">
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">Product demo</p>
-              <h2 className="text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
-                From photo to portfolio clarity
-              </h2>
-              <p className="text-base leading-relaxed text-muted-foreground">
-                Watch the flow advance through capture, valuation, regional compare, and listing drafts.
-              </p>
-              <div className="flex flex-wrap gap-2 pt-2">
-                {PRODUCT_WALKTHROUGH_STEPS.map((s, i) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setStep(i)}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                      i === step ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80",
-                    )}
-                  >
-                    {i + 1}. {s.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="relative shrink-0">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={step}
-                  initial={reduceMotion ? false : { opacity: 0, scale: 0.96, y: 12 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98, y: -8 }}
-                  transition={{ duration: 0.45 }}
-                >
-                  <DemoPhone stepIndex={step} />
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
         </div>
       </Reveal>
     </section>
@@ -332,9 +191,14 @@ function MissionWord({
   );
 }
 
-export function LandingMission() {
+export function LandingMission({ onVisible }: { onVisible?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-15% 0px" });
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.9", "end 0.35"] });
+
+  useEffect(() => {
+    if (inView) onVisible?.();
+  }, [inView, onVisible]);
   const words: { text: string; muted?: boolean }[] = [
     { text: "ValYoued" },
     { text: "turns", muted: true },
@@ -366,44 +230,6 @@ export function LandingMission() {
           />
         ))}
       </h2>
-    </section>
-  );
-}
-
-export function LandingFeatures() {
-  return (
-    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-      <Reveal className="mb-12 max-w-2xl">
-        <h2 className="text-4xl font-bold tracking-[-0.02em] text-foreground sm:text-5xl">The interface, in motion</h2>
-        <p className="mt-4 text-lg text-muted-foreground">
-          Scroll-friendly blocks mirror the product: capture, value, compare, and export without switching tools.
-        </p>
-      </Reveal>
-
-      <div className="grid gap-5 sm:grid-cols-2 lg:gap-6">
-        {FEATURE_BLOCKS.map((block, i) => {
-          const Icon = block.icon;
-          return (
-            <Reveal key={block.id} delay={i * 0.08} y={20}>
-              <motion.article
-                whileHover={{ y: -4, scale: 1.01 }}
-                transition={{ type: "spring", stiffness: 320, damping: 24 }}
-                className="group relative min-h-[220px] overflow-hidden rounded-[1.75rem] border border-black/5 bg-white p-8 shadow-lg shadow-black/5"
-              >
-                <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80", block.tint)} />
-                <div className="relative space-y-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-                    <Icon className="h-6 w-6 text-accent" />
-                  </div>
-                  <h3 className="text-2xl font-bold tracking-tight">{block.title}</h3>
-                  <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{block.body}</p>
-                  <div className="mt-6 h-28 rounded-2xl border border-black/5 bg-white/80 shadow-inner" />
-                </div>
-              </motion.article>
-            </Reveal>
-          );
-        })}
-      </div>
     </section>
   );
 }
@@ -516,18 +342,7 @@ export function LandingUseCases() {
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="rounded-[1.75rem] border border-black/5 bg-white p-8 shadow-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{tab.mockLabel}</p>
-              <div className="mt-4 space-y-3">
-                <div className="h-10 rounded-xl bg-muted" />
-                <div className="h-24 rounded-2xl bg-gradient-to-br from-accent/20 to-transparent" />
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="h-16 rounded-xl bg-muted" />
-                  <div className="h-16 rounded-xl bg-muted" />
-                  <div className="h-16 rounded-xl bg-muted" />
-                </div>
-              </div>
-            </div>
+            <UseCaseFeaturePreview variant={tab.id} />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -542,7 +357,7 @@ export function LandingTemplates() {
         <h2 className="text-4xl font-bold tracking-[-0.02em] text-foreground sm:text-5xl lg:text-6xl">
           Start from a template
         </h2>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
+        <p className="mt-4 text-lg text-muted-foreground md:whitespace-nowrap">
           Asset-class starters with the fields and comps language already wired in.
         </p>
       </Reveal>
@@ -574,7 +389,7 @@ export function LandingTemplates() {
         <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center">
           <Link href="/start" className="pointer-events-auto">
             <Button className="h-14 rounded-full bg-foreground px-8 text-base font-semibold text-background shadow-2xl hover:bg-foreground/90">
-              Browse 40+ asset classes
+              Browse templates
             </Button>
           </Link>
         </div>
@@ -586,21 +401,9 @@ export function LandingTemplates() {
 export function LandingFinalCta() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Link href="/about" className="group block">
-          <article className="flex h-full min-h-[220px] flex-col justify-between rounded-[2rem] bg-[hsl(175,45%,94%)] p-8 transition-transform group-hover:-translate-y-1">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">Release notes</p>
-              <h3 className="mt-3 text-3xl font-bold tracking-tight">What shipped lately</h3>
-            </div>
-            <span className="inline-flex items-center gap-1 text-sm font-semibold">
-              Read how it works
-              <ArrowRight className="h-4 w-4" />
-            </span>
-          </article>
-        </Link>
+      <div className="mx-auto max-w-xl">
         <Link href="/pricing#plans" className="group block">
-          <article className="flex h-full min-h-[220px] flex-col justify-between rounded-[2rem] bg-[hsl(175,35%,92%)] p-8 transition-transform group-hover:-translate-y-1">
+          <article className="flex min-h-[220px] flex-col justify-between rounded-[2rem] bg-[hsl(175,35%,92%)] p-8 transition-transform group-hover:-translate-y-1">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">Pricing</p>
               <h3 className="mt-3 text-3xl font-bold tracking-tight">Start free, upgrade when you grow</h3>
@@ -624,7 +427,7 @@ export function LandingFinalCta() {
         </span>
         <span className="inline-flex items-center gap-2">
           <Briefcase className="h-4 w-4" />
-          40+ asset classes
+          Guided templates
         </span>
       </div>
 
@@ -647,9 +450,9 @@ export function LandingFooter() {
     {
       title: "Product",
       links: [
-        { href: "/about", label: "How it works" },
         { href: "/pricing#plans", label: "Pricing" },
         { href: "/welcome", label: "Everyday vs Pro" },
+        { href: "/start", label: "Guest valuation" },
       ],
     },
     {

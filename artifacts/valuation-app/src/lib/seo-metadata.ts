@@ -51,14 +51,6 @@ const BY_PATH = new Map<string, PageSeo>([
     },
   ],
   [
-    "/about",
-    {
-      title: `How it works · ${TITLE_SUFFIX}`,
-      description:
-        "From a photo or short description to live-market comps and listing drafts: the four-step ValYoued flow for tracking and pricing what you own.",
-    },
-  ],
-  [
     "/privacy",
     {
       title: `Privacy · ${TITLE_SUFFIX}`,
