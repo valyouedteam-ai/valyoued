@@ -280,10 +280,9 @@ export default function PortfolioPage() {
               : "Your portfolio is empty"}
           </h3>
           <p className="mb-6 max-w-md text-muted-foreground">
-            Run a valuation and attach it to this workspace{" "}
             {nonPrimaryWorkspace
-              ? "Pick another workspace in Settings to see your main ledger."
-              : "to see holdings, shelf mix, and listing shortcuts."}
+              ? "Run a valuation and attach it to this workspace. Pick another workspace in Settings to see your main ledger."
+              : "Run a valuation and attach it to this workspace to see holdings, shelf mix, and listing shortcuts."}
           </p>
           <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
             <Button size="lg">
@@ -293,7 +292,6 @@ export default function PortfolioPage() {
           </Link>
         </div>
         </div>
-        <DashboardNextStep scopedEstimates={scopedRows} />
         <DashboardHubLower {...hubLowerProps} />
       </div>
     );

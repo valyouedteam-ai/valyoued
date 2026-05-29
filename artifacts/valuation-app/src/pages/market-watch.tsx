@@ -8,7 +8,7 @@ import {
   useListMarketWatches,
   getListMarketWatchesQueryKey,
 } from "@workspace/api-client-react";
-import { LineChart, Plus, Trash2 } from "lucide-react";
+import { LineChart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,17 +18,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { formatMoney } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
-
-const SEED_TAXONOMY: Array<{
-  assetClass: string;
-  label: string;
-  brand: string;
-  model: string;
-  yearFrom?: number;
-  yearTo?: number;
-}> = [
-  { assetClass: "Watches", label: "Rolex Datejust", brand: "Rolex", model: "Datejust" },
-];
 
 function marketWatchErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -109,7 +98,7 @@ export default function MarketWatchPage() {
     <div className="space-y-8 pb-16">
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">Market Watch</h1>
-        <p className="max-w-2xl text-muted-foreground">
+        <p className="text-muted-foreground leading-relaxed">
           Create watches for the asset classes and labels you follow. Each watch summarizes suggested list prices,
           buy-below targets, resale timing, and platform hints from our comp archive. Snapshots for now, not live
           market feeds.
@@ -150,33 +139,6 @@ export default function MarketWatchPage() {
                 }
               }}
             />
-          </div>
-          <div className="sm:col-span-2 flex flex-wrap gap-2">
-            {SEED_TAXONOMY.map((seed) => (
-              <Button
-                key={seed.label}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="rounded-full"
-                disabled={create.isPending}
-                onClick={() =>
-                  create.mutate({
-                    data: {
-                      assetClass: seed.assetClass,
-                      label: seed.label,
-                      brand: seed.brand,
-                      model: seed.model,
-                      yearFrom: seed.yearFrom,
-                      yearTo: seed.yearTo,
-                    },
-                  })
-                }
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {seed.label}
-              </Button>
-            ))}
           </div>
           <Button
             type="button"

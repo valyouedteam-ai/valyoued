@@ -11,11 +11,12 @@ import {
 } from "@workspace/api-client-react";
 import { Package, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const STAGES = [
   "sourced",
@@ -29,9 +30,44 @@ const STAGES = [
   "returned",
 ] as const;
 
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  try {
+    a.click();
+  } finally {
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+}
+
+function rowsToCsv(rows: ReadonlyArray<Record<string, unknown>>): string {
+  if (rows.length === 0) return "";
+  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const escape = (value: unknown) => {
+    const text = value == null ? "" : String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return [
+    headers.join(","),
+    ...rows.map((row) => headers.map((header) => escape(row[header])).join(",")),
+  ].join("\n");
+}
+
+function downloadCsv(filename: string, rows: ReadonlyArray<Record<string, unknown>>) {
+  const csv = rowsToCsv(rows);
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), filename);
+}
+
 export default function InventoryPage() {
   const { data: billing } = useBillingSummary();
   const pro = Boolean(billing?.canUseTraderWorkspace);
+  const { toast } = useToast();
   const { data: items, refetch } = useListInventoryItems({
     query: { enabled: pro, queryKey: getListInventoryItemsQueryKey() },
   });
@@ -59,6 +95,57 @@ export default function InventoryPage() {
     }
     return map;
   }, [items]);
+
+  const exportMonth = report?.month ?? new Date().toISOString().slice(0, 7);
+
+  const downloadTaxExport = () => {
+    const rows = (report?.taxExportRows ?? []) as Record<string, unknown>[];
+    if (rows.length === 0) {
+      toast({
+        title: "Nothing to export",
+        description: "Add inventory items first. Tax rows come from your pipeline stock.",
+        variant: "destructive",
+      });
+      return;
+    }
+    downloadCsv(`valyoued-tax-export-${exportMonth}.csv`, rows);
+    toast({ title: "Tax export ready", description: "Your CSV download should begin shortly." });
+  };
+
+  const downloadInsuranceExport = () => {
+    const rows = (report?.insuranceStockRows ?? []) as Record<string, unknown>[];
+    if (rows.length === 0) {
+      toast({
+        title: "Nothing to export",
+        description: "Save valuations to your portfolio first. Insurance rows come from those holdings.",
+        variant: "destructive",
+      });
+      return;
+    }
+    downloadCsv(`valyoued-insurance-stock-${exportMonth}.csv`, rows);
+    toast({ title: "Insurance stock export ready", description: "Your CSV download should begin shortly." });
+  };
+
+  const downloadAllExports = () => {
+    const taxRows = (report?.taxExportRows ?? []) as Record<string, unknown>[];
+    const insuranceRows = (report?.insuranceStockRows ?? []) as Record<string, unknown>[];
+    if (taxRows.length === 0 && insuranceRows.length === 0) {
+      toast({
+        title: "Nothing to export",
+        description: "Add inventory items or saved valuations before exporting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (taxRows.length > 0) downloadCsv(`valyoued-tax-export-${exportMonth}.csv`, taxRows);
+    if (insuranceRows.length > 0) {
+      window.setTimeout(
+        () => downloadCsv(`valyoued-insurance-stock-${exportMonth}.csv`, insuranceRows),
+        taxRows.length > 0 ? 350 : 0,
+      );
+    }
+    toast({ title: "Exports started", description: "One or two CSV files should download momentarily." });
+  };
 
   if (!pro) {
     return (
@@ -109,20 +196,20 @@ export default function InventoryPage() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs uppercase text-muted-foreground">Inventory value</p>
-              <p className="text-xl font-semibold tabular-nums">{formatMoney(report.inventoryValue, "GBP")}</p>
+              <CardDescription className="text-sm font-medium">Inventory value</CardDescription>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{formatMoney(report.inventoryValue, "GBP")}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs uppercase text-muted-foreground">Monthly profit</p>
-              <p className="text-xl font-semibold tabular-nums">{formatMoney(report.monthlyProfit ?? 0, "GBP")}</p>
+              <CardDescription className="text-sm font-medium">Monthly profit</CardDescription>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{formatMoney(report.monthlyProfit ?? 0, "GBP")}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs uppercase text-muted-foreground">Slow movers</p>
-              <p className="text-xl font-semibold tabular-nums">{report.slowMovingCount}</p>
+              <CardDescription className="text-sm font-medium">Slow movers</CardDescription>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{report.slowMovingCount}</p>
             </CardContent>
           </Card>
         </div>
@@ -181,8 +268,27 @@ export default function InventoryPage() {
             Business export
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Tax and insurance stock rows are included in the Professional business report API for CSV export integrations.
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Download tax and inventory pipeline rows plus insurance stock from your saved valuations as CSV files.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" className="rounded-full" disabled={!report} onClick={downloadAllExports}>
+              Download all CSVs
+            </Button>
+            <Button type="button" variant="outline" className="rounded-full" disabled={!report} onClick={downloadTaxExport}>
+              Tax & inventory
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full"
+              disabled={!report}
+              onClick={downloadInsuranceExport}
+            >
+              Insurance stock
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
