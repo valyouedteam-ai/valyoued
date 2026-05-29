@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Link, Redirect, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
@@ -14,7 +14,6 @@ import {
 import {
   type SellerPersonaChoice,
   isSellerPersonaConfirmed,
-  peekSessionSellerPersona,
   readClerkSellerPersona,
   saveSellerPersonaForSignedInUser,
 } from "@/hooks/use-persona-sync";
@@ -37,7 +36,6 @@ function WelcomeContinueSignedIn() {
   const [phase, setPhase] = useState<"primer" | "pick" | "ready">("primer");
   const [pickOverride, setPickOverride] = useState(false);
 
-  const sessionHint = useMemo(() => peekSessionSellerPersona(), []);
   const confirmed = isSellerPersonaConfirmed(user);
   const clerkPersona = readClerkSellerPersona(user);
   const persona = localPersona ?? (confirmed ? clerkPersona : null) ?? null;
@@ -149,7 +147,6 @@ function WelcomeContinueSignedIn() {
                   title="Everyday steward"
                   description="Personal collections, wardrobes, and side-hustle resale."
                   icon={Shirt}
-                  hint={sessionHint === "everyday"}
                   disabled={savingChoice !== null}
                   loading={savingChoice === "everyday"}
                   onPick={() => pickPersona("everyday")}
@@ -158,7 +155,6 @@ function WelcomeContinueSignedIn() {
                   title="Professional desks"
                   description="Brokers, boutiques, and listing-heavy resale work."
                   icon={BriefcaseBusiness}
-                  hint={sessionHint === "professional"}
                   highlighted
                   disabled={savingChoice !== null}
                   loading={savingChoice === "professional"}
@@ -206,7 +202,6 @@ function PersonaCard({
   title,
   description,
   icon: Icon,
-  hint,
   highlighted,
   disabled,
   loading,
@@ -215,7 +210,6 @@ function PersonaCard({
   title: string;
   description: string;
   icon: typeof Shirt;
-  hint?: boolean;
   highlighted?: boolean;
   disabled?: boolean;
   loading?: boolean;
@@ -226,7 +220,6 @@ function PersonaCard({
       className={cn(
         "rounded-3xl border p-5 shadow-lg transition-shadow",
         highlighted ? "border-accent/35 bg-accent/12 ring-1 ring-accent/25" : "border-border/70 bg-card/98",
-        hint && "ring-2 ring-accent/50",
       )}
     >
       <div
@@ -237,7 +230,6 @@ function PersonaCard({
       >
         <Icon className="h-5 w-5" aria-hidden />
       </div>
-      {hint ? <p className="mb-2 text-xs font-medium text-accent">Suggested from earlier</p> : null}
       <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
       <Button className="mt-5 w-full rounded-2xl" disabled={disabled} onClick={onPick}>

@@ -1009,18 +1009,11 @@ function NewEstimatePageInner({
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
       <div>
         <h1 className="text-3xl font-sans font-bold text-foreground">Start a valuation</h1>
-        <p className="text-muted-foreground mt-2 max-w-xl leading-relaxed">
-          {!authLoaded ? (
-            "Follow the prompts, then submit."
-          ) : authStubMode || isSignedIn ? (
-            "Follow the prompts, then submit."
-          ) : (
-            <>
-              Follow the prompts, then submit. Next we ask for a quick free login so your report saves to your
-              account.
-            </>
-          )}
-        </p>
+        {authLoaded && !authStubMode && !isSignedIn ? (
+          <p className="text-muted-foreground mt-2 max-w-xl leading-relaxed">
+            Next we ask for a quick free login so your report saves to your account.
+          </p>
+        ) : null}
       </div>
 
       <Form {...form}>

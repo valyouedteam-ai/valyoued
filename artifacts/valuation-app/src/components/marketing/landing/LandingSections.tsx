@@ -15,11 +15,12 @@ import {
   Landmark,
   Megaphone,
   Shield,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PhoneFrame } from "@/components/marketing/PhoneFrame";
+import { PRODUCT_WALKTHROUGH_STEPS, WALKTHROUGH_SCREEN_HEIGHT_PX } from "@/components/marketing/walkthrough-steps";
 import {
   Carousel,
   CarouselContent,
@@ -116,23 +117,27 @@ const TEMPLATE_CARDS = [
   { title: "Collectibles", tone: "bg-cyan-700" },
 ] as const;
 
+function DemoPhone({ stepIndex }: { stepIndex: number }) {
+  const step = PRODUCT_WALKTHROUGH_STEPS[stepIndex] ?? PRODUCT_WALKTHROUGH_STEPS[0];
+  return (
+    <PhoneFrame>
+      <div className="overflow-hidden" style={{ height: `${WALKTHROUGH_SCREEN_HEIGHT_PX}px` }}>
+        {step.screen}
+      </div>
+    </PhoneFrame>
+  );
+}
+
 export function LandingHero() {
   return (
     <section className="mx-auto max-w-6xl px-4 pb-8 pt-16 text-center sm:px-6 sm:pt-20 lg:pb-16 lg:pt-24">
-      <Reveal>
-        <span className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70 shadow-sm">
-          <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
-          Free guest valuation · no signup required
-        </span>
-      </Reveal>
-
-      <Reveal delay={0.08} className="mx-auto mt-8 max-w-4xl">
+      <Reveal className="mx-auto max-w-4xl">
         <h1 className="text-balance text-[2.75rem] font-bold leading-[1.02] tracking-[-0.03em] text-foreground sm:text-6xl lg:text-[4.5rem]">
           One calm ledger for what you own and sell.
         </h1>
       </Reveal>
 
-      <Reveal delay={0.14} className="mt-10">
+      <Reveal delay={0.08} className="mt-10">
         <Link href="/sign-up">
           <Button
             size="lg"
@@ -145,7 +150,7 @@ export function LandingHero() {
         </Link>
       </Reveal>
 
-      <Reveal delay={0.2} className="mt-16 lg:mt-24">
+      <Reveal delay={0.14} className="mt-16 lg:mt-24">
         <p className="mb-6 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Built for stewards and desks
         </p>
@@ -155,6 +160,68 @@ export function LandingHero() {
               {name}
             </span>
           ))}
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+export function LandingDemoReveal({ onVisible }: { onVisible?: () => void }) {
+  const ref = useRef<HTMLElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-15% 0px" });
+  const [step, setStep] = useState(0);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (inView) onVisible?.();
+  }, [inView, onVisible]);
+
+  return (
+    <section ref={ref} className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-28">
+      <Reveal className="relative">
+        <div className="relative overflow-hidden rounded-[2rem] border border-black/5 bg-white p-6 shadow-2xl shadow-black/10 sm:rounded-[2.5rem] sm:p-10 lg:p-14">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(175_55%_45%/0.08),transparent_55%)]" />
+
+          <div className="relative mx-auto flex max-w-4xl flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-md space-y-4 text-left">
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">How it works</p>
+              <h2 className="text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
+                From photo to portfolio clarity
+              </h2>
+              <p className="text-base leading-relaxed text-muted-foreground">
+                Four steps from capture through valuation, regional compare, and listing drafts.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-2">
+                {PRODUCT_WALKTHROUGH_STEPS.map((s, i) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStep(i)}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                      i === step ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80",
+                    )}
+                  >
+                    {i + 1}. {s.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative shrink-0">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={step}
+                  initial={reduceMotion ? false : { opacity: 0, scale: 0.96, y: 12 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98, y: -8 }}
+                  transition={{ duration: 0.45 }}
+                >
+                  <DemoPhone stepIndex={step} />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </Reveal>
     </section>
@@ -191,14 +258,9 @@ function MissionWord({
   );
 }
 
-export function LandingMission({ onVisible }: { onVisible?: () => void }) {
+export function LandingMission() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-15% 0px" });
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.9", "end 0.35"] });
-
-  useEffect(() => {
-    if (inView) onVisible?.();
-  }, [inView, onVisible]);
   const words: { text: string; muted?: boolean }[] = [
     { text: "ValYoued" },
     { text: "turns", muted: true },

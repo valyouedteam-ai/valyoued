@@ -4,6 +4,7 @@ import { LandingIntroOverlay } from "@/components/marketing/LandingIntroOverlay"
 import { LandingScrollNav } from "@/components/marketing/landing/LandingScrollNav";
 import {
   LandingCollaboration,
+  LandingDemoReveal,
   LandingFinalCta,
   LandingFooter,
   LandingHero,
@@ -73,7 +74,8 @@ export default function LandingPage() {
 
       <main>
         <LandingHero />
-        <LandingMission onVisible={unlockIntro} />
+        <LandingDemoReveal onVisible={unlockIntro} />
+        <LandingMission />
         <LandingQuote />
         <LandingCollaboration />
         <LandingUseCases />

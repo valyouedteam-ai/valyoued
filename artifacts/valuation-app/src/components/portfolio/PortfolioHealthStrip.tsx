@@ -70,7 +70,7 @@ export function PortfolioHealthStrip({ health, fxMult, estimates, className }: P
   ];
 
   return (
-    <section className={cn("rounded-2xl border border-border/60 bg-dashboard-muted p-4 sm:p-5", className)}>
+    <section className={cn("rounded-xl border border-border/60 bg-card/60 p-4 backdrop-blur sm:p-5", className)}>
       <h2 className="text-base font-semibold text-foreground">Portfolio health</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {countMatching(estimates, (e) => (e.confidenceScore ?? 0) >= 70)} of {estimates.length} holdings have strong

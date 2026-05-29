@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
   Briefcase,
@@ -32,7 +32,6 @@ import {
   usePortfolioWorkspace,
 } from "@/context/PortfolioWorkspaceContext";
 import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
-import { useSellerPersona } from "@/hooks/use-seller-persona";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { ProfessionalWorkspaceRollup } from "@/components/portfolio/ProfessionalWorkspaceRollup";
 import { DashboardHubLower } from "@/components/dashboard/DashboardHubLower";
@@ -119,21 +118,29 @@ const PALETTE = [
   "#06b6d4", "#ef4444", "#84cc16", "#f97316", "#6366f1",
 ];
 
+function PortfolioPageHeader({
+  subtitle,
+  action,
+}: {
+  subtitle: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between flex-wrap gap-4">
+      <div>
+        <h1 className="text-3xl font-sans font-bold text-foreground">Portfolio</h1>
+        <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{subtitle}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
 export default function PortfolioPage() {
   const { code: displayCcy } = useDisplayCurrency();
-  const { isProfessional } = useSellerPersona();
   const { data: billing } = useBillingSummary();
   const portfolioAnalytics = Boolean(billing?.canUsePortfolioAnalytics);
-  const professionalPlan = billing?.planSlug === "professional";
   const { portfolioQuerySuffix, activePortfolio, primaryPortfolio } = usePortfolioWorkspace();
-
-  const inheritanceWorkspace = activePortfolio?.purpose === "inheritance";
-  const deskWorkspace = activePortfolio?.purpose === "pro_board";
-  const workspaceShellClass = inheritanceWorkspace
-    ? "rounded-3xl border border-violet-500/20 bg-violet-500/[0.04] px-4 py-6 ring-1 ring-violet-500/15 shadow-sm dark:bg-violet-950/20 dark:ring-violet-400/25 sm:px-5 sm:py-8"
-    : deskWorkspace
-      ? "rounded-3xl border border-teal-500/25 bg-teal-500/[0.04] px-4 py-6 ring-1 ring-teal-500/15 shadow-sm dark:bg-teal-950/20 dark:ring-teal-400/30 sm:px-5 sm:py-8"
-      : "";
 
   const { data: estimates, isLoading } = useListEstimates({
     query: {
@@ -222,17 +229,29 @@ export default function PortfolioPage() {
 
   const formatRollup = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
 
-  const portfolioHeaderSubtitle = portfolioWorkspaceSubtitle(activePortfolio);
+  const portfolioHeaderSubtitle =
+    portfolioWorkspaceSubtitle(activePortfolio) ??
+    activePortfolio?.label ??
+    (activePortfolio?.purpose === "pro_board" ? "Professional board" : "Primary");
 
   const hubLowerProps = {
     scopedEstimates: scopedRows,
     estimatesLoading: isLoading,
   };
 
+  const newValuationButton = (
+    <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
+      <Button>
+        <Plus className="h-4 w-4 mr-2" />
+        New valuation
+      </Button>
+    </Link>
+  );
+
   if (isLoading) {
     return (
-      <div className={cn("w-full space-y-8", workspaceShellClass)}>
-        <Skeleton className="h-12 w-72" />
+      <div className="mx-auto max-w-6xl space-y-8">
+        <PortfolioPageHeader subtitle={portfolioHeaderSubtitle} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
@@ -244,92 +263,45 @@ export default function PortfolioPage() {
   }
 
   if (scopedRows.length === 0) {
+    const nonPrimaryWorkspace =
+      activePortfolio && primaryPortfolio && activePortfolio.id !== primaryPortfolio.id;
+
     return (
-      <div className={cn("mx-auto w-full max-w-7xl pt-12", workspaceShellClass)}>
-        <div className="space-y-6">
-          <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
-          <DashboardNextStep scopedEstimates={scopedRows} />
+      <div className="mx-auto max-w-6xl space-y-8 pb-16">
+        <PortfolioPageHeader subtitle={portfolioHeaderSubtitle} action={newValuationButton} />
+        <div className="mx-auto max-w-3xl">
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-card/30 p-16 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
-              <Briefcase className="h-8 w-8 text-accent" />
-            </div>
-            <h3 className="mb-2 font-sans text-2xl">
-              {inheritanceWorkspace || deskWorkspace
-                ? `${activePortfolio?.label ?? "This workspace"} is empty`
-                : "Your portfolio is empty"}
-            </h3>
-            <p className="mb-6 max-w-md text-muted-foreground">
-              Run a valuation and attach it to this workspace{" "}
-              {inheritanceWorkspace || deskWorkspace
-                ? "Use the workspace pills under the navigation bar to return to your primary ledger."
-                : "to see holdings, shelf mix, and listing shortcuts."}
-            </p>
-            <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
-              <Button size="lg">
-                <Plus className="mr-2 h-4 w-4" />
-                Value your first asset
-              </Button>
-            </Link>
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+            <Briefcase className="h-8 w-8 text-accent" />
           </div>
-          <DashboardHubLower {...hubLowerProps} />
+          <h3 className="mb-2 font-sans text-2xl">
+            {nonPrimaryWorkspace
+              ? `${activePortfolio?.label ?? "This workspace"} is empty`
+              : "Your portfolio is empty"}
+          </h3>
+          <p className="mb-6 max-w-md text-muted-foreground">
+            Run a valuation and attach it to this workspace{" "}
+            {nonPrimaryWorkspace
+              ? "Pick another workspace in Settings to see your main ledger."
+              : "to see holdings, shelf mix, and listing shortcuts."}
+          </p>
+          <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
+            <Button size="lg">
+              <Plus className="mr-2 h-4 w-4" />
+              Value your first asset
+            </Button>
+          </Link>
         </div>
+        </div>
+        <DashboardNextStep scopedEstimates={scopedRows} />
+        <DashboardHubLower {...hubLowerProps} />
       </div>
     );
   }
 
   return (
-    <div className={cn("w-full space-y-8 pb-16", workspaceShellClass)}>
-      <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
-      <DashboardNextStep scopedEstimates={scopedRows} />
-      {portfolioAnalytics && stats?.portfolioHealth ? (
-        <PortfolioHealthStrip
-          health={stats.portfolioHealth}
-          fxMult={fxMult}
-          estimates={scopedRows}
-        />
-      ) : null}
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-sans font-bold text-foreground">
-            {inheritanceWorkspace ? "Inheritance portfolio" : deskWorkspace ? "Trading desk" : "My portfolio"}
-          </h1>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            {inheritanceWorkspace ? (
-              <>
-                Estate rehearsal, heirlooms, and valuables you track separately from your everyday holdings. Violet chrome
-                reminds you this ledger is not your primary shelf.
-              </>
-            ) : deskWorkspace ? (
-              professionalPlan ? (
-                <>
-                  This desk totals only valuations attached to this lane. The workspace overview above lists item counts
-                  and approximate values across every portfolio on your Professional plan.
-                </>
-              ) : (
-                "Trading desk view for stock you route through this workspace."
-              )
-            ) : professionalPlan ? (
-              "Workspace overview above tracks every ledger. The cards and collection below follow whichever workspace is active."
-            ) : isProfessional ? (
-              "Desk-focused view for valuations and shelf mix in this workspace."
-            ) : (
-              "Personal holdings view with shelf mix helpers and shortcuts into monitors."
-            )}
-          </p>
-          {portfolioHeaderSubtitle ? (
-            <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{portfolioHeaderSubtitle}</p>
-          ) : null}
-        </div>
-        <div>
-          <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New valuation
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-8 pb-16">
+      <PortfolioPageHeader subtitle={portfolioHeaderSubtitle} action={newValuationButton} />
 
       {/* Top stats: total + diversification */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -433,6 +405,16 @@ export default function PortfolioPage() {
         </Card>
       </div>
 
+      <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
+      {portfolioAnalytics && stats?.portfolioHealth ? (
+        <PortfolioHealthStrip
+          health={stats.portfolioHealth}
+          fxMult={fxMult}
+          estimates={scopedRows}
+        />
+      ) : null}
+      <DashboardNextStep scopedEstimates={scopedRows} />
+
       {/* Smart folders: drag assets between Hold / Monitor / Sell */}
       <PortfolioFolders
         items={portfolio.map((p) => ({
@@ -446,7 +428,14 @@ export default function PortfolioPage() {
 
       {/* Collection: single grouped view (by valuation track), highest approximate value first */}
       <section className="space-y-8" id="collection-section" data-testid="collection-section">
-        <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
+        <div className="max-w-2xl space-y-1.5">
+          <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Valuations are grouped by the track you chose when you ran them. Within each group, larger holdings (by
+            approximate value in your display currency) appear first. Open a card for the full report, or use{" "}
+            <span className="font-medium text-foreground">List for sale</span> for listing help.
+          </p>
+        </div>
 
         <div className="space-y-12">
           {shelfSections.map((section) => {
@@ -479,7 +468,12 @@ export default function PortfolioPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((item) => (
-                    <PortfolioAssetCard key={item.id} item={item} portfolioAnalytics={portfolioAnalytics} />
+                    <PortfolioAssetCard
+                      key={item.id}
+                      item={item}
+                      portfolioAnalytics={portfolioAnalytics}
+                      onListing={() => setListingFor(item)}
+                    />
                   ))}
                 </div>
               </div>

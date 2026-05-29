@@ -23,10 +23,10 @@ router.use(portfoliosRouter);
 router.use(estimatesRouter);
 router.use(visionRouter);
 router.use(listingsRouter);
-router.use(adminRouter);
 router.use(meRouter);
 router.use(deskRouter);
 router.use(billingRouter);
 router.use(traderRouter);
+router.use(adminRouter);
 
 export default router;

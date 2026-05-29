@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  ApiError,
   useCreateMarketWatch,
   useDeleteMarketWatch,
   useListMarketWatches,
@@ -17,32 +19,76 @@ import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { formatMoney } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 
-const SEED_TAXONOMY = [
-  { assetClass: "Cars", label: "BMW 3 Series 2018-2020", brand: "BMW", model: "3 Series", yearFrom: 2018, yearTo: 2020 },
-  { assetClass: "Luxury Bags", label: "Chanel Classic Flap", brand: "Chanel", model: "Classic Flap" },
-  { assetClass: "Electronics", label: "iPhone Pro models", brand: "Apple", model: "iPhone Pro" },
+const SEED_TAXONOMY: Array<{
+  assetClass: string;
+  label: string;
+  brand: string;
+  model: string;
+  yearFrom?: number;
+  yearTo?: number;
+}> = [
   { assetClass: "Watches", label: "Rolex Datejust", brand: "Rolex", model: "Datejust" },
 ];
+
+function marketWatchErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const body = err.data as { error?: string } | undefined;
+    if (typeof body?.error === "string" && body.error.trim()) return body.error;
+    return err.message;
+  }
+  return err instanceof Error ? err.message : "Could not save this watch.";
+}
 
 export default function MarketWatchPage() {
   const { data: billing } = useBillingSummary();
   const pro = Boolean(billing?.canUseTraderWorkspace);
   const { toast } = useToast();
-  const { data: watches, isLoading, refetch } = useListMarketWatches({
+  const queryClient = useQueryClient();
+  const { data: watches, isLoading } = useListMarketWatches({
     query: { enabled: pro, queryKey: getListMarketWatchesQueryKey() },
   });
+
+  const refreshWatches = async () => {
+    await queryClient.invalidateQueries({ queryKey: getListMarketWatchesQueryKey() });
+  };
+
   const create = useCreateMarketWatch({
     mutation: {
-      onSuccess: () => {
-        void refetch();
+      onSuccess: async () => {
+        setLabel("");
+        await refreshWatches();
         toast({ title: "Watch created", description: "ValYoued analytics snapshot is ready." });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not save watch",
+          description: marketWatchErrorMessage(err),
+          variant: "destructive",
+        });
       },
     },
   });
-  const del = useDeleteMarketWatch({ mutation: { onSuccess: () => void refetch() } });
+  const del = useDeleteMarketWatch({
+    mutation: {
+      onSuccess: () => void refreshWatches(),
+      onError: (err) => {
+        toast({
+          title: "Could not delete watch",
+          description: marketWatchErrorMessage(err),
+          variant: "destructive",
+        });
+      },
+    },
+  });
 
   const [assetClass, setAssetClass] = useState("Luxury Bags");
   const [label, setLabel] = useState("");
+
+  const saveCustomWatch = () => {
+    const trimmed = label.trim();
+    if (!trimmed || create.isPending) return;
+    create.mutate({ data: { assetClass, label: trimmed } });
+  };
 
   if (!pro) {
     return (
@@ -64,7 +110,9 @@ export default function MarketWatchPage() {
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">Market Watch</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Track by class, brand, and model (BMW 3 Series, Chanel Classic Flap). Uses comp archive snapshots for now.
+          Create watches for the asset classes and labels you follow. Each watch summarizes suggested list prices,
+          buy-below targets, resale timing, and platform hints from our comp archive. Snapshots for now, not live
+          market feeds.
         </p>
       </header>
 
@@ -74,9 +122,9 @@ export default function MarketWatchPage() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Asset class</Label>
+            <Label htmlFor="market-watch-asset-class">Asset class</Label>
             <Select value={assetClass} onValueChange={setAssetClass}>
-              <SelectTrigger>
+              <SelectTrigger id="market-watch-asset-class">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -89,8 +137,19 @@ export default function MarketWatchPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Label</Label>
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Chanel Classic Flap medium" />
+            <Label htmlFor="market-watch-label">Label</Label>
+            <Input
+              id="market-watch-label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Chanel Classic Flap medium"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveCustomWatch();
+                }
+              }}
+            />
           </div>
           <div className="sm:col-span-2 flex flex-wrap gap-2">
             {SEED_TAXONOMY.map((seed) => (
@@ -100,6 +159,7 @@ export default function MarketWatchPage() {
                 size="sm"
                 variant="outline"
                 className="rounded-full"
+                disabled={create.isPending}
                 onClick={() =>
                   create.mutate({
                     data: {
@@ -119,20 +179,21 @@ export default function MarketWatchPage() {
             ))}
           </div>
           <Button
+            type="button"
             className="sm:col-span-2 rounded-full"
             disabled={!label.trim() || create.isPending}
-            onClick={() => create.mutate({ data: { assetClass, label: label.trim() } })}
+            onClick={saveCustomWatch}
           >
-            Save custom watch
+            {create.isPending ? "Saving…" : "Save custom watch"}
           </Button>
         </CardContent>
       </Card>
 
       {isLoading ? (
         <Skeleton className="h-48 w-full rounded-xl" />
-      ) : (
+      ) : watches?.length ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          {(watches ?? []).map((w) => (
+          {watches.map((w) => (
             <Card key={w.id}>
               <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
@@ -140,6 +201,7 @@ export default function MarketWatchPage() {
                   <p className="text-sm text-muted-foreground">{w.assetClass}</p>
                 </div>
                 <Button
+                  type="button"
                   size="icon"
                   variant="ghost"
                   aria-label="Delete watch"
@@ -172,6 +234,8 @@ export default function MarketWatchPage() {
             </Card>
           ))}
         </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">No watches yet. Save one above to see analytics here.</p>
       )}
     </div>
   );

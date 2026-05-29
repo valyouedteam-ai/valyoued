@@ -9,10 +9,11 @@ import {
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
+const adminOnly = Router();
 
-router.use(requireAdmin);
+adminOnly.use(requireAdmin);
 
-router.get("/admin/overview", async (_req, res): Promise<void> => {
+adminOnly.get("/overview", async (_req, res): Promise<void> => {
   const [estimateAgg] = await db
     .select({
       totalEstimates: sql<number>`count(*)::int`,
@@ -68,7 +69,7 @@ router.get("/admin/overview", async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/admin/users/:userId/activity", async (req, res): Promise<void> => {
+adminOnly.get("/users/:userId/activity", async (req, res): Promise<void> => {
   const userId = req.params.userId;
   if (!userId) {
     res.status(400).json({ error: "Missing userId" });
@@ -128,5 +129,7 @@ router.get("/admin/users/:userId/activity", async (req, res): Promise<void> => {
     })),
   });
 });
+
+router.use("/admin", adminOnly);
 
 export default router;

@@ -138,11 +138,11 @@ export function ProfessionalWorkspaceRollup({
 
   return (
     <>
-      <Card className="border-teal-500/25 bg-gradient-to-br from-teal-500/[0.05] via-transparent to-transparent">
+      <Card className="border-border/60 bg-card/60 backdrop-blur">
         <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <PanelsTopLeft className="h-4 w-4 text-teal-700 dark:text-teal-400" aria-hidden />
+              <PanelsTopLeft className="h-4 w-4 text-accent" aria-hidden />
               Workspaces overview
             </CardTitle>
             <CardDescription>
@@ -154,7 +154,7 @@ export function ProfessionalWorkspaceRollup({
             type="button"
             variant="outline"
             size="sm"
-            className="shrink-0 gap-2 border-teal-500/35 bg-teal-500/[0.06] hover:bg-teal-500/12"
+            className="shrink-0 gap-2"
             onClick={() => {
               setNewDeskLabel("");
               setDeskDialogOpen(true);
@@ -181,7 +181,7 @@ export function ProfessionalWorkspaceRollup({
                 return (
                   <tr
                     key={row.id}
-                    className={cn("border-b border-border/40", active && "bg-teal-500/[0.06] dark:bg-teal-950/30")}
+                    className={cn("border-b border-border/40", active && "bg-muted/50")}
                   >
                     <td className="py-3 pl-4 pr-3 font-medium text-foreground sm:pl-5">
                       <div className="flex flex-wrap items-center gap-2">

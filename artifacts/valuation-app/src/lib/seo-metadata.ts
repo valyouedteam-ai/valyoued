@@ -76,8 +76,9 @@ const BY_PATH = new Map<string, PageSeo>([
   [
     "/dashboard",
     {
-      title: `Dashboard · ${TITLE_SUFFIX}`,
-      description: "Your signed-in ValYoued home for recent valuations, portfolio signals, markets previews, and next actions.",
+      title: `Portfolio · ${TITLE_SUFFIX}`,
+      description:
+        "Organize assets into Everyday and Luxury shelves, reconcile rollups, and jump back into valuations or listings from one hub.",
     },
   ],
   [
