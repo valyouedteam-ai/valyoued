@@ -10,7 +10,7 @@ export const billingSubscriptionsTable = pgTable("billing_subscriptions", {
   status: text("status").notNull().default("inactive"),
   /** Legacy: derived boolean when paid valuation features active (tier `pro`). */
   tier: text("tier").notNull().default("free"),
-  /** `everyday_plus` | `professional` when subscribed; omit when free. */
+  /** `everyday_plus` (Everyday) | `professional` (Professional) when subscribed; omit when free. */
   planSlug: text("plan_slug"),
   hasInheritanceAddon: boolean("has_inheritance_addon").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

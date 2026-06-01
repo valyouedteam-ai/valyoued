@@ -167,7 +167,7 @@ paths:
     post:
       operationId: refineEstimate
       tags: [estimate]
-      summary: Re-run valuation with enriched input (Everyday+ or Professional)
+      summary: Re-run valuation with enriched input (Everyday or Professional)
       parameters:
         - in: path
           name: id

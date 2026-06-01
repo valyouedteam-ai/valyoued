@@ -104,7 +104,7 @@ export default function WelcomePersonaPage() {
         </div>
 
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          Everyday free covers five valuations per calendar month until you subscribe.{" "}
+          Free covers five valuations per calendar month until you subscribe.{" "}
           <Link href="/pricing#plans" className="font-medium text-accent underline-offset-4 hover:underline">
             Pricing
           </Link>{" "}

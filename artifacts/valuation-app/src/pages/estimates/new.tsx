@@ -416,7 +416,7 @@ function describeValuationGateError(err: unknown): string {
     const payload = err.data as { error?: string } | null | undefined;
     return (
       payload?.error ??
-      "You've used all five Everyday free valuations this month. Upgrade via Settings for unlimited valuations."
+      "You've used all five free valuations this month. Upgrade via Settings for unlimited valuations."
     );
   }
   return "";
@@ -967,7 +967,7 @@ function NewEstimatePageInner({
             friendly = "Couldn't reach the valuation server. Check your connection and try again.";
           }
           toast({
-            title: capped ? "Free tier monthly cap" : "Valuation failed",
+            title: capped ? "Free monthly cap" : "Valuation failed",
             description: friendly,
             variant: "destructive",
           });

@@ -1,5 +1,5 @@
 /**
- * Dev billing tier strip (Free / Everyday+ / Pro plus inheritance) and related client-side billing previews.
+ * Dev billing tier strip (Free / Everyday / Professional plus inheritance) and related client-side billing previews.
  *
  * - On by default in Vite development (`import.meta.env.DEV`).
  * - In production builds set `VITE_ENABLE_DEV_BILLING_TOGGLE=1` to show it (for example on a Vercel preview).

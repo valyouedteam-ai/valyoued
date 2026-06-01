@@ -30,9 +30,24 @@ export type PricingFaqItem = { question: string; answer: string };
 
 export const PROFESSIONAL_TRIAL_DAYS_DEFAULT = 14;
 
+/** User-facing billing tier label from API/Stripe slug. */
+export function planTierDisplayName(slug: string | null | undefined): string {
+  switch (slug) {
+    case "everyday_plus":
+      return "Everyday";
+    case "professional":
+      return "Professional";
+    case "none":
+    case "free":
+      return "Free";
+    default:
+      return slug ?? "Free";
+  }
+}
+
 export const MAIN_PLAN_CARDS: MarketingPlanCardDef[] = [
   {
-    title: "Everyday · Free",
+    title: "Free",
     subtitle: "Start without a card",
     price: "£0",
     bullets: [
@@ -46,7 +61,7 @@ export const MAIN_PLAN_CARDS: MarketingPlanCardDef[] = [
     variant: "outline",
   },
   {
-    title: "Everyday+",
+    title: "Everyday",
     subtitle: "Full personal valuations",
     price: "£7.99/mo",
     priceAnnual: "£6.49/mo",
@@ -56,7 +71,7 @@ export const MAIN_PLAN_CARDS: MarketingPlanCardDef[] = [
       "Refine valuations in place and portfolio health alerts",
       "Full arbitrage rows, monitor emails, and value nudges",
     ],
-    ctaLabel: "Sign up and choose Everyday+",
+    ctaLabel: "Sign up and choose Everyday",
     ctaHref: "/welcome",
     variant: "default",
   },
@@ -66,7 +81,7 @@ export const MAIN_PLAN_CARDS: MarketingPlanCardDef[] = [
     price: "£14.99/mo",
     priceAnnual: "£12.49/mo",
     bullets: [
-      "Everything in Everyday+ plus Market Watch and deal scoring",
+      "Everything in Everyday plus Market Watch and deal scoring",
       "Inventory pipeline, max buy price, and repricing alerts",
       "Platform-specific listing drafts and batch repricing checks",
       "Business exports, multiple desks, seller-grade listing tone",
@@ -134,12 +149,12 @@ export const PRICING_FAQ: PricingFaqItem[] = [
   {
     question: "Can I use ValYoued for free?",
     answer:
-      "Yes. Everyday Free includes five valuations each calendar month (UTC), basic listing drafts, and a regional snapshot on reports. Upgrade when you want unlimited valuations, arbitrage rows, or monitor emails.",
+      "Yes. Free includes five valuations each calendar month (UTC), basic listing drafts, and a regional snapshot on reports. Upgrade when you want unlimited valuations, arbitrage rows, or monitor emails.",
   },
   {
     question: "Can I cancel anytime?",
     answer:
-      "Paid plans cancel through Billing in Settings. You keep access through the end of the current billing period. Everyday Free never requires a card.",
+      "Paid plans cancel through Billing in Settings. You keep access through the end of the current billing period. Free never requires a card.",
   },
   {
     question: "How does the Professional trial work?",
@@ -148,7 +163,7 @@ export const PRICING_FAQ: PricingFaqItem[] = [
   {
     question: "What is the inheritance add-on?",
     answer:
-      "It spins up a separate portfolio workspace for estate rehearsal, heirs, or heirloom tracking alongside your main ledger. It bills monthly on top of Everyday Free or Everyday+.",
+      "It spins up a separate portfolio workspace for estate rehearsal, heirs, or heirloom tracking alongside your main ledger. It bills monthly on top of Free or Everyday.",
   },
   {
     question: "Do you offer annual billing?",
@@ -171,7 +186,7 @@ export const INHERITANCE_ADDON_CARD: MarketingPlanCardDef = {
     "Optional portfolio workspace separate from your main holdings",
     "Easier inheritance management with a workspace split out from your main portfolio",
     "Pick which portfolio each valuation saves into",
-    "Adds on alongside Everyday Free or Everyday+ billing",
+    "Adds on alongside Free or Everyday billing",
   ],
   ctaLabel: "Sign up, then add inheritance in Billing",
   ctaHref: "/sign-up",

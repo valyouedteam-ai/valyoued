@@ -81,7 +81,7 @@ export default function MarketsPage() {
               Settings
             </Link>{" "}
             for cross-market framing, comparative pricing badges on this screen, and the full regional breakdown copy.
-            It also unlocks whenever you already have valuations saved from a Pro billing run.
+            It also unlocks whenever you already have valuations saved from a Professional billing run.
           </p>
         </header>
       )}
@@ -186,7 +186,7 @@ export default function MarketsPage() {
                     Subscribe in Settings
                   </Link>
                   {" "}
-                  or run a valuation with Pro.
+                  or run a valuation with Professional.
                 </p>
               </div>
             ) : stats && stats.topArbitrageRegions.length > 0 ? (
@@ -286,7 +286,7 @@ export default function MarketsPage() {
                   <TableHead>Asset</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Adjusted</TableHead>
-                  <TableHead>Top region (Pro)</TableHead>
+                  <TableHead>Top region (Professional)</TableHead>
                   <TableHead className="w-[120px]" />
                 </TableRow>
               </TableHeader>

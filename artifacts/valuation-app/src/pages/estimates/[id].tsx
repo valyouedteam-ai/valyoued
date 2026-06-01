@@ -582,7 +582,7 @@ export default function EstimateReportPage() {
                 <Link href="/settings">
                   <Button className="bg-accent text-accent-foreground hover:bg-accent/90">Upgrade in settings</Button>
                 </Link>
-                <p className="text-xs text-muted-foreground md:text-right">Everyday+ or Professional</p>
+                <p className="text-xs text-muted-foreground md:text-right">Everyday or Professional</p>
               </div>
             </div>
             <ul className="mt-5 grid gap-2 sm:grid-cols-2">
@@ -841,7 +841,7 @@ export default function EstimateReportPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-accent/30 bg-accent/[0.06] px-4 py-3 text-sm text-muted-foreground">
                 <span>
                   Showing {visibleComps.length} of {comparables.length} comparable rows on this snapshot. Unlock the full
-                  grid with Everyday+.
+                  grid with Everyday.
                 </span>
                 <Link href="/settings" className="shrink-0 text-sm font-medium text-accent hover:underline">
                   Upgrade in settings

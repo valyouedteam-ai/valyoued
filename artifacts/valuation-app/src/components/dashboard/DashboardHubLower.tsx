@@ -201,7 +201,7 @@ export function DashboardHubLower({
           <PaidFeatureTeaser
             eyebrow="Paid unlock"
             title="International arbitrage stack"
-            description="Everyday+ opens the fuller regional payout grids on each valuation alongside the markets cockpit previews you already skim."
+            description="Everyday opens the fuller regional payout grids on each valuation alongside the markets cockpit previews you already skim."
           />
         )}
       </section>
@@ -214,7 +214,7 @@ export function DashboardHubLower({
               <CardTitle className="text-lg">Ads &amp; monitors</CardTitle>
             </div>
             <p className="text-sm text-muted-foreground">
-              Everyday Free still drafts humane ads. Alerts for monitored holdings unlock with Everyday+.
+              Free still drafts humane ads. Alerts for monitored holdings unlock with Everyday.
             </p>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
@@ -241,7 +241,7 @@ export function DashboardHubLower({
                   </div>
                   <p className="text-xs text-muted-foreground">Holdings tagged monitor can ping you after upgrade.</p>
                   <Button size="sm" variant="secondary" className="w-full rounded-lg" asChild>
-                    <Link href="/settings">Unlock with Everyday+</Link>
+                    <Link href="/settings">Unlock with Everyday</Link>
                   </Button>
                 </div>
               </div>

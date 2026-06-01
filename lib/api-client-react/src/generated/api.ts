@@ -700,7 +700,7 @@ export const usePatchEstimate = <
 };
 
 /**
- * @summary Re-run valuation with enriched input (Everyday+ or Professional)
+ * @summary Re-run valuation with enriched input (Everyday or Professional)
  */
 export const getRefineEstimateUrl = (id: string) => {
   return `/api/estimates/${id}/refine`;
@@ -764,7 +764,7 @@ export type RefineEstimateMutationBody = BodyType<RefineEstimateBody>;
 export type RefineEstimateMutationError = ErrorType<RefineEstimate403>;
 
 /**
- * @summary Re-run valuation with enriched input (Everyday+ or Professional)
+ * @summary Re-run valuation with enriched input (Everyday or Professional)
  */
 export const useRefineEstimate = <
   TError = ErrorType<RefineEstimate403>,

@@ -134,7 +134,7 @@ router.post("/estimates", requireAuth, async (req, res): Promise<void> => {
   const limit = ent.valuationsMonthLimit ?? null;
   if (limit != null && ent.valuationsThisMonth >= limit) {
     res.status(429).json({
-      error: `You've used your ${FREE_MONTHLY_VALUATION_CAP} free valuations this month. Upgrade an Everyday subscription for unlimited personal valuations.`,
+      error: `You've used your ${FREE_MONTHLY_VALUATION_CAP} free valuations this month. Upgrade to Everyday for unlimited personal valuations.`,
     });
     return;
   }
@@ -301,7 +301,7 @@ router.post("/estimates/:id/refine", requireAuth, async (req, res): Promise<void
   const userId = (req as AuthedRequest).userId!;
   const ent = await resolveUserEntitlements(userId, req);
   if (!ent.canUsePortfolioAnalytics) {
-    res.status(403).json({ error: "Refine valuations requires Everyday+ or Professional." });
+    res.status(403).json({ error: "Refine valuations requires Everyday or Professional." });
     return;
   }
 

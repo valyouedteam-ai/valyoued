@@ -63,7 +63,7 @@ export function DashboardNextStep({ scopedEstimates }: { scopedEstimates: Estima
       icon = Wallet;
     } else if (!paid) {
       title = "Unlock regional arbitrage rows";
-      body = "Everyday+ adds fuller market grids on each report plus monitor emails.";
+      body = "Everyday adds fuller market grids on each report plus monitor emails.";
       href = "/pricing#plans";
       cta = "Compare plans";
       icon = Compass;

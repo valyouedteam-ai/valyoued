@@ -101,7 +101,7 @@ function mapTokenToSlug(token: string): AuthStubResolvedPlanSlug | null {
     case "paid":
       return "everyday_plus";
     case "pro":
-      /** Legacy stub env: Stripe-era `pro` slot maps to Everyday+ unless professional is spelled out. */
+      /** Legacy stub env: Stripe-era `pro` slot maps to Everyday unless professional is spelled out. */
       return "everyday_plus";
     case "professional":
     case "seller":

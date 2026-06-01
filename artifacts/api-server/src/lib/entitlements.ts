@@ -30,7 +30,7 @@ export function currentYearMonthUtc(): string {
 export type PlanSlug = "none" | "everyday_plus" | "professional";
 
 export interface UserEntitlements {
-  /** Free vs any paid valuation subscription (Everyday+ or Professional). */
+  /** Free vs any paid valuation subscription (Everyday or Professional). */
   tier: "free" | "pro";
   /** `none` when free; `everyday_plus` (£7.99) or `professional` (£14.99) when subscribed. */
   planSlug: PlanSlug;
@@ -42,17 +42,17 @@ export interface UserEntitlements {
   /** 5 when on free Everyday; unlimited when subscribed */
   valuationsMonthLimit: number | null;
   valuationsRemainingFree: number | null;
-  /** True on Everyday+ or Professional (unlimited valuations policy, full estimate rows, etc.). */
+  /** True on Everyday or Professional (unlimited valuations policy, full estimate rows, etc.). */
   hasPaidValuationTier: boolean;
-  /** Seller-grade listing tone: Professional only. Everyday+ uses the same compact style as free tier. */
+  /** Seller-grade listing tone: Professional only. Everyday uses the same compact style as free tier. */
   listingQuality: "basic" | "premium";
-  /** Full cross-region arbitrage on estimates: Everyday+ or Professional. */
+  /** Full cross-region arbitrage on estimates: Everyday or Professional. */
   canUseInternationalArbitrage: boolean;
   /** Seller playbook / pro insights on new valuations: Professional only. */
   canUseAdvancedSellingReco: boolean;
-  /** Portfolio value-change alerts: Everyday+ or Professional. */
+  /** Portfolio value-change alerts: Everyday or Professional. */
   canUseMonitorEmailAlerts: boolean;
-  /** Portfolio analytics, refine flow, health strip: Everyday+ or Professional. */
+  /** Portfolio analytics, refine flow, health strip: Everyday or Professional. */
   canUsePortfolioAnalytics: boolean;
   /** Market Watch, inventory pipeline, business reports: Professional only. */
   canUseTraderWorkspace: boolean;
@@ -242,7 +242,7 @@ export function includeSellerPlaybookInEstimate(ent: Pick<UserEntitlements, "pla
   return ent.planSlug === "professional";
 }
 
-/** Which valuation row/API fields run as Pro (multi-row payouts, headline layers). Mirrors Everyday+ vs Professional parity for estimate math (not playbook or listing presets). */
+/** Which valuation row/API fields run as Pro (multi-row payouts, headline layers). Mirrors Everyday vs Professional parity for estimate math (not playbook or listing presets). */
 export function valuationTierForEstimate(ent: Pick<UserEntitlements, "hasPaidValuationTier">): "free" | "pro" {
   return ent.hasPaidValuationTier ? "pro" : "free";
 }

@@ -17,7 +17,7 @@ Ship only after valuation wizard / post-submit flows stabilize (roadmap Phase 4)
 
 ## Posting-time heuristics (“when shoppers are active”)
 
-**Goal:** Everyday+ / Professional-only tips that improve listing traction without implying hidden surveillance data.
+**Goal:** Everyday / Professional-only tips that improve listing traction without implying hidden surveillance data.
 
 **Ethical proxies (examples):**
 

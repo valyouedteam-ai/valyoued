@@ -31,7 +31,7 @@ export function PaidFeatureTeaser({
       </CardHeader>
       <CardContent className="relative space-y-3">
         <div className="rounded-xl border border-dashed border-border/80 bg-card/40 px-3 py-6 text-center text-xs text-muted-foreground">
-          Preview only on Everyday Free. Unlock with Everyday+ or Professional.
+          Preview only on Free. Unlock with Everyday or Professional.
         </div>
         <Button className="w-full rounded-xl" asChild variant="secondary">
           <Link href={href}>View plans and upgrade path</Link>

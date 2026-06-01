@@ -64,7 +64,7 @@ router.patch("/me/email-alerts", requireAuth, async (req, res): Promise<void> =>
     if (!ent.hasPaidValuationTier) {
       res.status(403).json({
         error:
-          "Email-powered alerts stay off on Everyday Free. Upgrade via Settings to enable estimate-ready pings, monitors, or product emails.",
+          "Email-powered alerts stay off on Free. Upgrade via Settings to enable estimate-ready pings, monitors, or product emails.",
       });
       return;
     }

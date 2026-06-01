@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 
 const OPTIONS: { value: StubBillingPlanSlug; label: string }[] = [
   { value: "free", label: "Free" },
-  { value: "everyday_plus", label: "Everyday+" },
-  { value: "professional", label: "Pro" },
+  { value: "everyday_plus", label: "Everyday" },
+  { value: "professional", label: "Professional" },
 ];
 
 /**

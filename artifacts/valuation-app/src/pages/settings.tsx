@@ -28,7 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
-import { useQueryClient } from "@tanstack/react-query";
+import { planTierDisplayName } from "@/lib/marketing-plan-tiers";
 
 type BillingInfo = {
   tier: string;
@@ -477,7 +477,7 @@ function SettingsPageInner({
               <div className="space-y-0.5">
                 <Label htmlFor="alert-monitor-value">Portfolio value‑change monitors</Label>
                 <p className="text-xs text-muted-foreground">
-                  When an item intent is monitor, pings fire after meaningful re-pricing. Requires Everyday+ or Professional alongside
+                  When an item intent is monitor, pings fire after meaningful re-pricing. Requires Everyday or Professional alongside
                   the other email alerts above.
                 </p>
               </div>
@@ -631,7 +631,7 @@ function SettingsPageInner({
                   {billing.planSlug ? (
                     <>
                       {" "}
-                      · plan <span className="tabular-nums font-medium">{billing.planSlug}</span>
+                      · plan <span className="font-medium">{planTierDisplayName(billing.planSlug)}</span>
                     </>
                   ) : null}
                   {!billing.hasPaidValuationTier && billing.valuationsRemainingFree != null ? (
@@ -639,7 +639,7 @@ function SettingsPageInner({
                       {" "}
                       ·{" "}
                       <span className="font-medium text-foreground">{billing.valuationsRemainingFree}</span> free
-                      valuations left this month (Everyday tier cap is{" "}
+                      valuations left this month (Free tier cap is{" "}
                       {billing.valuationsMonthLimit ?? 5}
                       ).
                     </>
@@ -658,7 +658,7 @@ function SettingsPageInner({
                       <SelectValue placeholder="Pick a plan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="everyday_plus">Everyday+ · £7.99/mo</SelectItem>
+                      <SelectItem value="everyday_plus">Everyday · £7.99/mo</SelectItem>
                       <SelectItem value="professional">Professional · £14.99/mo</SelectItem>
                     </SelectContent>
                   </Select>
@@ -666,7 +666,7 @@ function SettingsPageInner({
               </>
             ) : (
               <p className="text-sm text-muted-foreground leading-relaxed">
-                You&apos;re subscribed. Everyday+ adds unlimited valuations, full arbitrage payout rows, and configurable
+                You&apos;re subscribed. Everyday adds unlimited valuations, full arbitrage payout rows, and configurable
                 monitor alerts. Professional also adds seller-grade listing presets, the seller playbook on new valuations,
                 and desk portfolios. Use the portal to change plans or payment details.
               </p>

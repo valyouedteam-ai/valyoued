@@ -24,7 +24,7 @@ export default function AlertsPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Portfolio alerts</h1>
           <p className="mt-1 text-muted-foreground">
-            Value changes, revaluation nudges, and receipt reminders for Everyday+ holdings.
+            Value changes, revaluation nudges, and receipt reminders for Everyday holdings.
           </p>
         </div>
         {unread > 0 ? (
@@ -44,7 +44,7 @@ export default function AlertsPage() {
       {!billing?.canUsePortfolioAnalytics ? (
         <Card className="border-dashed">
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Upgrade to Everyday+ for portfolio alerts and monitor emails.{" "}
+            Upgrade to Everyday for portfolio alerts and monitor emails.{" "}
             <Link href="/pricing#plans" className="font-medium text-accent hover:underline">
               Compare plans
             </Link>

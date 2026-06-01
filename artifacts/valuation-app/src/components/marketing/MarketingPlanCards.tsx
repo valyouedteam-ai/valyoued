@@ -111,14 +111,14 @@ function MarketingPlanCardsInner({
 
       <div className="mt-16">
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">Compare plans</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Feature matrix for Everyday Free, Everyday+, and Professional.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Feature matrix for Free, Everyday, and Professional.</p>
         <div className="mt-6 overflow-x-auto rounded-2xl border border-border/70 bg-card/80">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30">
                 <th className="px-4 py-3 font-semibold text-foreground">Feature</th>
                 <th className="px-4 py-3 font-semibold text-foreground">Free</th>
-                <th className="px-4 py-3 font-semibold text-foreground">Everyday+</th>
+                <th className="px-4 py-3 font-semibold text-foreground">Everyday</th>
                 <th className="px-4 py-3 font-semibold text-foreground">Professional</th>
               </tr>
             </thead>

@@ -81,7 +81,7 @@ function MockRegionsScreen() {
       </div>
       <div className="mt-auto flex items-center gap-2 pt-4 text-xs text-white/50">
         <Globe2 className="h-3.5 w-3.5 text-accent" aria-hidden />
-        Arbitrage rows on Everyday+
+        Arbitrage rows on Everyday
       </div>
     </div>
   );

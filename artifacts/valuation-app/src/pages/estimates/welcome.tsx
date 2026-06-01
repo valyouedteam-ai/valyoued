@@ -64,7 +64,7 @@ export default function EstimateWelcomePage() {
         <p className="text-muted-foreground">
           {paid
             ? "Your asset is in the portfolio with a live confidence score and action hint."
-            : "Preview your portfolio moment. Upgrade to Everyday+ for full analytics."}
+            : "Preview your portfolio moment. Upgrade to Everyday for full analytics."}
         </p>
       </header>
 
@@ -87,7 +87,7 @@ export default function EstimateWelcomePage() {
                 <p className="text-3xl font-semibold tabular-nums text-accent">{analytics.confidenceScore}</p>
               </div>
             ) : (
-              <Badge variant="secondary">Everyday+ unlocks confidence</Badge>
+              <Badge variant="secondary">Everyday unlocks confidence</Badge>
             )}
           </div>
 
@@ -158,7 +158,7 @@ export default function EstimateWelcomePage() {
         </Button>
         {!paid ? (
           <Button size="lg" variant="secondary" className="rounded-full" asChild>
-            <Link href="/pricing#plans">Unlock Everyday+</Link>
+            <Link href="/pricing#plans">Unlock Everyday</Link>
           </Button>
         ) : null}
       </div>

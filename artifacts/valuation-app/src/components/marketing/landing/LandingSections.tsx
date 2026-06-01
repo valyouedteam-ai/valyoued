@@ -513,7 +513,7 @@ export function LandingFooter() {
       title: "Product",
       links: [
         { href: "/pricing#plans", label: "Pricing" },
-        { href: "/welcome", label: "Everyday vs Pro" },
+        { href: "/welcome", label: "Everyday vs Professional" },
         { href: "/start", label: "Guest valuation" },
       ],
     },

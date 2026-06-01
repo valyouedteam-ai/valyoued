@@ -48,7 +48,7 @@ const BASE = (import.meta as any).env?.BASE_URL ?? "/";
 const LOGO_URL = `${BASE.replace(/\/$/, "")}/logo.png`;
 const SHOW_DEV_PRO_CHROME_PREVIEW = import.meta.env.DEV;
 
-/** Dev / optional preview: Free / Everyday+ / Pro plus inheritance (see `isDevBillingUiEnabled`). */
+/** Dev / optional preview: Free / Everyday / Professional plus inheritance (see `isDevBillingUiEnabled`). */
 const SHOW_STUB_PLAN_TOGGLE = isDevBillingUiEnabled();
 
 type NavItem = {
@@ -376,7 +376,7 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
           <span className="text-xs font-medium text-foreground">{trackName}</span>
         ) : (
           <>
-            <span className="text-xs font-medium text-foreground">Free valuation plan</span>
+            <span className="text-xs font-medium text-foreground">Free</span>
             {persona ? (
               <span className="text-[10px] text-muted-foreground">Track: {trackName}</span>
             ) : null}

@@ -1046,7 +1046,7 @@ export const PatchEstimateResponse = zod.object({
 });
 
 /**
- * @summary Re-run valuation with enriched input (Everyday+ or Professional)
+ * @summary Re-run valuation with enriched input (Everyday or Professional)
  */
 export const RefineEstimateParams = zod.object({
   id: zod.coerce.string(),
