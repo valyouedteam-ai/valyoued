@@ -7,11 +7,19 @@ import { isAuthStubMode } from "../lib/authStub";
 import { isStripeStubMode } from "../lib/stripeStub";
 import { getUserAlertPrefs, upsertUserAlertPrefs } from "../lib/userAlertPrefs";
 import {
-  getClerkPrimaryEmail,
   isEmailDeliveryConfigured,
   publicAppBaseUrl,
   sendHtmlEmail,
 } from "../lib/emailDelivery";
+import {
+  buildConnectivityTestEmailHtml,
+  emailAlertDevToolsEnabled,
+  resolveEmailAlertRecipient,
+  sampleEstimateReadyEmail,
+  sampleMonitorValueEmail,
+  type EmailAlertSampleKind,
+} from "../lib/emailAlertSamples";
+import { runMonitorValueChangeScan } from "../lib/monitorValueChangeEmail";
 import { resolveUserEntitlements } from "../lib/entitlements";
 import { sanitizeListingDraftTitle, stripSellerTodoBlockFromDraftBody } from "../lib/listing";
 
@@ -34,12 +42,27 @@ const PatchEmailAlertsBody = z
     },
   );
 
+const TestEmailBody = z
+  .object({
+    kind: z.enum(["connectivity", "estimate_ready", "monitor_value"]).default("connectivity"),
+    to: z.string().email().optional(),
+  })
+  .strict();
+
+const RunMonitorScanBody = z
+  .object({
+    /** Dev only: alert on any monitor-intent row regardless of uplift threshold. */
+    force: z.boolean().optional(),
+  })
+  .strict();
+
 router.get("/me/email-alerts", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
   const prefs = await getUserAlertPrefs(userId);
   res.json({
     ...prefs,
     deliveryEnabled: isEmailDeliveryConfigured(),
+    devToolsEnabled: emailAlertDevToolsEnabled(),
   });
 });
 
@@ -74,14 +97,11 @@ router.patch("/me/email-alerts", requireAuth, async (req, res): Promise<void> =>
   res.json({
     ...persisted,
     deliveryEnabled: isEmailDeliveryConfigured(),
+    devToolsEnabled: emailAlertDevToolsEnabled(),
   });
 });
 
 router.post("/me/email-alerts/test", requireAuth, async (req, res): Promise<void> => {
-  if (isAuthStubMode()) {
-    res.status(400).json({ error: "Test email is not available in auth stub mode." });
-    return;
-  }
   if (!isEmailDeliveryConfigured()) {
     res.status(503).json({
       error:
@@ -89,23 +109,81 @@ router.post("/me/email-alerts/test", requireAuth, async (req, res): Promise<void
     });
     return;
   }
-  const userId = (req as AuthedRequest).userId!;
-  const to = await getClerkPrimaryEmail(userId);
-  if (!to) {
-    res.status(400).json({ error: "No primary email found for your account." });
+  const parsed = TestEmailBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues.map((e) => e.message).join("; ") });
     return;
   }
+  const userId = (req as AuthedRequest).userId!;
+  const recipient = await resolveEmailAlertRecipient(userId, parsed.data.to);
+  if ("error" in recipient) {
+    res.status(400).json({ error: recipient.error });
+    return;
+  }
+
+  const kind: EmailAlertSampleKind = parsed.data.kind;
   const base = publicAppBaseUrl().replace(/\/$/, "");
-  const sent = await sendHtmlEmail({
-    to,
-    subject: "ValYoued email alerts test",
-    html: `<p>This is a test message from ValYoued.</p><p>If you received it, email delivery is working. Open the app: <a href="${base}">${base}</a></p>`,
-  });
+  let subject: string;
+  let html: string;
+  if (kind === "estimate_ready") {
+    ({ subject, html } = sampleEstimateReadyEmail());
+  } else if (kind === "monitor_value") {
+    ({ subject, html } = sampleMonitorValueEmail());
+  } else {
+    subject = "ValYoued email alerts test";
+    html = buildConnectivityTestEmailHtml(base);
+  }
+
+  const sent = await sendHtmlEmail({ to: recipient.to, subject, html });
   if (!sent.ok) {
     res.status(502).json({ error: sent.error });
     return;
   }
-  res.json({ ok: true });
+  res.json({ ok: true, kind, to: recipient.to });
+});
+
+/** Dev-only: run the monitor scan against your saved valuations (same logic as opening Portfolio alerts). */
+router.post("/me/email-alerts/run-monitor-scan", requireAuth, async (req, res): Promise<void> => {
+  if (!emailAlertDevToolsEnabled()) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const parsed = RunMonitorScanBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues.map((e) => e.message).join("; ") });
+    return;
+  }
+  const userId = (req as AuthedRequest).userId!;
+  const ent = await resolveUserEntitlements(userId, req);
+  if (!ent.canUseMonitorEmailAlerts) {
+    res.status(403).json({
+      error: "Monitor email alerts require Everyday or Professional with the portfolio monitor toggle enabled.",
+    });
+    return;
+  }
+  const prefs = await getUserAlertPrefs(userId);
+  if (!prefs.monitorValueChangeEmail) {
+    res.status(400).json({
+      error: "Turn on Portfolio value-change monitors in email alerts first.",
+    });
+    return;
+  }
+  const force = Boolean(parsed.data.force);
+  const result = await runMonitorValueChangeScan(userId, {
+    minUplift: force ? 0 : 0.03,
+    skipDedup: force,
+  });
+  res.json({
+    ok: true,
+    force,
+    ...result,
+    hint:
+      result.emailedCount === 0 && result.monitoredCount === 0
+        ? "Tag at least one valuation intent as Monitor, then retry."
+        : result.emailedCount === 0 && !force
+          ? "No rows met the 3% uplift threshold. Retry with { \"force\": true } or use Send sample monitor email."
+          : undefined,
+  });
 });
 
 router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {

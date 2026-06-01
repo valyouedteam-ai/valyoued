@@ -6,6 +6,7 @@ import { db, billingSubscriptionsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { isStripeStubMode } from "../lib/stripeStub";
+import { publicAppBaseUrl } from "../lib/emailDelivery";
 
 const router: IRouter = Router();
 
@@ -16,7 +17,7 @@ const CheckoutSessionBody = z
   .strict();
 
 function billingBaseUrl(): string {
-  return process.env.PUBLIC_APP_URL ?? process.env.VITE_APP_ORIGIN ?? "http://localhost:5173";
+  return publicAppBaseUrl();
 }
 
 function getStripe(): Stripe | null {

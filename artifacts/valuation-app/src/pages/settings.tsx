@@ -24,11 +24,13 @@ import {
 import { useDisplayCurrency } from "@/hooks/use-display-currency";
 import { DISPLAY_CURRENCY_OPTIONS, getStoredReferenceCurrency, getSessionGeoCountry, countryCodeToDisplayCurrency } from "@/lib/reference-currency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
 import { planTierDisplayName } from "@/lib/marketing-plan-tiers";
+import { useQueryClient } from "@tanstack/react-query";
 
 type BillingInfo = {
   tier: string;
@@ -48,7 +50,10 @@ type EmailAlertsInfo = {
   productUpdatesEmail: boolean;
   monitorValueChangeEmail?: boolean;
   deliveryEnabled: boolean;
+  devToolsEnabled?: boolean;
 };
+
+type EmailTestKind = "connectivity" | "estimate_ready" | "monitor_value";
 
 type BillingActionJson = { url?: string; error?: string; stub?: boolean };
 
@@ -136,9 +141,11 @@ async function postBilling(
 function SettingsPageInner({
   getToken,
   onOpenProfile,
+  authStub,
 }: {
   getToken: () => Promise<string | null | undefined>;
   onOpenProfile?: () => void;
+  authStub?: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -154,6 +161,9 @@ function SettingsPageInner({
     Boolean(geoCountry) && countryCodeToDisplayCurrency(geoCountry) === displayCurrencyCode;
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [emailAlerts, setEmailAlerts] = useState<EmailAlertsInfo | null>(null);
+  const [stubTestEmail, setStubTestEmail] = useState(
+    () => localStorage.getItem("valyoued.stub-test-email") ?? "",
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<"everyday_plus" | "professional">("everyday_plus");
 
@@ -224,10 +234,13 @@ function SettingsPageInner({
     }
   };
 
-  const sendTestEmail = async () => {
-    setBusy("email-test");
+  const sendTestEmail = async (kind: EmailTestKind = "connectivity") => {
+    setBusy(`email-test:${kind}`);
     try {
       const token = await getToken();
+      const payload: { kind: EmailTestKind; to?: string } = { kind };
+      const to = stubTestEmail.trim();
+      if (to) payload.to = to;
       const res = await fetch(apiUrl("/api/me/email-alerts/test"), {
         method: "POST",
         credentials: apiFetchCredentials(),
@@ -235,7 +248,7 @@ function SettingsPageInner({
           "content-type": "application/json",
           ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
-        body: "{}",
+        body: JSON.stringify(payload),
       });
       const text = (await res.text()).trim();
       if (!res.ok) {
@@ -249,7 +262,55 @@ function SettingsPageInner({
         toast({ title: "Test email failed", description: msg, variant: "destructive" });
         return;
       }
-      toast({ title: "Test email sent", description: "Check your inbox (and spam) in a few seconds." });
+      const label =
+        kind === "connectivity"
+          ? "Connection test"
+          : kind === "estimate_ready"
+            ? "Sample estimate-ready email"
+            : "Sample monitor alert";
+      toast({ title: `${label} sent`, description: "Check your inbox (and spam) in a few seconds." });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const runMonitorScan = async (force: boolean) => {
+    setBusy(force ? "monitor-scan-force" : "monitor-scan");
+    try {
+      const token = await getToken();
+      const res = await fetch(apiUrl("/api/me/email-alerts/run-monitor-scan"), {
+        method: "POST",
+        credentials: apiFetchCredentials(),
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ force }),
+      });
+      const text = (await res.text()).trim();
+      if (!res.ok) {
+        let msg = text;
+        try {
+          const j = JSON.parse(text) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          /* use raw */
+        }
+        toast({ title: "Monitor scan failed", description: msg, variant: "destructive" });
+        return;
+      }
+      const j = JSON.parse(text) as {
+        monitoredCount?: number;
+        emailedCount?: number;
+        notifiedCount?: number;
+        hint?: string;
+      };
+      toast({
+        title: force ? "Forced monitor scan complete" : "Monitor scan complete",
+        description:
+          j.hint ??
+          `${j.emailedCount ?? 0} email(s) sent, ${j.notifiedCount ?? 0} in-app alert(s) from ${j.monitoredCount ?? 0} monitored item(s).`,
+      });
     } finally {
       setBusy(null);
     }
@@ -490,16 +551,108 @@ function SettingsPageInner({
                 onCheckedChange={(v) => void patchEmailAlert({ monitorValueChangeEmail: v })}
               />
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto gap-2"
-              disabled={busy !== null || !emailAlerts?.deliveryEnabled}
-              onClick={() => void sendTestEmail()}
-            >
-              <Mail className="h-4 w-4" />
-              {busy === "email-test" ? "Sending…" : "Send test email"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={busy !== null || !emailAlerts?.deliveryEnabled}
+                onClick={() => void sendTestEmail("connectivity")}
+              >
+                <Mail className="h-4 w-4" />
+                {busy === "email-test:connectivity" ? "Sending…" : "Test connection"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy !== null || !emailAlerts?.deliveryEnabled}
+                onClick={() => void sendTestEmail("estimate_ready")}
+              >
+                {busy === "email-test:estimate_ready" ? "Sending…" : "Sample estimate ready"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy !== null || !emailAlerts?.deliveryEnabled}
+                onClick={() => void sendTestEmail("monitor_value")}
+              >
+                {busy === "email-test:monitor_value" ? "Sending…" : "Sample monitor alert"}
+              </Button>
+            </div>
+            {authStub ? (
+              <div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
+                <Label htmlFor="stub-test-email">Test recipient (auth stub)</Label>
+                <Input
+                  id="stub-test-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={stubTestEmail}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setStubTestEmail(next);
+                    if (next.trim()) localStorage.setItem("valyoued.stub-test-email", next);
+                    else localStorage.removeItem("valyoued.stub-test-email");
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Stub mode has no Clerk inbox. Enter your address here or set STUB_TEST_EMAIL in .env.
+                </p>
+              </div>
+            ) : null}
+            {emailAlerts?.devToolsEnabled ? (
+              <div className="space-y-2 rounded-xl border border-dashed border-accent/30 bg-accent/5 p-3">
+                <p className="text-sm font-medium text-foreground">Real monitor scan (dev)</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Uses your saved valuations with intent Monitor. Normal scan needs about 3% uplift since baseline;
+                  force scan alerts on any monitored row (same email template as production).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={
+                      busy !== null ||
+                      emailAlertsPaidOnly ||
+                      !emailAlerts.monitorValueChangeEmail
+                    }
+                    onClick={() => void runMonitorScan(false)}
+                  >
+                    {busy === "monitor-scan" ? "Scanning…" : "Run monitor scan"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      busy !== null ||
+                      emailAlertsPaidOnly ||
+                      !emailAlerts.monitorValueChangeEmail
+                    }
+                    onClick={() => void runMonitorScan(true)}
+                  >
+                    {busy === "monitor-scan-force" ? "Scanning…" : "Force scan (any monitor row)"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            <div className="rounded-xl border border-border/60 bg-muted/15 p-3 text-xs text-muted-foreground leading-relaxed space-y-2">
+              <p className="font-medium text-foreground">End-to-end checklist</p>
+              <ol className="list-decimal pl-4 space-y-1">
+                <li>Set RESEND_API_KEY and EMAIL_FROM in .env, then restart the API.</li>
+                <li>Switch to Everyday or Professional (dev subscription strip or Stripe).</li>
+                <li>Turn on the alert toggles above, then send Test connection.</li>
+                <li>
+                  For a live estimate-ready ping: run a new valuation with New estimate ready enabled.
+                </li>
+                <li>
+                  For monitor emails: tag a valuation as Monitor, open Portfolio alerts (or use Force scan here).
+                </li>
+              </ol>
+            </div>
             {!emailAlerts?.deliveryEnabled ? (
               <p className="text-xs text-muted-foreground">
                 To enable sending, set RESEND_API_KEY and EMAIL_FROM on the API server, then restart it.
@@ -750,7 +903,7 @@ function SettingsWithClerk() {
 export default function SettingsPage() {
   const authStub = useAuthStubContext();
   if (authStub) {
-    return <SettingsPageInner getToken={async () => null} />;
+    return <SettingsPageInner getToken={async () => null} authStub />;
   }
   return <SettingsWithClerk />;
 }

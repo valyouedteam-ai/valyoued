@@ -1,8 +1,35 @@
 import { logger } from "./logger";
 import { isAuthStubMode } from "./authStub";
 
+const LOCAL_DEV_APP_URL = "http://localhost:5173";
+
+function isLocalAppUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.endsWith(".ngrok-free.app") ||
+      host.endsWith(".ngrok.io")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Deep links in transactional email and Stripe return URLs. */
 export function publicAppBaseUrl(): string {
-  return process.env.PUBLIC_APP_URL ?? process.env.VITE_APP_ORIGIN ?? "http://localhost:5173";
+  const explicit = process.env.PUBLIC_APP_URL?.trim();
+  if (process.env.NODE_ENV !== "production") {
+    if (explicit && isLocalAppUrl(explicit)) return explicit.replace(/\/$/, "");
+    return LOCAL_DEV_APP_URL;
+  }
+  const origin =
+    explicit ??
+    process.env.VITE_APP_ORIGIN?.trim() ??
+    process.env.VITE_PUBLIC_SITE_ORIGIN?.trim() ??
+    "https://www.valyoued.ai";
+  return origin.replace(/\/$/, "");
 }
 
 export function isEmailDeliveryConfigured(): boolean {

@@ -25,6 +25,10 @@ if (!to) {
   process.exit(1);
 }
 
+const base = (process.env.PUBLIC_APP_URL?.trim() && /localhost|127\.0\.0\.1|ngrok/i.test(process.env.PUBLIC_APP_URL))
+  ? process.env.PUBLIC_APP_URL.replace(/\/$/, "")
+  : "http://localhost:5173";
+
 const res = await fetch("https://api.resend.com/emails", {
   method: "POST",
   headers: {
@@ -34,8 +38,8 @@ const res = await fetch("https://api.resend.com/emails", {
   body: JSON.stringify({
     from,
     to: [to],
-    subject: "ValYoued Resend test",
-    html: "<p>If you received this, Resend is wired correctly.</p>",
+    subject: "ValYoued email alerts test",
+    html: `<p>This is a test message from ValYoued.</p><p>If you received it, email delivery is working. Open the app: <a href="${base}">${base}</a></p>`,
   }),
 });
 
