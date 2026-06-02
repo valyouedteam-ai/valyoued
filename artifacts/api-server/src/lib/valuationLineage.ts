@@ -3,7 +3,7 @@ import { getConfiguredProviderId, defaultModel } from "@workspace/llm";
 import type { StoredValuationLineage } from "@workspace/db";
 
 /** Bump when changing rules in `buildPrompt` in a way that affects valuation behavior. */
-export const VALUATION_PROMPT_VERSION = "2026-05-26";
+export const VALUATION_PROMPT_VERSION = "2026-06-02";
 
 export function sha256Utf8(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
@@ -20,6 +20,9 @@ export function buildStoredLineage(args: {
   internalArchiveMatchCount: number;
   newsArticleCount: number;
   structuredFallback: boolean;
+  webSearchQueries?: string[];
+  webSearchHitCount?: number;
+  citationUrls?: string[];
 }): StoredValuationLineage {
   const provider = getConfiguredProviderId();
   const model = defaultModel();
@@ -33,5 +36,8 @@ export function buildStoredLineage(args: {
     newsArticleCount: args.newsArticleCount,
     structuredFallback: args.structuredFallback,
     experimentKey: readValuationExperimentKey(),
+    webSearchQueries: args.webSearchQueries,
+    webSearchHitCount: args.webSearchHitCount,
+    citationUrls: args.citationUrls,
   };
 }

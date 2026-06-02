@@ -346,6 +346,9 @@ export default function EstimateReportPage() {
 
   const arbitrageRows = estimate.arbitrage ?? [];
   const comparables = estimate.comparables ?? [];
+  const webResearchSources = (estimate.valuationLineage?.citationUrls ?? []).filter(
+    (url): url is string => typeof url === "string" && Boolean(safeHttpUrl(url)),
+  );
   const visibleComps =
     showExpandedPro ? comparables : comparables.slice(0, Math.min(FREE_COMP_GRID_PREVIEW, comparables.length));
   const lockedCompCount = Math.max(0, comparables.length - visibleComps.length);
@@ -994,6 +997,30 @@ export default function EstimateReportPage() {
               );
             })}
           </div>
+          </section>
+        ) : null}
+
+        {webResearchSources.length > 0 ? (
+          <section className="space-y-3 print:break-inside-avoid">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Market research sources</h2>
+            <p className="text-sm text-muted-foreground">
+              Web snippets retrieved when this valuation was generated. Comparables and pricing should reference these where possible.
+            </p>
+            <ul className="space-y-1 text-sm">
+              {webResearchSources.slice(0, 6).map((url) => (
+                <li key={url}>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline break-all"
+                  >
+                    {url}
+                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
 

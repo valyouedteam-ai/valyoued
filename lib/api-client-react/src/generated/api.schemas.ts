@@ -114,6 +114,12 @@ export interface ValuationLineage {
   structuredFallback?: boolean;
   /** Optional A/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API. */
   experimentKey?: string | null;
+  /** Planned web search queries used for market comp research (Tavily). */
+  webSearchQueries?: string[];
+  /** Number of web search snippets retrieved for this valuation. */
+  webSearchHitCount?: number;
+  /** Source URLs from web research used when building comparables. */
+  citationUrls?: string[];
 }
 
 /**

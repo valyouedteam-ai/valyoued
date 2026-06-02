@@ -22,7 +22,6 @@ import { formatUsdRollupForDisplay } from "@/lib/aggregated-money";
 import { useDisplayCurrency } from "@/hooks/use-display-currency";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
@@ -336,15 +335,10 @@ export default function PortfolioPage() {
 
         <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/40 relative overflow-hidden">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="font-sans flex items-center gap-2 text-base">
-                <PieIcon className="h-4 w-4 text-accent" />
-                Diversification
-              </CardTitle>
-              <Badge variant="outline" className="font-sans">
-                Score {diversificationScore}/100
-              </Badge>
-            </div>
+            <CardTitle className="font-sans flex items-center gap-2 text-base">
+              <PieIcon className="h-4 w-4 text-accent" />
+              Diversification
+            </CardTitle>
             <CardDescription className="text-xs">
               {diversificationScore >= 70
                 ? "Well-spread across asset classes."

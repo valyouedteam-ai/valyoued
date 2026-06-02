@@ -18,6 +18,9 @@ import { computePortfolioAnalytics } from "./portfolioAnalytics";
 import { computeTraderAnalytics } from "./traderAnalytics";
 import { fetchInternalArchiveContext } from "./internalArchiveSignals";
 import { buildStoredLineage } from "./valuationLineage";
+import { extractJson } from "./jsonExtract.js";
+import { formatWebHitsForPrompt, type WebSearchHit } from "./webSearch.js";
+import { gatherValuationWebResearch } from "./valuationWebResearch.js";
 
 interface AICore {
   baselineLow: number;
@@ -37,6 +40,7 @@ function buildPrompt(
   currency: string,
   newsArticles: NewsArticle[],
   internalArchiveBlock?: string,
+  webHits: WebSearchHit[] = [],
 ): string {
   const extras = input.extraFields
     ? Object.entries(input.extraFields)
@@ -63,6 +67,11 @@ function buildPrompt(
     internalArchiveBlock && internalArchiveBlock.trim() !== ""
       ? `\n\nINTERNAL VALYOUED ARCHIVE (weak directional context only; anonymized recent similar valuations from this platform, not verified third-party transactions):\n${internalArchiveBlock.trim()}\n`
       : "";
+
+  const webBlock =
+    webHits.length > 0
+      ? formatWebHitsForPrompt(webHits)
+      : "(no web market research available; use news and training knowledge)";
 
   return `You are ValYoued, a senior multi-asset appraiser. Estimate the resale value of an item based on the data below. Use your knowledge of recent (last 24 months) public sales, auction results, and marketplace listings.
 
@@ -102,6 +111,14 @@ inflate values on a hunch; let the comparables drive the direction.
 
 LIVE NEWS HEADLINES (last 30 days, fetched moments ago; use these as the PRIMARY source for the World Events section):
 ${newsBlock}${internalBlock}
+
+WEB MARKET RESEARCH (fetched moments ago via search API; use as PRIMARY evidence for comparables[], baseline pricing, and marketSignals when snippets mention sold prices or listings):
+${webBlock}
+
+Web evidence rules:
+- Prefer comparables backed by URLs from WEB MARKET RESEARCH when forming comparables[] rows.
+- Set comparable url to a URL from web research or news when one supports the row. OMIT if unsure. NEVER invent URLs.
+- If web research is empty, rely on news headlines and training knowledge as today.
 
 Return STRICT JSON ONLY (no prose, no markdown) matching this TypeScript type. ALL prices below in ${currency}:
 
@@ -194,13 +211,25 @@ Rules:
 - Output JSON only.`;
 }
 
-function extractJson(text: string): string {
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) return fence[1].trim();
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start !== -1 && end !== -1) return text.slice(start, end + 1);
-  return text;
+async function gatherNews(
+  assetType: AssetType,
+  region: string,
+): Promise<NewsArticle[]> {
+  const queries = buildNewsQueries(assetType.id, assetType.name, region);
+  const batches = await Promise.all(
+    queries.map((q) => searchNews(q, { limit: 4, days: 45 })),
+  );
+  // Flatten + dedupe by URL, keep up to 12 freshest
+  const seen = new Set<string>();
+  const articles: NewsArticle[] = [];
+  for (const batch of batches) {
+    for (const a of batch) {
+      if (!a.url || seen.has(a.url)) continue;
+      seen.add(a.url);
+      articles.push(a);
+    }
+  }
+  return articles.slice(0, 12);
 }
 
 /** LLMs occasionally emit strings for numbers or malformed enums; Zod response validation rejects those and yielded HTTP 500. */
@@ -405,27 +434,6 @@ function sanitizeStructuredAiCore(raw: unknown, fb: AICore, currency: string): A
   };
 }
 
-async function gatherNews(
-  assetType: AssetType,
-  region: string,
-): Promise<NewsArticle[]> {
-  const queries = buildNewsQueries(assetType.id, assetType.name, region);
-  const batches = await Promise.all(
-    queries.map((q) => searchNews(q, { limit: 4, days: 45 })),
-  );
-  // Flatten + dedupe by URL, keep up to 12 freshest
-  const seen = new Set<string>();
-  const articles: NewsArticle[] = [];
-  for (const batch of batches) {
-    for (const a of batch) {
-      if (!a.url || seen.has(a.url)) continue;
-      seen.add(a.url);
-      articles.push(a);
-    }
-  }
-  return articles.slice(0, 12);
-}
-
 async function callAIStructured(prompt: string, fb: AICore, currency: string): Promise<AICore> {
   const llm = getLlm();
   const text = await llm.complete({
@@ -541,17 +549,19 @@ export async function generateEstimate(
 ): Promise<{ estimate: GeneratedEstimatePayload; lineage: StoredValuationLineage }> {
   const currency = input.currency;
 
-  const [newsArticles, archiveHit] = await Promise.all([
+  const [newsArticles, archiveHit, webResearch] = await Promise.all([
     gatherNews(assetType, input.currentRegion),
     fetchInternalArchiveContext({
       assetTypeId: assetType.id,
       title: input.title,
     }),
+    gatherValuationWebResearch(input, assetType),
   ]);
   logger.info(
     {
       newsCount: newsArticles.length,
       archiveMatches: archiveHit?.matchCount ?? 0,
+      webSearchHits: webResearch.hits.length,
       region: input.currentRegion,
       asset: assetType.id,
     },
@@ -559,7 +569,14 @@ export async function generateEstimate(
   );
 
   const internalArchiveBlock = archiveHit?.promptBlock ?? undefined;
-  const prompt = buildPrompt(input, assetType, currency, newsArticles, internalArchiveBlock);
+  const prompt = buildPrompt(
+    input,
+    assetType,
+    currency,
+    newsArticles,
+    internalArchiveBlock,
+    webResearch.hits,
+  );
   const fb = fallbackCore(input, assetType, currency);
 
   let structuredFallback = false;
@@ -578,6 +595,9 @@ export async function generateEstimate(
     internalArchiveMatchCount: archiveHit?.matchCount ?? 0,
     newsArticleCount: newsArticles.length,
     structuredFallback,
+    webSearchQueries: webResearch.queries,
+    webSearchHitCount: webResearch.hits.length,
+    citationUrls: webResearch.citationUrls,
   });
 
   const netMarketFactor =

@@ -35,6 +35,20 @@ function dedupeHits(hits: WebSearchHit[]): WebSearchHit[] {
   return out;
 }
 
+export function formatWebHitsForPrompt(hits: WebSearchHit[]): string {
+  if (!hits.length) return "(No web search results returned.)";
+  return hits
+    .map(
+      (h, i) =>
+        `[${i + 1}] ${h.title}\nURL: ${h.url}\nSnippet: ${h.snippet}${h.publishedAt ? `\nPublished: ${h.publishedAt}` : ""}`,
+    )
+    .join("\n\n");
+}
+
+export function citationUrlsFromHits(hits: WebSearchHit[]): string[] {
+  return [...new Set(hits.map((h) => h.url.trim()).filter(Boolean))].slice(0, 8);
+}
+
 async function tavilySearch(query: string, maxResults: number, signal: AbortSignal): Promise<WebSearchHit[]> {
   const apiKey = process.env.TAVILY_API_KEY?.trim();
   if (!apiKey) return [];

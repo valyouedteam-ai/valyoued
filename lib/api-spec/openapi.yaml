@@ -774,6 +774,20 @@ components:
           type: string
           nullable: true
           description: Optional A/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.
+        webSearchQueries:
+          type: array
+          items:
+            type: string
+          description: Planned web search queries used for market comp research (Tavily).
+        webSearchHitCount:
+          type: integer
+          description: Number of web search snippets retrieved for this valuation.
+        citationUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Source URLs from web research used when building comparables.
     ValuationOutcome:
       type: object
       description: User-reported realized sale as returned by the API (timestamps assigned server-side).

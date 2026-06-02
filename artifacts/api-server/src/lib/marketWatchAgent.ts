@@ -3,7 +3,13 @@ import { defaultModel, getConfiguredProviderId, getLlm } from "@workspace/llm";
 import type { MarketWatchSnapshot } from "@workspace/api-zod";
 import { extractJson } from "./jsonExtract.js";
 import { buildMarketWatchSnapshot } from "./marketWatchSnapshot.js";
-import { isWebSearchConfigured, searchWeb, type WebSearchHit } from "./webSearch.js";
+import {
+  citationUrlsFromHits,
+  formatWebHitsForPrompt,
+  isWebSearchConfigured,
+  searchWeb,
+  type WebSearchHit,
+} from "./webSearch.js";
 
 export const MARKET_WATCH_PROMPT_VERSION = "2026-06-02";
 
@@ -124,17 +130,7 @@ function facetSummary(input: MarketWatchAgentInput): string {
 }
 
 function formatHitsForPrompt(hits: WebSearchHit[]): string {
-  if (!hits.length) return "(No web search results returned.)";
-  return hits
-    .map(
-      (h, i) =>
-        `[${i + 1}] ${h.title}\nURL: ${h.url}\nSnippet: ${h.snippet}${h.publishedAt ? `\nPublished: ${h.publishedAt}` : ""}`,
-    )
-    .join("\n\n");
-}
-
-function citationUrlsFromHits(hits: WebSearchHit[]): string[] {
-  return [...new Set(hits.map((h) => h.url.trim()).filter(Boolean))].slice(0, 8);
+  return formatWebHitsForPrompt(hits);
 }
 
 async function llmComplete(prompt: string, maxTokens: number): Promise<string | null> {

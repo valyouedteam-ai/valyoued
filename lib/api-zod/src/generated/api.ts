@@ -365,6 +365,24 @@ export const CreateEstimateResponse = zod.object({
         .describe(
           "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
         ),
+      webSearchQueries: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Planned web search queries used for market comp research (Tavily).",
+        ),
+      webSearchHitCount: zod
+        .number()
+        .optional()
+        .describe(
+          "Number of web search snippets retrieved for this valuation.",
+        ),
+      citationUrls: zod
+        .array(zod.string().url())
+        .optional()
+        .describe(
+          "Source URLs from web research used when building comparables.",
+        ),
     })
     .optional()
     .describe(
@@ -654,6 +672,24 @@ export const GetEstimateResponse = zod.object({
         .nullish()
         .describe(
           "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
+        ),
+      webSearchQueries: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Planned web search queries used for market comp research (Tavily).",
+        ),
+      webSearchHitCount: zod
+        .number()
+        .optional()
+        .describe(
+          "Number of web search snippets retrieved for this valuation.",
+        ),
+      citationUrls: zod
+        .array(zod.string().url())
+        .optional()
+        .describe(
+          "Source URLs from web research used when building comparables.",
         ),
     })
     .optional()
@@ -967,6 +1003,24 @@ export const PatchEstimateResponse = zod.object({
         .describe(
           "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
         ),
+      webSearchQueries: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Planned web search queries used for market comp research (Tavily).",
+        ),
+      webSearchHitCount: zod
+        .number()
+        .optional()
+        .describe(
+          "Number of web search snippets retrieved for this valuation.",
+        ),
+      citationUrls: zod
+        .array(zod.string().url())
+        .optional()
+        .describe(
+          "Source URLs from web research used when building comparables.",
+        ),
     })
     .optional()
     .describe(
@@ -1266,6 +1320,24 @@ export const RefineEstimateResponse = zod.object({
         .nullish()
         .describe(
           "Optional A\/B or shadow cohort key when VALUATION_EXPERIMENT_KEY is set on the API.",
+        ),
+      webSearchQueries: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Planned web search queries used for market comp research (Tavily).",
+        ),
+      webSearchHitCount: zod
+        .number()
+        .optional()
+        .describe(
+          "Number of web search snippets retrieved for this valuation.",
+        ),
+      citationUrls: zod
+        .array(zod.string().url())
+        .optional()
+        .describe(
+          "Source URLs from web research used when building comparables.",
         ),
     })
     .optional()

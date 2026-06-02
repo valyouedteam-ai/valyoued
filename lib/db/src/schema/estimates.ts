@@ -14,6 +14,11 @@ export type StoredValuationLineage = {
   structuredFallback?: boolean;
   /** Set on the server when running A/B or shadow experiments (env VALUATION_EXPERIMENT_KEY). */
   experimentKey?: string | null;
+  /** Web search queries planned for this valuation (Tavily). */
+  webSearchQueries?: string[];
+  webSearchHitCount?: number;
+  /** Source URLs from web research snippets fed into the valuation prompt. */
+  citationUrls?: string[];
 };
 
 export const estimatesTable = pgTable("estimates", {
