@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import {
   db,
@@ -24,10 +24,17 @@ import {
   BatchRepriceCheckResponse,
   GetBusinessReportResponse,
   DeleteMarketWatchParams,
+  RefreshMarketWatchParams,
+  RefreshMarketWatchResponse,
 } from "@workspace/api-zod";
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
 import { resolveUserEntitlements } from "../lib/entitlements";
-import { buildMarketWatchSnapshot } from "../lib/marketWatchSnapshot";
+import {
+  readMaxRefreshesPerDay,
+  runMarketWatchAgentForRow,
+  startOfUtcDay,
+  toApiMarketWatch,
+} from "../lib/marketWatchService";
 import {
   listUserNotifications,
   markNotificationsRead,
@@ -82,19 +89,7 @@ router.get("/market-watches", requireAuth, async (req, res): Promise<void> => {
     .orderBy(desc(marketWatchesTable.createdAt));
 
   res.json(
-    ListMarketWatchesResponse.parse(
-      rows.map((r) => ({
-        id: r.id,
-        label: r.label,
-        assetClass: r.assetClass,
-        brand: r.brand ?? undefined,
-        model: r.model ?? undefined,
-        yearFrom: r.yearFrom ? Number(r.yearFrom) : undefined,
-        yearTo: r.yearTo ? Number(r.yearTo) : undefined,
-        createdAt: r.createdAt,
-        snapshot: r.snapshot as ReturnType<typeof buildMarketWatchSnapshot>,
-      })),
-    ),
+    ListMarketWatchesResponse.parse(rows.map((r) => toApiMarketWatch(r))),
   );
 });
 
@@ -109,14 +104,7 @@ router.post("/market-watches", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const snapshot = buildMarketWatchSnapshot({
-    assetClass: parsed.data.assetClass,
-    brand: parsed.data.brand,
-    model: parsed.data.model,
-    yearFrom: parsed.data.yearFrom,
-    yearTo: parsed.data.yearTo,
-  });
-
+  const now = new Date();
   const [row] = await db
     .insert(marketWatchesTable)
     .values({
@@ -127,23 +115,80 @@ router.post("/market-watches", requireAuth, async (req, res): Promise<void> => {
       model: parsed.data.model ?? null,
       yearFrom: parsed.data.yearFrom != null ? String(parsed.data.yearFrom) : null,
       yearTo: parsed.data.yearTo != null ? String(parsed.data.yearTo) : null,
-      snapshot,
+      snapshot: {},
+      snapshotStatus: "pending",
+      snapshotLineage: {},
+      snapshotUpdatedAt: now,
     })
     .returning();
 
-  res.json(
-    CreateMarketWatchResponse.parse({
-      id: row.id,
-      label: row.label,
-      assetClass: row.assetClass,
-      brand: row.brand ?? undefined,
-      model: row.model ?? undefined,
-      yearFrom: row.yearFrom ? Number(row.yearFrom) : undefined,
-      yearTo: row.yearTo ? Number(row.yearTo) : undefined,
-      createdAt: row.createdAt,
-      snapshot,
-    }),
-  );
+  const generated = await runMarketWatchAgentForRow(row);
+  const [updated] = await db
+    .update(marketWatchesTable)
+    .set({
+      snapshot: generated.snapshot,
+      snapshotStatus: generated.snapshotStatus,
+      snapshotLineage: generated.lineage,
+      snapshotUpdatedAt: new Date(),
+    })
+    .where(and(eq(marketWatchesTable.id, row.id), eq(marketWatchesTable.userId, userId)))
+    .returning();
+
+  res.json(CreateMarketWatchResponse.parse(toApiMarketWatch(updated ?? row)));
+});
+
+router.post("/market-watches/:id/refresh", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId!;
+  const ent = await resolveUserEntitlements(userId, req);
+  if (!requireTrader(ent, res)) return;
+
+  const params = RefreshMarketWatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(marketWatchesTable)
+    .where(and(eq(marketWatchesTable.id, params.data.id), eq(marketWatchesTable.userId, userId)));
+
+  if (!existing) {
+    res.status(404).json({ error: "Market watch not found." });
+    return;
+  }
+
+  const dayStart = startOfUtcDay();
+  const [{ refreshCountToday }] = await db
+    .select({ refreshCountToday: count() })
+    .from(marketWatchesTable)
+    .where(and(eq(marketWatchesTable.userId, userId), gte(marketWatchesTable.lastRefreshedAt, dayStart)));
+
+  if (refreshCountToday >= readMaxRefreshesPerDay()) {
+    res.status(429).json({ error: "Daily refresh limit reached. Try again tomorrow." });
+    return;
+  }
+
+  await db
+    .update(marketWatchesTable)
+    .set({ snapshotStatus: "pending", snapshotUpdatedAt: new Date() })
+    .where(and(eq(marketWatchesTable.id, existing.id), eq(marketWatchesTable.userId, userId)));
+
+  const generated = await runMarketWatchAgentForRow(existing);
+  const refreshedAt = new Date();
+  const [updated] = await db
+    .update(marketWatchesTable)
+    .set({
+      snapshot: generated.snapshot,
+      snapshotStatus: generated.snapshotStatus,
+      snapshotLineage: generated.lineage,
+      snapshotUpdatedAt: refreshedAt,
+      lastRefreshedAt: refreshedAt,
+    })
+    .where(and(eq(marketWatchesTable.id, existing.id), eq(marketWatchesTable.userId, userId)))
+    .returning();
+
+  res.json(RefreshMarketWatchResponse.parse(toApiMarketWatch(updated ?? existing)));
 });
 
 router.delete("/market-watches/:id", requireAuth, async (req, res): Promise<void> => {

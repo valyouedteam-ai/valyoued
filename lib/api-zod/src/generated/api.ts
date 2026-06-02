@@ -1380,6 +1380,25 @@ export const CreatePortfolioResponse = zod.object({
 });
 
 /**
+ * Removes a trading desk or inheritance workspace. Valuations on that workspace move to the primary portfolio.
+Does not cancel inheritance billing.
+
+ * @summary Delete a non-primary portfolio workspace
+ */
+export const DeletePortfolioParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const deletePortfolioResponseReassignedEstimateCountMin = 0;
+
+export const DeletePortfolioResponse = zod.object({
+  ok: zod.literal(true),
+  reassignedEstimateCount: zod
+    .number()
+    .min(deletePortfolioResponseReassignedEstimateCountMin),
+});
+
+/**
  * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
 and `byAssetType[].averageAdjustedUsd` are totals after converting each estimate through the same multiplier
 table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static hints) into one internal rollup
@@ -1492,6 +1511,9 @@ export const ListMarketWatchesResponseItem = zod.object({
   yearFrom: zod.number().optional(),
   yearTo: zod.number().optional(),
   createdAt: zod.coerce.date(),
+  snapshotStatus: zod.enum(["pending", "ready", "failed"]),
+  snapshotUpdatedAt: zod.coerce.date().optional(),
+  citations: zod.array(zod.string().url()).optional(),
   snapshot: zod.object({
     trendPoints: zod.array(
       zod.object({
@@ -1543,6 +1565,9 @@ export const CreateMarketWatchResponse = zod.object({
   yearFrom: zod.number().optional(),
   yearTo: zod.number().optional(),
   createdAt: zod.coerce.date(),
+  snapshotStatus: zod.enum(["pending", "ready", "failed"]),
+  snapshotUpdatedAt: zod.coerce.date().optional(),
+  citations: zod.array(zod.string().url()).optional(),
   snapshot: zod.object({
     trendPoints: zod.array(
       zod.object({
@@ -1579,6 +1604,52 @@ export const DeleteMarketWatchParams = zod.object({
 
 export const DeleteMarketWatchResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * @summary Re-run web research for a Market Watch target (Professional)
+ */
+export const RefreshMarketWatchParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const RefreshMarketWatchResponse = zod.object({
+  id: zod.string().uuid(),
+  label: zod.string(),
+  assetClass: zod.string(),
+  brand: zod.string().optional(),
+  model: zod.string().optional(),
+  yearFrom: zod.number().optional(),
+  yearTo: zod.number().optional(),
+  createdAt: zod.coerce.date(),
+  snapshotStatus: zod.enum(["pending", "ready", "failed"]),
+  snapshotUpdatedAt: zod.coerce.date().optional(),
+  citations: zod.array(zod.string().url()).optional(),
+  snapshot: zod.object({
+    trendPoints: zod.array(
+      zod.object({
+        month: zod.string(),
+        medianPrice: zod.number(),
+      }),
+    ),
+    recentSales: zod.array(
+      zod.object({
+        price: zod.number(),
+        soldAt: zod.string().optional(),
+        platform: zod.string(),
+        condition: zod.string(),
+        daysToSell: zod.number().optional(),
+        detail: zod.string().optional(),
+      }),
+    ),
+    demandMovement: zod.enum(["rising", "stable", "softening"]),
+    avgDaysToSell: zod.number(),
+    bestPlatform: zod.string(),
+    suggestedListingPrice: zod.number(),
+    buyBelowPrice: zod.number(),
+    expectedMarginPct: zod.number(),
+    analyticsNote: zod.string().optional(),
+  }),
 });
 
 /**

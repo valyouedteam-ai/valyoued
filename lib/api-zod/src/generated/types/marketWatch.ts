@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MarketWatchSnapshot } from "./marketWatchSnapshot";
+import type { MarketWatchSnapshotStatus } from "./marketWatchSnapshotStatus";
 
 export interface MarketWatch {
   id: string;
@@ -16,5 +17,8 @@ export interface MarketWatch {
   yearFrom?: number;
   yearTo?: number;
   createdAt: Date;
+  snapshotStatus: MarketWatchSnapshotStatus;
+  snapshotUpdatedAt?: Date;
+  citations?: string[];
   snapshot: MarketWatchSnapshot;
 }

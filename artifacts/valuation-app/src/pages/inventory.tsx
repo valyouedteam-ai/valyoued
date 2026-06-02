@@ -30,6 +30,25 @@ const STAGES = [
   "returned",
 ] as const;
 
+type InventoryStage = (typeof STAGES)[number];
+
+function stageLabel(stage: string): string {
+  return stage.replace(/_/g, " ");
+}
+
+function adjacentStages(stage: InventoryStage): { prev?: InventoryStage; next?: InventoryStage } {
+  const idx = STAGES.indexOf(stage);
+  if (idx < 0) return {};
+  return {
+    prev: idx > 0 ? STAGES[idx - 1] : undefined,
+    next: idx < STAGES.length - 1 ? STAGES[idx + 1] : undefined,
+  };
+}
+
+function defaultItemTitle(stage: InventoryStage): string {
+  return `New ${stageLabel(stage)} stock`;
+}
+
 function triggerBlobDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -220,7 +239,7 @@ export default function InventoryPage() {
           {STAGES.map((stage) => (
             <Card key={stage} className="w-64 shrink-0">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm capitalize">{stage.replace(/_/g, " ")}</CardTitle>
+                <CardTitle className="text-sm capitalize">{stageLabel(stage)}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {(grouped.get(stage) ?? []).map((item) => (
@@ -231,19 +250,33 @@ export default function InventoryPage() {
                     ) : null}
                     {item.repriceHint ? <p className="mt-1 text-xs text-amber-700">{item.repriceHint}</p> : null}
                     <div className="mt-2 flex gap-1">
-                      {STAGES.filter((s) => s !== stage)
-                        .slice(0, 2)
-                        .map((s) => (
-                          <Button
-                            key={s}
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-[10px]"
-                            onClick={() => patch.mutate({ id: item.id, data: { stage: s } })}
-                          >
-                            → {s.replace(/_/g, " ")}
-                          </Button>
-                        ))}
+                      {(() => {
+                        const { prev, next } = adjacentStages(stage);
+                        return (
+                          <>
+                            {prev ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() => patch.mutate({ id: item.id, data: { stage: prev } })}
+                              >
+                                ← {stageLabel(prev)}
+                              </Button>
+                            ) : null}
+                            {next ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() => patch.mutate({ id: item.id, data: { stage: next } })}
+                              >
+                                → {stageLabel(next)}
+                              </Button>
+                            ) : null}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -251,7 +284,7 @@ export default function InventoryPage() {
                   size="sm"
                   variant="outline"
                   className="w-full rounded-lg"
-                  onClick={() => create.mutate({ data: { title: `Item in ${stage}`, stage } })}
+                  onClick={() => create.mutate({ data: { title: defaultItemTitle(stage), stage } })}
                 >
                   +
                 </Button>

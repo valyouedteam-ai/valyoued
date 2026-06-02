@@ -24,6 +24,10 @@ export const marketWatchesTable = pgTable("market_watches", {
   yearFrom: text("year_from"),
   yearTo: text("year_to"),
   snapshot: jsonb("snapshot").notNull().default({}),
+  snapshotStatus: text("snapshot_status").notNull().default("ready"),
+  snapshotLineage: jsonb("snapshot_lineage").$type<Record<string, unknown>>().notNull().default({}),
+  snapshotUpdatedAt: timestamp("snapshot_updated_at", { withTimezone: true }),
+  lastRefreshedAt: timestamp("last_refreshed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

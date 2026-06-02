@@ -28,6 +28,9 @@ import type {
   CreatePortfolioBody,
   DeleteListingDraft200,
   DeleteMarketWatch200,
+  DeletePortfolio403,
+  DeletePortfolio404,
+  DeletePortfolioResponse,
   EstimateInput,
   EstimateResult,
   EstimateStats,
@@ -46,6 +49,9 @@ import type {
   Portfolio,
   RefineEstimate403,
   RefineEstimateBody,
+  RefreshMarketWatch403,
+  RefreshMarketWatch404,
+  RefreshMarketWatch429,
   Region,
   RepriceSuggestion,
   UserNotification,
@@ -948,6 +954,95 @@ export const useCreatePortfolio = <
 };
 
 /**
+ * Removes a trading desk or inheritance workspace. Valuations on that workspace move to the primary portfolio.
+Does not cancel inheritance billing.
+
+ * @summary Delete a non-primary portfolio workspace
+ */
+export const getDeletePortfolioUrl = (id: string) => {
+  return `/api/portfolios/${id}`;
+};
+
+export const deletePortfolio = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeletePortfolioResponse> => {
+  return customFetch<DeletePortfolioResponse>(getDeletePortfolioUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePortfolioMutationOptions = <
+  TError = ErrorType<DeletePortfolio403 | DeletePortfolio404>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePortfolio>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePortfolio>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deletePortfolio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePortfolio>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePortfolio(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePortfolioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePortfolio>>
+>;
+
+export type DeletePortfolioMutationError = ErrorType<
+  DeletePortfolio403 | DeletePortfolio404
+>;
+
+/**
+ * @summary Delete a non-primary portfolio workspace
+ */
+export const useDeletePortfolio = <
+  TError = ErrorType<DeletePortfolio403 | DeletePortfolio404>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePortfolio>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePortfolio>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeletePortfolioMutationOptions(options));
+};
+
+/**
  * Portfolio-wide aggregates for the authenticated user. `averageBaselineUsd`, `averageAdjustedUsd`,
 and `byAssetType[].averageAdjustedUsd` are totals after converting each estimate through the same multiplier
 table as `GET /fx/rates` (Frankfurter/ECB when `FX_LIVE_ENABLED`, else static hints) into one internal rollup
@@ -1435,6 +1530,96 @@ export const useDeleteMarketWatch = <
   TContext
 > => {
   return useMutation(getDeleteMarketWatchMutationOptions(options));
+};
+
+/**
+ * @summary Re-run web research for a Market Watch target (Professional)
+ */
+export const getRefreshMarketWatchUrl = (id: string) => {
+  return `/api/market-watches/${id}/refresh`;
+};
+
+export const refreshMarketWatch = async (
+  id: string,
+  options?: RequestInit,
+): Promise<MarketWatch> => {
+  return customFetch<MarketWatch>(getRefreshMarketWatchUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRefreshMarketWatchMutationOptions = <
+  TError = ErrorType<
+    RefreshMarketWatch403 | RefreshMarketWatch404 | RefreshMarketWatch429
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refreshMarketWatch>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof refreshMarketWatch>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["refreshMarketWatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof refreshMarketWatch>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return refreshMarketWatch(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RefreshMarketWatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof refreshMarketWatch>>
+>;
+
+export type RefreshMarketWatchMutationError = ErrorType<
+  RefreshMarketWatch403 | RefreshMarketWatch404 | RefreshMarketWatch429
+>;
+
+/**
+ * @summary Re-run web research for a Market Watch target (Professional)
+ */
+export const useRefreshMarketWatch = <
+  TError = ErrorType<
+    RefreshMarketWatch403 | RefreshMarketWatch404 | RefreshMarketWatch429
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refreshMarketWatch>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof refreshMarketWatch>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRefreshMarketWatchMutationOptions(options));
 };
 
 /**

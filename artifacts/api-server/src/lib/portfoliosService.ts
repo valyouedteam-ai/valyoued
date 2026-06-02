@@ -1,8 +1,27 @@
 import { and, eq, asc } from "drizzle-orm";
-import { db, portfoliosTable, estimatesTable, type Portfolio } from "@workspace/db";
+import { db, portfoliosTable, estimatesTable, deskLayoutsTable, type Portfolio } from "@workspace/db";
 
 const PRIMARY_PURPOSE = "primary";
 const INHERITANCE_PURPOSE = "inheritance";
+
+export class PortfolioDeleteError extends Error {
+  constructor(
+    message: string,
+    readonly code: "NOT_FOUND" | "PRIMARY_FORBIDDEN",
+  ) {
+    super(message);
+    this.name = "PortfolioDeleteError";
+  }
+}
+
+export function assertPortfolioDeletable(portfolio: Portfolio | null): asserts portfolio is Portfolio {
+  if (!portfolio) {
+    throw new PortfolioDeleteError("Portfolio not found.", "NOT_FOUND");
+  }
+  if (portfolio.purpose === PRIMARY_PURPOSE) {
+    throw new PortfolioDeleteError("The primary portfolio cannot be deleted.", "PRIMARY_FORBIDDEN");
+  }
+}
 
 export async function listPortfoliosForUser(userId: string): Promise<Portfolio[]> {
   return db.select().from(portfoliosTable).where(eq(portfoliosTable.userId, userId)).orderBy(asc(portfoliosTable.createdAt));
@@ -85,9 +104,41 @@ export async function retireInheritancePortfoliosForUser(userId: string): Promis
         .update(estimatesTable)
         .set({ portfolioId: primary.id })
         .where(and(eq(estimatesTable.userId, userId), eq(estimatesTable.portfolioId, inh.id)));
+      await tx
+        .delete(deskLayoutsTable)
+        .where(and(eq(deskLayoutsTable.userId, userId), eq(deskLayoutsTable.portfolioKey, inh.id)));
       await tx.delete(portfoliosTable).where(and(eq(portfoliosTable.id, inh.id), eq(portfoliosTable.userId, userId)));
     }
   });
+}
+
+export async function deletePortfolioForUser(
+  userId: string,
+  portfolioId: string,
+): Promise<{ reassignedEstimateCount: number }> {
+  const portfolio = await getPortfolioByIdForUser(portfolioId, userId);
+  assertPortfolioDeletable(portfolio);
+  const primary = await ensurePrimaryPortfolio(userId);
+
+  const reassignedEstimateCount = await db.transaction(async (tx) => {
+    const reassigned = await tx
+      .update(estimatesTable)
+      .set({ portfolioId: primary.id })
+      .where(and(eq(estimatesTable.userId, userId), eq(estimatesTable.portfolioId, portfolioId)))
+      .returning({ id: estimatesTable.id });
+
+    await tx
+      .delete(deskLayoutsTable)
+      .where(and(eq(deskLayoutsTable.userId, userId), eq(deskLayoutsTable.portfolioKey, portfolioId)));
+
+    await tx
+      .delete(portfoliosTable)
+      .where(and(eq(portfoliosTable.id, portfolioId), eq(portfoliosTable.userId, userId)));
+
+    return reassigned.length;
+  });
+
+  return { reassignedEstimateCount };
 }
 
 export async function portfolioExistsForPurpose(userId: string, purpose: string): Promise<boolean> {

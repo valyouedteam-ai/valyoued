@@ -3,15 +3,27 @@ import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
+  getListEstimatesQueryKey,
   getListPortfoliosQueryKey,
   useCreatePortfolio,
+  useDeletePortfolio,
   type EstimateSummary,
   type Portfolio,
 } from "@workspace/api-client-react";
 import { convertToUsdApprox } from "@workspace/fx-usd";
-import { PanelsTopLeft, Plus } from "lucide-react";
+import { PanelsTopLeft, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -55,6 +67,14 @@ function purposeWorkspaceKind(purpose: Portfolio["purpose"]): string {
   return "Workspace";
 }
 
+type WorkspaceRollupRow = {
+  id: string;
+  displayLabel: string;
+  purpose: Portfolio["purpose"];
+  itemCount: number;
+  totalUsd: number;
+};
+
 type ProfessionalWorkspaceRollupProps = {
   estimateRows: EstimateSummary[];
   /** Display-formatter for cross-currency rollups using the user's reference currency from Settings. */
@@ -83,6 +103,7 @@ export function ProfessionalWorkspaceRollup({
   const { toast } = useToast();
   const [deskDialogOpen, setDeskDialogOpen] = useState(false);
   const [newDeskLabel, setNewDeskLabel] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<WorkspaceRollupRow | null>(null);
 
   const createDesk = useCreatePortfolio({
     mutation: {
@@ -112,7 +133,35 @@ export function ProfessionalWorkspaceRollup({
     },
   });
 
-  const rows = useMemo(() => {
+  const deleteDesk = useDeletePortfolio({
+    mutation: {
+      onSuccess: async (result, variables) => {
+        await queryClient.invalidateQueries({ queryKey: getListPortfoliosQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: getListEstimatesQueryKey() });
+        if (activePortfolio?.id === variables.id && primaryId) {
+          selectPortfolioById(primaryId);
+        }
+        setDeleteTarget(null);
+        toast({
+          title: "Workspace deleted",
+          description:
+            result.reassignedEstimateCount > 0
+              ? `${result.reassignedEstimateCount} valuation(s) moved to your primary shelf.`
+              : "The workspace was removed.",
+        });
+      },
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err ?? "");
+        toast({
+          title: "Could not delete workspace",
+          description: msg || "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const rows = useMemo((): WorkspaceRollupRow[] => {
     if (!portfolios?.length) return [];
     return portfolios.map((p) => {
       const scoped = estimateRows.filter((e) => estimateInActiveWorkspace(e, p.id, primaryId));
@@ -197,9 +246,24 @@ export function ProfessionalWorkspaceRollup({
                     <td className="py-3 pr-3 tabular-nums text-muted-foreground">{row.itemCount}</td>
                     <td className="py-3 pr-3 font-sans tabular-nums text-foreground">{formatRollup(row.totalUsd)}</td>
                     <td className="py-3 text-right">
-                      <Button variant="ghost" size="sm" className="h-8" asChild>
-                        <Link href={openPortfolioWorkspaceLink(primaryId, defaultWorkspaceIdForUrl, row.id)}>Open</Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" className="h-8" asChild>
+                          <Link href={openPortfolioWorkspaceLink(primaryId, defaultWorkspaceIdForUrl, row.id)}>Open</Link>
+                        </Button>
+                        {row.purpose !== "primary" ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-destructive hover:text-destructive"
+                            aria-label={`Delete ${row.displayLabel}`}
+                            disabled={deleteDesk.isPending}
+                            onClick={() => setDeleteTarget(row)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -265,6 +329,42 @@ export function ProfessionalWorkspaceRollup({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteTarget != null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this workspace?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  <span className="font-medium text-foreground">{deleteTarget?.displayLabel}</span> will be removed.
+                  Valuations on this workspace move to your primary shelf.
+                </p>
+                {deleteTarget && deleteTarget.itemCount > 0 ? (
+                  <p>{deleteTarget.itemCount} valuation(s) will be reassigned.</p>
+                ) : null}
+                {deleteTarget?.purpose === "inheritance" ? (
+                  <p>Inheritance billing is unchanged. You can recreate the workspace later while the add-on stays active.</p>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteDesk.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteDesk.isPending || !deleteTarget}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deleteTarget) return;
+                deleteDesk.mutate({ id: deleteTarget.id });
+              }}
+            >
+              {deleteDesk.isPending ? "Deleting…" : "Delete workspace"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

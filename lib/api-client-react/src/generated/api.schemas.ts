@@ -187,6 +187,12 @@ export interface CreatePortfolioBody {
   label?: string;
 }
 
+export interface DeletePortfolioResponse {
+  ok: boolean;
+  /** @minimum 0 */
+  reassignedEstimateCount: number;
+}
+
 export type ComparableTransactionTypeGuess =
   (typeof ComparableTransactionTypeGuess)[keyof typeof ComparableTransactionTypeGuess];
 
@@ -606,6 +612,15 @@ export interface PatchNotificationsBody {
   ids?: string[];
 }
 
+export type MarketWatchSnapshotStatus =
+  (typeof MarketWatchSnapshotStatus)[keyof typeof MarketWatchSnapshotStatus];
+
+export const MarketWatchSnapshotStatus = {
+  pending: "pending",
+  ready: "ready",
+  failed: "failed",
+} as const;
+
 export type MarketWatchSnapshotDemandMovement =
   (typeof MarketWatchSnapshotDemandMovement)[keyof typeof MarketWatchSnapshotDemandMovement];
 
@@ -650,6 +665,9 @@ export interface MarketWatch {
   yearFrom?: number;
   yearTo?: number;
   createdAt: string;
+  snapshotStatus: MarketWatchSnapshotStatus;
+  snapshotUpdatedAt?: string;
+  citations?: string[];
   snapshot: MarketWatchSnapshot;
 }
 
@@ -873,6 +891,14 @@ export type CreatePortfolio403 = {
   error: string;
 };
 
+export type DeletePortfolio403 = {
+  error: string;
+};
+
+export type DeletePortfolio404 = {
+  error: string;
+};
+
 export type PatchNotifications200 = {
   updated: number;
 };
@@ -883,6 +909,18 @@ export type CreateMarketWatch403 = {
 
 export type DeleteMarketWatch200 = {
   ok: boolean;
+};
+
+export type RefreshMarketWatch403 = {
+  error: string;
+};
+
+export type RefreshMarketWatch404 = {
+  error: string;
+};
+
+export type RefreshMarketWatch429 = {
+  error: string;
 };
 
 export type GetBusinessReportParams = {

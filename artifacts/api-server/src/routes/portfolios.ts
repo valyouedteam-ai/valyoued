@@ -1,13 +1,15 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, portfoliosTable } from "@workspace/db";
-import { CreatePortfolioBody, ListPortfoliosResponse, ListPortfoliosResponseItem } from "@workspace/api-zod";
+import { CreatePortfolioBody, DeletePortfolioParams, DeletePortfolioResponse, ListPortfoliosResponse, ListPortfoliosResponseItem } from "@workspace/api-zod";
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
 import { resolveUserEntitlements } from "../lib/entitlements";
 import {
   reconcilePortfoliosForBilling,
   listPortfoliosForUser,
   ensureInheritancePortfolio,
+  deletePortfolioForUser,
+  PortfolioDeleteError,
 } from "../lib/portfoliosService";
 
 const router: IRouter = Router();
@@ -73,6 +75,32 @@ router.post("/portfolios", requireAuth, async (req, res): Promise<void> => {
   }
 
   res.status(400).json({ error: "Unsupported purpose" });
+});
+
+router.delete("/portfolios/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId!;
+  const params = DeletePortfolioParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  try {
+    const result = await deletePortfolioForUser(userId, params.data.id);
+    res.json(DeletePortfolioResponse.parse({ ok: true, reassignedEstimateCount: result.reassignedEstimateCount }));
+  } catch (err) {
+    if (err instanceof PortfolioDeleteError) {
+      if (err.code === "NOT_FOUND") {
+        res.status(404).json({ error: err.message });
+        return;
+      }
+      if (err.code === "PRIMARY_FORBIDDEN") {
+        res.status(403).json({ error: err.message });
+        return;
+      }
+    }
+    throw err;
+  }
 });
 
 export default router;

@@ -238,6 +238,48 @@ paths:
                 properties:
                   error:
                     type: string
+  /portfolios/{id}:
+    delete:
+      operationId: deletePortfolio
+      tags: [portfolio]
+      summary: Delete a non-primary portfolio workspace
+      description: |
+        Removes a trading desk or inheritance workspace. Valuations on that workspace move to the primary portfolio.
+        Does not cancel inheritance billing.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Portfolio deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePortfolioResponse"
+        "403":
+          description: Primary portfolio cannot be deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
   /estimates/stats:
     get:
       operationId: getEstimateStats
@@ -358,6 +400,55 @@ paths:
                 properties:
                   ok:
                     type: boolean
+  /market-watches/{id}/refresh:
+    post:
+      operationId: refreshMarketWatch
+      tags: [trader]
+      summary: Re-run web research for a Market Watch target (Professional)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Refreshed watch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketWatch"
+        "403":
+          description: Professional plan required
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Watch not found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+        "429":
+          description: Refresh rate limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
   /inventory:
     get:
       operationId: listInventoryItems
@@ -765,6 +856,16 @@ components:
           enum: [pro_board, inheritance]
         label:
           type: string
+    DeletePortfolioResponse:
+      type: object
+      required: [ok, reassignedEstimateCount]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        reassignedEstimateCount:
+          type: integer
+          minimum: 0
     Comparable:
       type: object
       required: [source, description, price, year]
@@ -1255,7 +1356,7 @@ components:
             format: uuid
     MarketWatch:
       type: object
-      required: [id, label, assetClass, createdAt, snapshot]
+      required: [id, label, assetClass, createdAt, snapshot, snapshotStatus]
       properties:
         id:
           type: string
@@ -1275,6 +1376,17 @@ components:
         createdAt:
           type: string
           format: date-time
+        snapshotStatus:
+          type: string
+          enum: [pending, ready, failed]
+        snapshotUpdatedAt:
+          type: string
+          format: date-time
+        citations:
+          type: array
+          items:
+            type: string
+            format: uri
         snapshot:
           $ref: "#/components/schemas/MarketWatchSnapshot"
     MarketWatchSnapshot:
