@@ -74,7 +74,7 @@ export default function AlertsPage() {
                 <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium text-foreground">{n.title}</p>
-                    <p className="text-sm text-muted-foreground">{n.body}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{n.body}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                     </p>

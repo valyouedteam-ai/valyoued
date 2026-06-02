@@ -1,5 +1,6 @@
 import { isAuthStubMode } from "./authStub";
 import { getClerkPrimaryEmail, publicAppBaseUrl } from "./emailDelivery";
+import { buildMonitorValueAlertContent, type ConfidenceBreakdownLine } from "./confidenceExplanation.js";
 
 export type EmailAlertSampleKind = "connectivity" | "estimate_ready" | "monitor_value";
 
@@ -36,10 +37,53 @@ export function buildEstimateReadyEmailHtml(params: {
 ${FOOTER}`;
 }
 
-export function buildMonitorValueEmailHtml(params: { body: string; estimateUrl: string }): string {
-  const safeBody = escapeHtml(params.body);
+export function buildMonitorValueEmailHtml(params: {
+  summaryLine: string;
+  bodyPlain: string;
+  breakdownLines: ConfidenceBreakdownLine[];
+  citationUrls: string[];
+  confidenceScore: number | null;
+  estimateUrl: string;
+}): string {
+  const safeSummary = escapeHtml(params.summaryLine);
   const safeUrl = escapeHtml(params.estimateUrl);
-  return `<p>${safeBody}</p><p><a href="${safeUrl}">Open valuation</a></p>
+
+  const breakdownHtml =
+    params.breakdownLines.length > 0
+      ? `<p style="margin:16px 0 8px;font-weight:600">Confidence breakdown${
+          params.confidenceScore != null ? ` (${params.confidenceScore}/100)` : ""
+        }</p>
+<ul style="margin:0 0 16px;padding-left:20px;line-height:1.5">
+${params.breakdownLines
+  .map(
+    (line) =>
+      `<li><strong>${escapeHtml(line.label)}</strong> (${line.weightPct}% weight): ${line.score}/100. ${escapeHtml(line.detail)}</li>`,
+  )
+  .join("\n")}
+</ul>`
+      : "";
+
+  const sourcesHtml =
+    params.citationUrls.length > 0
+      ? `<p style="margin:16px 0 8px;font-weight:600">Sources cited on this valuation</p>
+<ul style="margin:0 0 16px;padding-left:20px;line-height:1.5">
+${params.citationUrls
+  .map((url) => `<li><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></li>`)
+  .join("\n")}
+</ul>`
+      : `<p style="margin:16px 0;color:#666;font-size:14px">No web research citations on this snapshot. Newer valuations may include source links.</p>`;
+
+  const detailParagraphs = params.bodyPlain
+    .split(/\n\n+/)
+    .slice(1)
+    .map((p) => `<p style="margin:0 0 12px;line-height:1.5">${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+
+  return `<p style="font-size:16px;line-height:1.5">${safeSummary}</p>
+${detailParagraphs}
+${breakdownHtml}
+${sourcesHtml}
+<p><a href="${safeUrl}">Open full valuation report</a></p>
 ${FOOTER}`;
 }
 
@@ -84,11 +128,40 @@ export function sampleEstimateReadyEmail() {
 
 export function sampleMonitorValueEmail() {
   const base = publicAppBaseUrl().replace(/\/$/, "");
-  const body = "Sample vintage watch is up about 8% since baseline. Confidence 72%.";
+  const alert = buildMonitorValueAlertContent({
+    title: "Sample vintage watch",
+    assetTypeName: "Luxury watch",
+    currency: "GBP",
+    baselineMid: 4200,
+    adjustedMid: 4536,
+    analytics: {
+      confidenceScore: 72,
+      fieldCompleteness: {
+        pct: 85,
+        completed: ["Title", "Brand", "Model", "Condition"],
+        missing: ["Purchase Price", "Year"],
+      },
+      resalePotential: "moderate",
+      actionRecommendation: "hold",
+      valuationFreshness: "fresh",
+      receiptStatus: "partial",
+      confidenceBreakdown: {
+        fieldCompleteness: 85,
+        compQuality: 68,
+        marketStability: 62,
+      },
+    },
+    citationUrls: [`${base}/estimates/sample`],
+    comparableCount: 4,
+  });
   return {
     subject: "Your luxury watch increased in value",
     html: buildMonitorValueEmailHtml({
-      body,
+      summaryLine: alert.summaryLine,
+      bodyPlain: alert.bodyPlain,
+      breakdownLines: alert.breakdownLines,
+      citationUrls: alert.citationUrls,
+      confidenceScore: alert.confidenceScore,
       estimateUrl: `${base}/dashboard`,
     }),
   };

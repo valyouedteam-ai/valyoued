@@ -1,11 +1,12 @@
 import { and, eq, gt } from "drizzle-orm";
-import { db, estimatesTable, userNotificationsTable } from "@workspace/db";
+import { db, estimatesTable, userNotificationsTable, type StoredValuationLineage } from "@workspace/db";
 import { getUserAlertPrefs } from "./userAlertPrefs";
 import { resolveUserEntitlements } from "./entitlements";
 import { buildMonitorValueEmailHtml, resolveEmailAlertRecipient } from "./emailAlertSamples";
 import { publicAppBaseUrl, sendHtmlEmail } from "./emailDelivery";
 import { createUserNotification } from "./notificationsService";
-import { summaryFieldsFromStored } from "./portfolioAnalytics";
+import { readPortfolioAnalyticsFromStored, summaryFieldsFromStored } from "./portfolioAnalytics";
+import { buildMonitorValueAlertContent, buildPortfolioHealthAlertBody } from "./confidenceExplanation";
 import { logger } from "./logger";
 
 export type MonitorScanOptions = {
@@ -24,6 +25,24 @@ export type MonitorScanResult = {
 };
 
 const DEDUP_MS = 24 * 60 * 60 * 1000;
+
+function readComparableCount(result: unknown): number {
+  const raw = result && typeof result === "object" ? (result as Record<string, unknown>) : null;
+  return Array.isArray(raw?.comparables) ? raw.comparables.length : 0;
+}
+
+function readCitationUrls(result: unknown, lineage: unknown): string[] {
+  const fromRow =
+    lineage && typeof lineage === "object"
+      ? ((lineage as StoredValuationLineage).citationUrls ?? [])
+      : [];
+  const raw = result && typeof result === "object" ? (result as Record<string, unknown>) : null;
+  const fromResult =
+    raw?.valuationLineage && typeof raw.valuationLineage === "object"
+      ? ((raw.valuationLineage as StoredValuationLineage).citationUrls ?? [])
+      : [];
+  return [...new Set([...fromRow, ...fromResult].filter(Boolean))].slice(0, 8);
+}
 
 /** Lightweight monitor ping: compares adjusted mid drift vs baseline for monitor-intent rows. */
 export async function runMonitorValueChangeScan(
@@ -79,21 +98,24 @@ export async function runMonitorValueChangeScan(
       }
     }
 
-    const summary = summaryFieldsFromStored(row.result, {
+    const analytics = readPortfolioAnalyticsFromStored(row.result);
+    const alert = buildMonitorValueAlertContent({
+      title: row.title,
+      assetTypeName: row.assetTypeName,
+      currency: row.currency,
       baselineMid: row.baselineMid,
       adjustedMid: row.adjustedMid,
-      assetTypeId: row.assetTypeId,
-      createdAt: row.createdAt,
+      analytics,
+      citationUrls: readCitationUrls(row.result, row.lineage),
+      comparableCount: readComparableCount(row.result),
     });
 
-    const pct = Math.round(uplift * 100);
     const title = `Your ${row.assetTypeName.toLowerCase()} increased in value`;
-    const body = `${row.title} is up about ${pct}% since baseline. Confidence ${summary.confidenceScore ?? "n/a"}%.`;
 
     await createUserNotification(userId, {
       kind: "value_up",
       title,
-      body,
+      body: alert.bodyPlain,
       estimateId: row.id,
       href: `/estimates/${row.id}`,
     });
@@ -105,7 +127,11 @@ export async function runMonitorValueChangeScan(
         to: recipient.to,
         subject: title,
         html: buildMonitorValueEmailHtml({
-          body,
+          summaryLine: alert.summaryLine,
+          bodyPlain: alert.bodyPlain,
+          breakdownLines: alert.breakdownLines,
+          citationUrls: alert.citationUrls,
+          confidenceScore: alert.confidenceScore,
           estimateUrl: `${base}/estimates/${row.id}`,
         }),
       });
@@ -135,18 +161,30 @@ export async function runPortfolioHealthNotifications(userId: string): Promise<v
     });
 
     if (summary.valuationFreshness === "stale") {
+      const analytics = readPortfolioAnalyticsFromStored(row.result);
       await createUserNotification(userId, {
         kind: "revalue",
         title: `Time to revalue ${row.title}`,
-        body: "Market context may have moved since this run was saved.",
+        body: buildPortfolioHealthAlertBody({
+          kind: "revalue",
+          title: row.title,
+          analytics,
+        }),
         estimateId: row.id,
         href: `/estimates/${row.id}`,
       });
     } else if (summary.receiptStatus === "missing" && row.adjustedMid >= 1500) {
+      const analytics = readPortfolioAnalyticsFromStored(row.result);
       await createUserNotification(userId, {
         kind: "receipt",
         title: `Add receipt for ${row.title}`,
-        body: "Documented provenance helps insurance and resale confidence.",
+        body: buildPortfolioHealthAlertBody({
+          kind: "receipt",
+          title: row.title,
+          analytics,
+          adjustedMid: row.adjustedMid,
+          currency: row.currency,
+        }),
         estimateId: row.id,
         href: `/estimates/${row.id}`,
       });

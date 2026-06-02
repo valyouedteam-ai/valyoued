@@ -40,6 +40,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { RefineEstimateSheet } from "@/components/estimates/RefineEstimateSheet";
+import { ConfidenceBreakdown } from "@/components/estimates/ConfidenceBreakdown";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -504,12 +505,17 @@ export default function EstimateReportPage() {
             <p className="text-xs font-medium text-muted-foreground sm:text-sm">Estimate today</p>
             <p className="mt-1 text-4xl font-semibold tabular-nums tracking-tight text-foreground sm:text-5xl">{fmt(estimate.adjustedMid)}</p>
             {estimate.portfolioAnalytics ? (
-              <p className="mt-2 text-sm text-muted-foreground">
-                Confidence {estimate.portfolioAnalytics.confidenceScore}/100 ·{" "}
-                <span className="capitalize">{estimate.portfolioAnalytics.resalePotential}</span> resale potential ·
-                Suggested{" "}
-                <span className="capitalize text-foreground">{estimate.portfolioAnalytics.actionRecommendation}</span>
-              </p>
+              <div className="mt-2 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Confidence {estimate.portfolioAnalytics.confidenceScore}/100 ·{" "}
+                  <span className="capitalize">{estimate.portfolioAnalytics.resalePotential}</span> resale potential ·
+                  Suggested{" "}
+                  <span className="capitalize text-foreground">
+                    {estimate.portfolioAnalytics.actionRecommendation}
+                  </span>
+                </p>
+                <ConfidenceBreakdown analytics={estimate.portfolioAnalytics} />
+              </div>
             ) : null}
             {estimate.traderAnalytics ? (
               <p className="mt-2 text-sm text-muted-foreground">
