@@ -505,6 +505,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InventoryItem"
+    delete:
+      operationId: deleteInventoryItem
+      tags: [trader]
+      summary: Remove an inventory pipeline item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
   /reports/business:
     get:
       operationId: getBusinessReport
@@ -523,26 +545,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BusinessReport"
-  /estimates/batch-reprice-check:
-    post:
-      operationId: batchRepriceCheck
-      tags: [trader]
-      summary: Batch repricing check for inventory (Professional)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BatchRepriceCheckBody"
-      responses:
-        "200":
-          description: Repricing suggestions
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RepriceSuggestion"
   /vision/extract:
     post:
       operationId: extractFromPhoto
@@ -1560,32 +1562,6 @@ components:
           items:
             type: object
             additionalProperties: true
-    BatchRepriceCheckBody:
-      type: object
-      properties:
-        inventoryIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-        estimateIds:
-          type: array
-          items:
-            type: string
-    RepriceSuggestion:
-      type: object
-      required: [id, title, message, suggestedPrice]
-      properties:
-        id:
-          type: string
-        title:
-          type: string
-        message:
-          type: string
-        suggestedPrice:
-          type: number
-        currentPrice:
-          type: number
     VisionExtractInput:
       type: object
       required: [assetTypeId, imageBase64, mimeType]

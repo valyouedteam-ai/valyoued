@@ -38,6 +38,7 @@ export function PortfolioWorkspaceStrip() {
       className="border-t border-border/50 bg-muted/25 px-4 py-2 sm:px-6"
       role="toolbar"
       aria-label="Portfolio workspace switcher"
+      data-workspace-guide="workspace-strip"
     >
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 text-ui-caps text-muted-foreground">

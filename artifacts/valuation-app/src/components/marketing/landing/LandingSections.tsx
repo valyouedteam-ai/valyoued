@@ -12,9 +12,7 @@ import {
   ArrowRight,
   Briefcase,
   ChevronRight,
-  Landmark,
   Megaphone,
-  Shield,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,8 +83,8 @@ const USE_CASE_TABS = [
   {
     id: "resell",
     label: "Resellers",
-    headline: "Price stock before you buy",
-    body: "Deal scores, margin hints, and repricing alerts for inventory that turns quickly.",
+    headline: "Desks built for volume",
+    body: "Market watch, inventory pipeline, and exportable reports for active traders.",
   },
   {
     id: "collect",
@@ -103,8 +101,8 @@ const USE_CASE_TABS = [
   {
     id: "pro",
     label: "Professionals",
-    headline: "Desks built for volume",
-    body: "Market watch, inventory pipeline, and exportable reports for active traders.",
+    headline: "Price stock before you buy",
+    body: "Deal scores, margin hints, and repricing alerts for inventory that turns quickly.",
   },
 ] as const;
 
@@ -133,7 +131,7 @@ export function LandingHero() {
     <section className="mx-auto max-w-6xl px-4 pb-8 pt-16 text-center sm:px-6 sm:pt-20 lg:pb-16 lg:pt-24">
       <Reveal className="mx-auto max-w-4xl">
         <h1 className="text-balance text-[2.75rem] font-bold leading-[1.02] tracking-[-0.03em] text-foreground sm:text-6xl lg:text-[4.5rem]">
-          One calm ledger for what you own and sell.
+          One ledger for everything you own and sell.
         </h1>
       </Reveal>
 
@@ -314,16 +312,7 @@ export function LandingQuote() {
 export function LandingCollaboration() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_1.1fr] lg:items-end">
-        <Reveal className="max-w-md">
-          <h2 className="text-4xl font-bold tracking-[-0.02em] text-foreground sm:text-5xl">
-            Built for teams that share a ledger
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Large cards for the workflows people actually hand off: portfolio review, workspace splits, and listing prep.
-          </p>
-        </Reveal>
-
+      <div>
         <Carousel opts={{ align: "start", loop: true }} className="w-full">
           <CarouselContent className="-ml-4">
             {COLLAB_CARDS.map((card) => {
@@ -476,21 +465,6 @@ export function LandingFinalCta() {
             </span>
           </article>
         </Link>
-      </div>
-
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        <span className="inline-flex items-center gap-2">
-          <Shield className="h-4 w-4" />
-          Secure billing
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <Landmark className="h-4 w-4" />
-          Inheritance ready
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <Briefcase className="h-4 w-4" />
-          Guided templates
-        </span>
       </div>
 
       <Reveal className="mt-16 text-center">

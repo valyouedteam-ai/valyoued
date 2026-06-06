@@ -56,10 +56,20 @@ export function LandingIntroOverlay({ unlocked }: LandingIntroOverlayProps) {
         aria-labelledby="landing-intro-title"
       >
         <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-border/80 bg-card/95 p-4 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
-          <div className="min-w-0 flex-1 space-y-1 pr-8 sm:pr-0">
-            <p id="landing-intro-title" className="text-base font-semibold tracking-tight text-foreground">
-              Ready when you are
-            </p>
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-start justify-between gap-3">
+              <p id="landing-intro-title" className="text-base font-semibold tracking-tight text-foreground">
+                Ready when you are
+              </p>
+              <button
+                type="button"
+                onClick={dismiss}
+                className="-mr-1 -mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Create a free account to save valuations and pick Everyday or Professional wording. No paid plan required to
               start.
@@ -75,14 +85,6 @@ export function LandingIntroOverlay({ unlocked }: LandingIntroOverlayProps) {
               </Button>
             </Link>
           </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:right-4 sm:top-4"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       </motion.div>
     </AnimatePresence>

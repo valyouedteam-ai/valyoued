@@ -57,9 +57,9 @@ function MarketingPlanCardsInner({
 
   return (
     <section id="plans" className={cn("relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6", className)}>
-      <div className="mb-10 max-w-2xl">
+      <div className="mb-10 max-w-4xl">
         <p className="text-ui-caps text-accent">Simple pricing</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="mt-2 text-nowrap text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           Start free and upgrade when your portfolio grows.
         </h1>
       </div>

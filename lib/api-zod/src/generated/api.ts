@@ -1851,6 +1851,17 @@ export const PatchInventoryItemResponse = zod.object({
 });
 
 /**
+ * @summary Remove an inventory pipeline item
+ */
+export const DeleteInventoryItemParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DeleteInventoryItemResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary Exportable business report snapshot (Professional)
  */
 export const getBusinessReportQueryMonthRegExp = new RegExp("^\\d{4}-\\d{2}$");
@@ -1878,25 +1889,6 @@ export const GetBusinessReportResponse = zod.object({
     .array(zod.record(zod.string(), zod.unknown()))
     .optional(),
 });
-
-/**
- * @summary Batch repricing check for inventory (Professional)
- */
-export const BatchRepriceCheckBody = zod.object({
-  inventoryIds: zod.array(zod.string().uuid()).optional(),
-  estimateIds: zod.array(zod.string()).optional(),
-});
-
-export const BatchRepriceCheckResponseItem = zod.object({
-  id: zod.string(),
-  title: zod.string(),
-  message: zod.string(),
-  suggestedPrice: zod.number(),
-  currentPrice: zod.number().optional(),
-});
-export const BatchRepriceCheckResponse = zod.array(
-  BatchRepriceCheckResponseItem,
-);
 
 /**
  * @summary Extract asset attributes from an uploaded photo

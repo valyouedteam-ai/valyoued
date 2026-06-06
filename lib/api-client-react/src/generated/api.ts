@@ -18,7 +18,6 @@ import type {
 
 import type {
   AssetType,
-  BatchRepriceCheckBody,
   BusinessReport,
   CreateEstimate429,
   CreateInventoryItemBody,
@@ -26,6 +25,7 @@ import type {
   CreateMarketWatchBody,
   CreatePortfolio403,
   CreatePortfolioBody,
+  DeleteInventoryItem200,
   DeleteListingDraft200,
   DeleteMarketWatch200,
   DeletePortfolio403,
@@ -53,7 +53,6 @@ import type {
   RefreshMarketWatch404,
   RefreshMarketWatch429,
   Region,
-  RepriceSuggestion,
   UserNotification,
   VisionExtractInput,
   VisionExtractResult,
@@ -1871,6 +1870,90 @@ export const usePatchInventoryItem = <
 };
 
 /**
+ * @summary Remove an inventory pipeline item
+ */
+export const getDeleteInventoryItemUrl = (id: string) => {
+  return `/api/inventory/${id}`;
+};
+
+export const deleteInventoryItem = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeleteInventoryItem200> => {
+  return customFetch<DeleteInventoryItem200>(getDeleteInventoryItemUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteInventoryItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInventoryItem>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteInventoryItem>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteInventoryItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteInventoryItem>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteInventoryItem(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteInventoryItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteInventoryItem>>
+>;
+
+export type DeleteInventoryItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove an inventory pipeline item
+ */
+export const useDeleteInventoryItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInventoryItem>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteInventoryItem>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteInventoryItemMutationOptions(options));
+};
+
+/**
  * @summary Exportable business report snapshot (Professional)
  */
 export const getGetBusinessReportUrl = (params?: GetBusinessReportParams) => {
@@ -1966,92 +2049,6 @@ export function useGetBusinessReport<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-/**
- * @summary Batch repricing check for inventory (Professional)
- */
-export const getBatchRepriceCheckUrl = () => {
-  return `/api/estimates/batch-reprice-check`;
-};
-
-export const batchRepriceCheck = async (
-  batchRepriceCheckBody: BatchRepriceCheckBody,
-  options?: RequestInit,
-): Promise<RepriceSuggestion[]> => {
-  return customFetch<RepriceSuggestion[]>(getBatchRepriceCheckUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(batchRepriceCheckBody),
-  });
-};
-
-export const getBatchRepriceCheckMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof batchRepriceCheck>>,
-    TError,
-    { data: BodyType<BatchRepriceCheckBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof batchRepriceCheck>>,
-  TError,
-  { data: BodyType<BatchRepriceCheckBody> },
-  TContext
-> => {
-  const mutationKey = ["batchRepriceCheck"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof batchRepriceCheck>>,
-    { data: BodyType<BatchRepriceCheckBody> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return batchRepriceCheck(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type BatchRepriceCheckMutationResult = NonNullable<
-  Awaited<ReturnType<typeof batchRepriceCheck>>
->;
-export type BatchRepriceCheckMutationBody = BodyType<BatchRepriceCheckBody>;
-export type BatchRepriceCheckMutationError = ErrorType<unknown>;
-
-/**
- * @summary Batch repricing check for inventory (Professional)
- */
-export const useBatchRepriceCheck = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof batchRepriceCheck>>,
-    TError,
-    { data: BodyType<BatchRepriceCheckBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof batchRepriceCheck>>,
-  TError,
-  { data: BodyType<BatchRepriceCheckBody> },
-  TContext
-> => {
-  return useMutation(getBatchRepriceCheckMutationOptions(options));
-};
 
 /**
  * @summary Extract asset attributes from an uploaded photo

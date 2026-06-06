@@ -83,7 +83,7 @@ export const MAIN_PLAN_CARDS: MarketingPlanCardDef[] = [
     bullets: [
       "Everything in Everyday plus Market Watch and deal scoring",
       "Inventory pipeline, max buy price, and repricing alerts",
-      "Platform-specific listing drafts and batch repricing checks",
+      "Platform-specific listing drafts",
       "Business exports, multiple desks, seller-grade listing tone",
     ],
     ctaLabel: "Sign up on the Professional track",

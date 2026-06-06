@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { PortfolioWorkspaceStrip } from "@/components/layout/PortfolioWorkspaceStrip";
-import { WorkspaceBehaviorInfoCallout } from "@/components/layout/WorkspaceBehaviorInfoCallout";
+import { WorkspaceGuideTour } from "@/components/onboarding/WorkspaceGuideTour";
 import {
   mergePortfolioHref,
   PortfolioWorkspaceProvider,
@@ -58,6 +58,8 @@ type NavItem = {
   navTitle?: string;
   /** When set, skips merging the active workspace `?portfolio=` tail (avoid corrupting hashes or doubling params). */
   skipPortfolioQuery?: boolean;
+  /** Target id for the first-time workspace guide spotlight. */
+  guideTarget?: string;
 };
 
 const NAV_MARKETS: NavItem = {
@@ -69,7 +71,7 @@ const NAV_MARKETS: NavItem = {
 
 const navWorkspace: NavItem[] = [
   { href: "/dashboard", label: "Portfolio", icon: Briefcase },
-  { href: "/estimate/new", label: "Valuate", icon: Calculator },
+  { href: "/estimate/new", label: "Valuate", icon: Calculator, guideTarget: "nav-valuate" },
   {
     href: "/estimates",
     label: "Recent",
@@ -86,6 +88,7 @@ const navInsights: NavItem[] = [
     navTitle:
       "Separate ledger for estates, heirs, and heirlooms. Open this hub before valuing heirlooms or someone else's items.",
     skipPortfolioQuery: true,
+    guideTarget: "nav-inheritance",
   },
   { href: "/listings", label: "Ads", icon: Megaphone },
 ];
@@ -255,6 +258,7 @@ function NavLink({
       {...(item.navTitle ? { title: item.navTitle, "aria-label": item.navTitle } : {})}
     >
       <span
+        data-workspace-guide={item.guideTarget}
         className={cn(
           "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-all",
           block && "w-full flex",
@@ -401,7 +405,7 @@ function MobileNavSheet({ insightNav }: { insightNav: NavItem[] }) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="shrink-0 rounded-full md:hidden" aria-label="Open menu">
+        <Button variant="outline" size="icon" className="shrink-0 rounded-full md:hidden" aria-label="Open menu" data-workspace-guide="mobile-menu">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
@@ -446,7 +450,7 @@ function MobileNavSheet({ insightNav }: { insightNav: NavItem[] }) {
           </div>
           <div className="flex flex-wrap gap-2 px-2">
             <p className="w-full text-ui-caps text-muted-foreground px-2">Shortcuts</p>
-            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
+            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]" data-workspace-guide="settings">
               <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Settings">
                 <Settings className="h-4 w-4 shrink-0" />
                 Settings
@@ -494,7 +498,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
-          <nav className="hidden min-w-0 flex-1 justify-center md:flex">
+          <nav className="hidden min-w-0 flex-1 justify-center md:flex" data-workspace-guide="main-nav">
             <div className="flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none rounded-full border border-border/60 bg-muted/40 p-1">
               {navWorkspace.map((item) => (
                 <NavLink
@@ -527,7 +531,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
               ) : null
             ) : null}
             {!isMobile && !SHOW_STUB_PLAN_TOGGLE ? <PlanBrief className="hidden lg:flex" /> : null}
-            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block">
+            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block" data-workspace-guide="settings">
               <Button
                 variant={shellIconActiveSettings ? "secondary" : "ghost"}
                 size="icon"
@@ -565,10 +569,10 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           <div className="grid-bg absolute inset-0" />
         </div>
         <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
-          <WorkspaceBehaviorInfoCallout className="mb-8" />
           {children}
         </div>
       </main>
+      <WorkspaceGuideTour />
     </div>
   );
 }

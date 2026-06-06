@@ -780,19 +780,6 @@ export interface BusinessReport {
   insuranceStockRows?: BusinessReportInsuranceStockRowsItem[];
 }
 
-export interface BatchRepriceCheckBody {
-  inventoryIds?: string[];
-  estimateIds?: string[];
-}
-
-export interface RepriceSuggestion {
-  id: string;
-  title: string;
-  message: string;
-  suggestedPrice: number;
-  currentPrice?: number;
-}
-
 export type VisionExtractInputMimeType =
   (typeof VisionExtractInputMimeType)[keyof typeof VisionExtractInputMimeType];
 
@@ -927,6 +914,10 @@ export type RefreshMarketWatch404 = {
 
 export type RefreshMarketWatch429 = {
   error: string;
+};
+
+export type DeleteInventoryItem200 = {
+  ok: boolean;
 };
 
 export type GetBusinessReportParams = {

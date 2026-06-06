@@ -8,7 +8,6 @@ import {
   marketWatchesTable,
 } from "@workspace/db";
 import {
-  BatchRepriceCheckBody,
   CreateInventoryItemBody,
   CreateMarketWatchBody,
   GetBusinessReportQueryParams,
@@ -17,11 +16,11 @@ import {
   ListNotificationsResponse,
   PatchInventoryItemBody,
   PatchInventoryItemParams,
+  DeleteInventoryItemParams,
   PatchNotificationsBody,
   CreateInventoryItemResponse,
   CreateMarketWatchResponse,
   PatchInventoryItemResponse,
-  BatchRepriceCheckResponse,
   GetBusinessReportResponse,
   DeleteMarketWatchParams,
   RefreshMarketWatchParams,
@@ -39,8 +38,6 @@ import {
   listUserNotifications,
   markNotificationsRead,
 } from "../lib/notificationsService";
-import { mergeEstimateResultFromRow } from "../lib/estimateResultMerge";
-import { computeTraderAnalytics } from "../lib/traderAnalytics";
 import { convertToUsdApprox } from "@workspace/fx-usd";
 import { getFxRateSnapshot } from "../lib/fxRates";
 
@@ -325,6 +322,24 @@ router.patch("/inventory/:id", requireAuth, async (req, res): Promise<void> => {
   );
 });
 
+router.delete("/inventory/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId!;
+  const ent = await resolveUserEntitlements(userId, req);
+  if (!requireTrader(ent, res)) return;
+
+  const params = DeleteInventoryItemParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  await db
+    .delete(inventoryItemsTable)
+    .where(and(eq(inventoryItemsTable.id, params.data.id), eq(inventoryItemsTable.userId, userId)));
+
+  res.json({ ok: true });
+});
+
 router.get("/reports/business", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthedRequest).userId!;
   const ent = await resolveUserEntitlements(userId, req);
@@ -386,68 +401,6 @@ router.get("/reports/business", requireAuth, async (req, res): Promise<void> => 
       insuranceStockRows,
     }),
   );
-});
-
-router.post("/estimates/batch-reprice-check", requireAuth, async (req, res): Promise<void> => {
-  const userId = (req as AuthedRequest).userId!;
-  const ent = await resolveUserEntitlements(userId, req);
-  if (!requireTrader(ent, res)) return;
-
-  const parsed = BatchRepriceCheckBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const ids = [...(parsed.data.estimateIds ?? []), ...(parsed.data.inventoryIds ?? [])];
-  const suggestions = [];
-
-  if (parsed.data.estimateIds?.length) {
-    const rows = await db
-      .select()
-      .from(estimatesTable)
-      .where(and(eq(estimatesTable.userId, userId)));
-    for (const row of rows.filter((r) => parsed.data.estimateIds!.includes(r.id))) {
-      const merged = mergeEstimateResultFromRow(row, row.result);
-      const trader = merged.traderAnalytics ?? computeTraderAnalytics({
-        input: merged.input,
-        adjustedMid: merged.adjustedMid,
-        adjustedLow: merged.adjustedLow,
-        adjustedHigh: merged.adjustedHigh,
-        baselineMid: merged.baselineMid,
-      });
-      const over = row.adjustedMid - trader.expectedResale;
-      if (over > 100) {
-        suggestions.push({
-          id: row.id,
-          title: row.title,
-          message: `This item may be overpriced by about £${Math.round(over)} vs comps.`,
-          suggestedPrice: trader.expectedResale,
-          currentPrice: row.adjustedMid,
-        });
-      }
-    }
-  }
-
-  if (parsed.data.inventoryIds?.length) {
-    const invRows = await db
-      .select()
-      .from(inventoryItemsTable)
-      .where(eq(inventoryItemsTable.userId, userId));
-    for (const item of invRows.filter((i) => parsed.data.inventoryIds!.includes(i.id))) {
-      if (item.stage !== "listed" || !item.listPrice) continue;
-      const list = Number(item.listPrice);
-      suggestions.push({
-        id: item.id,
-        title: item.title,
-        message: `Similar items are selling faster near £${Math.round(list * 0.95)}.`,
-        suggestedPrice: Math.round(list * 0.95),
-        currentPrice: list,
-      });
-    }
-  }
-
-  res.json(BatchRepriceCheckResponse.parse(suggestions));
 });
 
 export default router;

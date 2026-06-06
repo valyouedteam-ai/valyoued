@@ -6,10 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface RepriceSuggestion {
-  id: string;
-  title: string;
-  message: string;
-  suggestedPrice: number;
-  currentPrice?: number;
-}
+export type DeleteInventoryItem200 = {
+  ok: boolean;
+};

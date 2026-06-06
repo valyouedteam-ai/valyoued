@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
-  useBatchRepriceCheck,
   useCreateInventoryItem,
+  useDeleteInventoryItem,
   useGetBusinessReport,
   useListInventoryItems,
   usePatchInventoryItem,
   getListInventoryItemsQueryKey,
   getGetBusinessReportQueryKey,
 } from "@workspace/api-client-react";
-import { Package, FileDown } from "lucide-react";
+import { Package, FileDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -95,14 +95,7 @@ export default function InventoryPage() {
   });
   const create = useCreateInventoryItem({ mutation: { onSuccess: () => void refetch() } });
   const patch = usePatchInventoryItem({ mutation: { onSuccess: () => void refetch() } });
-  const reprice = useBatchRepriceCheck({
-    mutation: {
-      onSuccess: (rows) => {
-        if (rows.length === 0) return;
-        alert(rows.map((r) => `${r.title}: ${r.message}`).join("\n"));
-      },
-    },
-  });
+  const del = useDeleteInventoryItem({ mutation: { onSuccess: () => void refetch() } });
 
   const grouped = useMemo(() => {
     const map = new Map<string, NonNullable<typeof items>>();
@@ -190,25 +183,12 @@ export default function InventoryPage() {
             Deal scoring, max buy price, and stage-based workflow for resale operations.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            className="rounded-full"
-            onClick={() =>
-              reprice.mutate({
-                data: { inventoryIds: (items ?? []).filter((i) => i.stage === "listed").map((i) => i.id) },
-              })
-            }
-          >
-            Batch repricing check
-          </Button>
-          <Button
-            className="rounded-full"
-            onClick={() => create.mutate({ data: { title: "New stock item", stage: "sourced" } })}
-          >
-            Add item
-          </Button>
-        </div>
+        <Button
+          className="rounded-full"
+          onClick={() => create.mutate({ data: { title: "New stock item", stage: "sourced" } })}
+        >
+          Add item
+        </Button>
       </header>
 
       {report ? (
@@ -243,8 +223,24 @@ export default function InventoryPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {(grouped.get(stage) ?? []).map((item) => (
-                  <div key={item.id} className={cn("rounded-lg border border-border/60 p-2 text-sm")}>
-                    <p className="font-medium">{item.title}</p>
+                  <div
+                    key={item.id}
+                    className={cn("group rounded-lg border border-border/60 p-2 text-sm")}
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="font-medium">{item.title}</p>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                        aria-label={`Delete ${item.title}`}
+                        disabled={del.isPending}
+                        onClick={() => del.mutate({ id: item.id })}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                     {item.listPrice != null ? (
                       <p className="text-xs text-muted-foreground">List {formatMoney(item.listPrice, item.currency ?? "GBP")}</p>
                     ) : null}
