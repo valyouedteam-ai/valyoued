@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "wouter";
 import {
   useCreateInventoryItem,
@@ -12,7 +12,6 @@ import {
 import { Package, FileDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -320,24 +319,6 @@ export default function InventoryPage() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="max-w-md">
-        <LabelQuickAdd
-          onAdd={(title) => create.mutate({ data: { title, stage: "purchased", costBasis: 0, listPrice: 0 } })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function LabelQuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
-  const [title, setTitle] = useState("");
-  return (
-    <div className="flex gap-2">
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Quick add purchased stock" />
-      <Button disabled={!title.trim()} onClick={() => { onAdd(title.trim()); setTitle(""); }}>
-        Add
-      </Button>
     </div>
   );
 }

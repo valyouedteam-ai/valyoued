@@ -182,9 +182,8 @@ export default function MarketWatchPage() {
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">Market Watch</h1>
         <p className="text-muted-foreground leading-relaxed max-w-3xl">
-          Pin a brand and model you trade often (for example Chanel Classic Flap Medium). Each watch runs web
-          research on create and when you refresh, then summarizes list prices, buy-below targets, resale timing,
-          and platform hints with source links. Snapshots are on demand, not live feeds.
+          Keep watch over a product brand and model you trade often to get alerts on list prices, buy-below targets and
+          resale timing.
         </p>
       </header>
 
