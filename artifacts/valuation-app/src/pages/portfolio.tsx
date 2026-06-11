@@ -26,7 +26,6 @@ import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { ProfessionalWorkspaceRollup } from "@/components/portfolio/ProfessionalWorkspaceRollup";
 import { DashboardHubLower } from "@/components/dashboard/DashboardHubLower";
-import { DashboardNextStep } from "@/components/dashboard/DashboardNextStep";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { PortfolioAssetCard } from "@/components/portfolio/PortfolioAssetCard";
 import { PageTitle } from "@/components/layout/PageTitle";
@@ -325,7 +324,6 @@ export default function PortfolioPage() {
       />
 
       <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
-      <DashboardNextStep scopedEstimates={scopedRows} />
 
       {/* Smart folders: drag assets between Hold / Monitor / Sell */}
       <PortfolioFolders

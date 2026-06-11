@@ -36,6 +36,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { PortfolioWorkspaceStrip } from "@/components/layout/PortfolioWorkspaceStrip";
+import { AppSearch } from "@/components/layout/AppSearch";
 import { WorkspaceGuideTour } from "@/components/onboarding/WorkspaceGuideTour";
 import {
   mergePortfolioHref,
@@ -596,33 +597,35 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl lg:hidden">
-          <div className="flex w-full items-center gap-3 px-4 py-3">
-            <Link
-              href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}
-              className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-card shadow-sm ring-1 ring-border/60">
-                <img src={LOGO_URL} alt="ValYoued" className="h-6 w-6 object-contain" />
+        <div className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl">
+          <header className="lg:hidden">
+            <div className="flex w-full items-center gap-3 px-4 py-3">
+              <Link
+                href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}
+                className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-card shadow-sm ring-1 ring-border/60">
+                  <img src={LOGO_URL} alt="ValYoued" className="h-6 w-6 object-contain" />
+                </div>
+                <span className="font-brand text-lg text-foreground">ValYoued</span>
+              </Link>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {SHOW_STUB_PLAN_TOGGLE ? <StubBillingPlanSwitcher compact /> : null}
+                <UserMenu compact />
+                <MobileNavSheet insightNav={insightNav} />
               </div>
-              <span className="font-brand text-lg text-foreground">ValYoued</span>
-            </Link>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              {SHOW_STUB_PLAN_TOGGLE ? <StubBillingPlanSwitcher compact /> : null}
-              <UserMenu compact />
-              <MobileNavSheet insightNav={insightNav} />
             </div>
-          </div>
-          <PortfolioWorkspaceStrip />
-          {!SHOW_STUB_PLAN_TOGGLE ? (
-            <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2">
-              {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle compact /> : null}
-              <PlanBrief />
-            </div>
-          ) : null}
-        </header>
+            {!SHOW_STUB_PLAN_TOGGLE ? (
+              <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2">
+                {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle compact /> : null}
+                <PlanBrief />
+              </div>
+            ) : null}
+          </header>
 
-        <div className="hidden lg:block">
+          <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:py-2.5">
+            <AppSearch insightNav={insightNav} />
+          </div>
           <PortfolioWorkspaceStrip />
         </div>
 
