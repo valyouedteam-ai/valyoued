@@ -1,17 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import type { EstimateSummary } from "@workspace/api-client-react";
-import { useGetEstimateStats } from "@workspace/api-client-react";
 import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
-import { formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Car,
   Gem,
-  Globe2,
   Lock,
   Megaphone,
   Package,
@@ -19,7 +15,6 @@ import {
   Shirt,
   ShoppingBag,
   Sparkles,
-  TrendingUp,
   TvMinimal,
   Watch,
 } from "lucide-react";
@@ -42,7 +37,7 @@ const BUCKET_ICONS: Record<HomeBucketKey, typeof Gem> = {
   other: Package,
 };
 
-/** Bottom-of-hub sections: buckets, paid/regional teaser, ads, inheritance. */
+/** Lower dashboard sections: asset buckets, ads, inheritance upsell. */
 export function DashboardHubLower({
   scopedEstimates,
   estimatesLoading: _estimatesLoading,
@@ -57,14 +52,10 @@ export function DashboardHubLower({
   const billingPaid = Boolean(billing?.hasPaidValuationTier);
   const { portfolioQuerySuffix } = usePortfolioWorkspace();
 
-  const { data: stats, isLoading: statsLoading } = useGetEstimateStats();
-
   const bucketCounts = useMemo(
     () => countItemsByBucket(scopedEstimates.map((f) => f.assetTypeName)),
     [scopedEstimates],
   );
-
-  const [pickedRegionIdx, setPickedRegionIdx] = useState<number | null>(null);
 
   const showingInheritanceUpsell = !isProfessional && !billing?.hasInheritanceAddon;
 
@@ -78,7 +69,6 @@ export function DashboardHubLower({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">Asset buckets</h2>
-            <p className="mt-1 text-base text-muted-foreground">Tap a bucket to add items or open recent valuations.</p>
           </div>
           <Button size="sm" variant="secondary" className="rounded-full" asChild>
             <Link href={buildEstimateNewHref(portfolioQuerySuffix)}>Add item</Link>
@@ -124,86 +114,6 @@ export function DashboardHubLower({
             );
           })}
         </div>
-      </section>
-
-      <section className="space-y-4">
-        {billingPaid ? (
-          <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Globe2 className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-lg">Regional mix</CardTitle>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {statsLoading || !stats || !Number.isFinite(stats.averageUplift)
-                  ? "Tap a highlighted share bar. Typical uplift versus baseline fills in once you have enough saved runs."
-                  : (
-                      <>
-                        Tap a highlighted share bar. Average adjustment vs baseline is running about{" "}
-                        <span className="font-semibold tabular-nums text-foreground">
-                          {formatPercent(stats.averageUplift, true)}
-                        </span>{" "}
-                        across this workspace snapshot right now.
-                      </>
-                    )}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {statsLoading ? (
-                <Skeleton className="h-10 w-full rounded-xl" />
-              ) : stats?.topArbitrageRegions?.length ? (
-                (() => {
-                  const rows = stats.topArbitrageRegions;
-                  const total = rows.reduce((s, r) => s + (r.count ?? 0), 0) || 1;
-                  return (
-                    <div className="space-y-3 text-sm">
-                      {rows.slice(0, 4).map((r, idx) => {
-                        const pct = (r.count ?? 0) / total;
-                        const focused = pickedRegionIdx === idx;
-                        return (
-                          <button
-                            key={`${r.region}-${idx}`}
-                            type="button"
-                            onClick={() => setPickedRegionIdx((i) => (i === idx ? null : idx))}
-                            aria-pressed={focused}
-                            className={cn(
-                              "relative w-full overflow-hidden rounded-xl border px-4 py-2.5 text-left transition-colors",
-                              "border-border/60 bg-muted/10 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-                              focused && "border-accent/50 bg-accent/10",
-                            )}
-                          >
-                            <div
-                              className="pointer-events-none absolute inset-y-0 left-0 bg-accent/20 transition-[width] duration-300"
-                              style={{ width: `${Math.round(pct * 100)}%` }}
-                            />
-                            <span className="relative z-10 flex items-center justify-between gap-4">
-                              <span className="truncate font-medium">{r.region}</span>
-                              <span className="shrink-0 tabular-nums text-muted-foreground">{formatPercent(pct)}</span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })()
-              ) : (
-                <p className="text-sm text-muted-foreground">Regional spread fills in after you collect more valuations.</p>
-              )}
-              <Button variant="outline" className="w-full justify-between rounded-xl" asChild>
-                <Link href={mergePortfolioHref("/markets", portfolioQuerySuffix)}>
-                  Open markets cockpit
-                  <TrendingUp className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <PaidFeatureTeaser
-            eyebrow="Paid unlock"
-            title="International arbitrage stack"
-            description="Everyday opens the fuller regional payout grids on each valuation alongside the markets cockpit previews you already skim."
-          />
-        )}
       </section>
 
       <section aria-label="Ads and monitors">

@@ -31,20 +31,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
 import { planTierDisplayName } from "@/lib/marketing-plan-tiers";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { PageTitle } from "@/components/layout/PageTitle";
-
-type BillingInfo = {
-  tier: string;
-  status: string;
-  stripeCustomerId: string | null;
-  stripeStub?: boolean;
-  planSlug?: string | null;
-  valuationsThisMonth?: number;
-  valuationsMonthLimit?: number | null;
-  valuationsRemainingFree?: number | null;
-  hasPaidValuationTier?: boolean;
-  hasInheritanceAddon?: boolean;
-};
 
 type EmailAlertsInfo = {
   estimateReadyEmail: boolean;
@@ -160,7 +148,7 @@ function SettingsPageInner({
   })();
   const geoLedToCurrency =
     Boolean(geoCountry) && countryCodeToDisplayCurrency(geoCountry) === displayCurrencyCode;
-  const [billing, setBilling] = useState<BillingInfo | null>(null);
+  const { data: billing, isLoading: billingLoading } = useBillingSummary();
   const [emailAlerts, setEmailAlerts] = useState<EmailAlertsInfo | null>(null);
   const [stubTestEmail, setStubTestEmail] = useState(
     () => localStorage.getItem("valyoued.stub-test-email") ?? "",
@@ -317,33 +305,6 @@ function SettingsPageInner({
     }
   };
 
-  const refreshBilling = useCallback(async () => {
-    try {
-      const token = await getToken();
-      const res = await fetch(apiUrl("/api/me/billing"), {
-        credentials: apiFetchCredentials(),
-        headers: token ? { authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) return;
-      const raw = await res.text();
-      const trimmed = raw.trim();
-      if (!trimmed) return;
-      try {
-        const j = JSON.parse(trimmed) as BillingInfo;
-        setBilling(j);
-        queryClient.invalidateQueries({ queryKey: ["me-billing"] });
-      } catch {
-        /* ignore malformed body */
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [getToken, queryClient]);
-
-  useEffect(() => {
-    void refreshBilling();
-  }, [refreshBilling]);
-
   /** Deep link from `/settings#inheritance-addon` once billing section has rendered. */
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -477,7 +438,7 @@ function SettingsPageInner({
     }
   };
 
-  const emailAlertsPaidOnly = billing == null ? true : !billing.hasPaidValuationTier;
+  const emailAlertsPaidOnly = billingLoading ? true : !billing?.hasPaidValuationTier;
 
   return (
     <div className="space-y-8 pb-16">
@@ -505,6 +466,12 @@ function SettingsPageInner({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 max-w-lg">
+            {emailAlertsPaidOnly ? (
+              <p className="rounded-xl border border-border/60 bg-muted/15 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                Email alert toggles unlock on Everyday or Professional. Switch plan in the sidebar subscription strip (dev)
+                or upgrade below, then return here.
+              </p>
+            ) : null}
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
                 <Label htmlFor="alert-estimate-ready">New estimate ready</Label>
@@ -638,20 +605,6 @@ function SettingsPageInner({
                 </div>
               </div>
             ) : null}
-            <div className="rounded-xl border border-border/60 bg-muted/15 p-3 text-xs text-muted-foreground leading-relaxed space-y-2">
-              <p className="font-medium text-foreground">End-to-end checklist</p>
-              <ol className="list-decimal pl-4 space-y-1">
-                <li>Set RESEND_API_KEY and EMAIL_FROM in .env, then restart the API.</li>
-                <li>Switch to Everyday or Professional (dev subscription strip or Stripe).</li>
-                <li>Turn on the alert toggles above, then send Test connection.</li>
-                <li>
-                  For a live estimate-ready ping: run a new valuation with New estimate ready enabled.
-                </li>
-                <li>
-                  For monitor emails: tag a valuation as Monitor, open Portfolio alerts (or use Force scan here).
-                </li>
-              </ol>
-            </div>
             {!emailAlerts?.deliveryEnabled ? (
               <p className="text-xs text-muted-foreground">
                 To enable sending, set RESEND_API_KEY and EMAIL_FROM on the API server, then restart it.

@@ -3,31 +3,19 @@ import { Link } from "wouter";
 import {
   Briefcase,
   Plus,
-  Activity,
   Calculator,
   LayoutDashboard,
   Megaphone,
   Globe2,
-  PieChart as PieIcon,
 } from "lucide-react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-} from "recharts";
 import type { UseQueryOptions } from "@tanstack/react-query";
-import { useListEstimates, listEstimates, useGetFxRates, getGetFxRatesQueryKey, useGetEstimateStats } from "@workspace/api-client-react";
+import { useListEstimates, listEstimates, useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
 import type { EstimateSummary } from "@workspace/api-client-react";
 import { convertToUsdApprox } from "@workspace/fx-usd";
-import { formatMoney, formatPercent } from "@/lib/format";
 import { formatUsdRollupForDisplay } from "@/lib/aggregated-money";
 import { useDisplayCurrency } from "@/hooks/use-display-currency";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { GenerateListingDialog } from "@/components/GenerateListingDialog";
 import { PortfolioFolders } from "@/components/PortfolioFolders";
 import {
@@ -39,7 +27,7 @@ import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { ProfessionalWorkspaceRollup } from "@/components/portfolio/ProfessionalWorkspaceRollup";
 import { DashboardHubLower } from "@/components/dashboard/DashboardHubLower";
 import { DashboardNextStep } from "@/components/dashboard/DashboardNextStep";
-import { PortfolioHealthStrip } from "@/components/portfolio/PortfolioHealthStrip";
+import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { PortfolioAssetCard } from "@/components/portfolio/PortfolioAssetCard";
 import { PageTitle } from "@/components/layout/PageTitle";
 
@@ -161,8 +149,6 @@ export default function PortfolioPage() {
     },
   });
 
-  const { data: stats } = useGetEstimateStats();
-
   const estimateRows = useMemo(
     () => (Array.isArray(estimates) ? estimates : []),
     [estimates],
@@ -256,12 +242,11 @@ export default function PortfolioPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-8">
         <PortfolioPageHeader subtitle={portfolioHeaderSubtitle} />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 rounded-xl" />
           ))}
         </div>
-        <Skeleton className="h-72 rounded-xl" />
       </div>
     );
   }
@@ -329,113 +314,17 @@ export default function PortfolioPage() {
         })}
       </nav>
 
-      {/* Top stats: total + diversification */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Link href="#collection-section" className="block lg:col-span-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <Card className="h-full bg-card/60 backdrop-blur border-accent/20 relative overflow-hidden transition-colors hover:border-accent/35 hover:bg-card/80">
-          <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent pointer-events-none" />
-          <CardHeader className="pb-2 relative">
-            <CardDescription className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Activity className="h-3.5 w-3.5 shrink-0 text-accent" />
-              Approximate portfolio total
-            </CardDescription>
-            <CardTitle className="text-3xl font-sans tabular-nums tracking-tight">
-              {formatRollup(totalPortfolioUsd)}
-            </CardTitle>
-            <p className="mt-1.5 text-xs text-muted-foreground font-sans font-normal leading-snug">
-              <Link href="/settings" className="font-medium text-accent hover:underline">
-                Change display currency
-              </Link>
-            </p>
-          </CardHeader>
-          <CardContent className="relative">
-            <div
-              className={cn(
-                "flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm tabular-nums",
-                totalChange >= 0
-                  ? "text-emerald-800/85 dark:text-emerald-400/90"
-                  : "text-rose-800/85 dark:text-rose-400/90",
-              )}
-            >
-              <span>{formatPercent(totalChange, true)}</span>
-              <span className="text-muted-foreground font-normal">vs. baseline valuations</span>
-            </div>
-          </CardContent>
-        </Card>
-        </Link>
-
-        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/40 relative overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="font-sans flex items-center gap-2 text-base">
-              <PieIcon className="h-4 w-4 text-accent" />
-              Diversification
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {diversificationScore >= 70
-                ? "Well-spread across asset classes."
-                : diversificationScore >= 40
-                  ? "Moderate concentration; consider broader exposure."
-                  : "Heavily concentrated: most of your wealth sits in one asset class."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="h-52 grid grid-cols-1 md:grid-cols-2 gap-2 items-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={42}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    stroke="hsl(var(--background))"
-                    strokeWidth={2}
-                  >
-                    {pieData.map((d, i) => (
-                      <Cell key={i} fill={d.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip
-                    contentStyle={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 6,
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any, n: any) => [formatRollup(Number(v)), n]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1.5 text-xs pr-2">
-                {pieData.slice(0, 6).map((d) => (
-                  <div key={d.name} className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color }} />
-                    <span className="truncate flex-1">{d.name}</span>
-                    <span className="font-sans tabular-nums text-muted-foreground">
-                      {(d.pct * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                ))}
-                {pieData.length > 6 && (
-                  <div className="text-muted-foreground italic">
-                    +{pieData.length - 6} more class{pieData.length - 6 === 1 ? "" : "es"}
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardOverview
+        totalPortfolioUsd={totalPortfolioUsd}
+        totalChange={totalChange}
+        formatRollup={formatRollup}
+        pieData={pieData}
+        diversificationScore={diversificationScore}
+        portfolio={portfolio}
+        scopedEstimates={scopedRows}
+      />
 
       <ProfessionalWorkspaceRollup estimateRows={estimateRows} formatRollup={formatRollup} fxMult={fxMult} />
-      {portfolioAnalytics && stats?.portfolioHealth ? (
-        <PortfolioHealthStrip
-          health={stats.portfolioHealth}
-          fxMult={fxMult}
-          estimates={scopedRows}
-        />
-      ) : null}
       <DashboardNextStep scopedEstimates={scopedRows} />
 
       {/* Smart folders: drag assets between Hold / Monitor / Sell */}

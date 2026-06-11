@@ -582,9 +582,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
             portfolioHrefSuffix={portfolioQuerySuffix}
           />
           {SHOW_STUB_PLAN_TOGGLE ? (
-            <div className="px-1">
-              <StubBillingPlanSwitcher />
-            </div>
+            <StubBillingPlanSwitcher />
           ) : (
             <>
               {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle /> : null}
