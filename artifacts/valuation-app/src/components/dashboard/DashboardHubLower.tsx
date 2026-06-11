@@ -123,9 +123,6 @@ export function DashboardHubLower({
               <Megaphone className="h-5 w-5 text-muted-foreground" />
               <CardTitle className="text-lg">Ads &amp; monitors</CardTitle>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Free still drafts humane ads. Alerts for monitored holdings unlock with Everyday.
-            </p>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" className="h-auto flex-col items-start rounded-2xl py-4 text-left" asChild>
@@ -162,8 +159,8 @@ export function DashboardHubLower({
 
       {showingInheritanceUpsell ? (
         <PaidFeatureTeaser
-          eyebrow="Everyday steward boost"
-          title="Separate inheritance ledger"
+          eyebrow="Everyday add-on"
+          title="Separate inheritance workspace"
           description="Activate the add-on in Settings to spin up a second workspace for estate rehearsal, heirs, or heirloom tracking."
           href="/settings"
         />

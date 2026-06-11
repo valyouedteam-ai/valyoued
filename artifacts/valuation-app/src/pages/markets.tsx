@@ -66,10 +66,6 @@ export default function MarketsPage() {
           </Badge>
         </div>
         <PageTitle>Regions and pricing context</PageTitle>
-        <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
-          See which regions show up most often as the strongest match across your saved valuations,
-          and open any report for fees, shipping, and marketplace links.
-        </p>
       </header>
       ) : (
         <header className="space-y-3 pt-4">

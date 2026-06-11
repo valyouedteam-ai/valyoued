@@ -94,7 +94,7 @@ function StepCopy({
 
 export function ProductWalkthrough({
   heading = "See how ValYoued works",
-  subheading = "Four steps from photo to listing, on one ledger.",
+  subheading = "Four steps from photo to listing, in one place.",
   className,
   steps = PRODUCT_WALKTHROUGH_STEPS,
   variant = "light",

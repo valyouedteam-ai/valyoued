@@ -53,7 +53,6 @@ export function PortfolioHealthStrip({ health, fxMult, estimates, className }: P
       label: "Underinsured",
       value: String(health.underinsuredCount),
       href: mergePortfolioHref("/dashboard?filter=underinsured", portfolioQuerySuffix),
-      highlight: health.underinsuredCount > 0,
     },
     {
       label: "Missing receipts",

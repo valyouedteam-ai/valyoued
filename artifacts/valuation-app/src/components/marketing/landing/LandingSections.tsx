@@ -89,13 +89,13 @@ const USE_CASE_TABS = [
   {
     id: "collect",
     label: "Collectors",
-    headline: "One ledger for what you keep",
+    headline: "One place for what you keep",
     body: "Track luxury, everyday, and collectible shelves with confidence and receipt status.",
   },
   {
     id: "inherit",
     label: "Inheritance",
-    headline: "A separate ledger for heirs",
+    headline: "A separate workspace for heirs",
     body: "Violet-scoped workspace for estates and heirlooms that stay off your primary holdings.",
   },
   {
@@ -150,7 +150,7 @@ export function LandingHero() {
 
       <Reveal delay={0.14} className="mt-16 lg:mt-24">
         <p className="mb-6 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Built for stewards and desks
+          Built for collectors and resellers
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-60">
           {LOGO_STRIP.map((name) => (
@@ -268,7 +268,7 @@ export function LandingMission() {
     { text: "into" },
     { text: "one" },
     { text: "calm" },
-    { text: "ledger" },
+    { text: "place" },
     { text: "you" },
     { text: "can" },
     { text: "act" },
@@ -299,10 +299,11 @@ export function LandingQuote() {
     <section className="mx-auto max-w-4xl px-4 py-24 text-center sm:px-6 lg:py-32">
       <Reveal>
         <blockquote className="text-3xl font-bold leading-snug tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-          “We stopped guessing resale windows. ValYoued gave us one number, one shelf, and listings that sound human.”
+          “Financial strategies should not be gatekept. ValYoued exists to make financial expertise accessible,
+          understandable, and actionable for everyone.”
         </blockquote>
         <p className="mt-8 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Independent reseller, London
+          Jessica Wood, Founder &amp; CEO, ValYoued
         </p>
       </Reveal>
     </section>
@@ -511,7 +512,7 @@ export function LandingFooter() {
         <div>
           <p className="font-brand text-2xl font-bold tracking-tight">ValYoued</p>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
-            Structured valuations, regional context, and listing drafts on one ledger.
+            Structured valuations, regional context, and listing drafts in one place.
           </p>
         </div>
         {columns.map((col) => (

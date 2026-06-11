@@ -55,7 +55,7 @@ export default function WelcomePersonaPage() {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15 text-accent">
               <Shirt className="h-6 w-6" aria-hidden />
             </div>
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">Everyday steward</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Everyday use</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Personal collections, wardrobes, resale side-hustles, and single big-ticket buys you want monitored.
             </p>

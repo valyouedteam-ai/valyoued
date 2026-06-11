@@ -33,13 +33,10 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
       className={cn(
         compact
           ? "flex flex-wrap items-center justify-center gap-2 rounded-full border border-border/70 bg-card/85 px-3 py-0.5 pl-4 shadow-sm sm:gap-2.5"
-          : "flex flex-col gap-2",
+          : "space-y-2 px-3",
       )}
       title="Dev subscription simulation. SPA sends X-Stub-Billing-Plan. Auth stub: API uses it everywhere. Clerk: api-server must overlay (NODE_ENV=development or ALLOW_DEV_STUB_BILLING_HEADERS=1) or desk creation stays on your real Stripe plan."
     >
-      <p className={cn("px-3 pb-1 text-ui-caps text-muted-foreground", compact && "hidden")}>
-        Subscription
-      </p>
       <Select
         value={ctx.planSlug}
         onValueChange={(next) => {

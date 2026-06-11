@@ -196,7 +196,7 @@ export function ProfessionalWorkspaceRollup({
             </CardTitle>
             <CardDescription>
               Professional plan separates stock into multiple portfolios (primary shelf plus one or more trading desks).
-              Open a row for detail view, then use valuations or folders below for that ledger only.
+              Open a row for detail view, then use valuations or folders below for that workspace only.
             </CardDescription>
           </div>
           <Button

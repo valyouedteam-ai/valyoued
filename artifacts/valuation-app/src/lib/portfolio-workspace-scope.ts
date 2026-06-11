@@ -3,7 +3,7 @@ import type { EstimateSummary } from "@workspace/api-client-react";
 /**
  * Whether a saved estimate should show in portfolio-style UIs for the active workspace.
  * `primaryWorkspaceId` must be the id of the `purpose === "primary"` row only (never a legacy `portfolios[0]` guess),
- * otherwise inheritance and desks can be misclassified as the primary ledger and every workspace shows the same items.
+ * otherwise inheritance and desks can be misclassified as the primary portfolio and every workspace shows the same items.
  */
 export function estimateInActiveWorkspace(
   e: Pick<EstimateSummary, "portfolioId">,

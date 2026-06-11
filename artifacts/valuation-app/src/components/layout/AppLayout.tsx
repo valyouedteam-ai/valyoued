@@ -89,7 +89,7 @@ const navInsights: NavItem[] = [
     label: "Inheritance",
     icon: Landmark,
     navTitle:
-      "Separate ledger for estates, heirs, and heirlooms. Open this hub before valuing heirlooms or someone else's items.",
+      "Separate workspace for estates, heirs, and heirlooms. Open this hub before valuing heirlooms or someone else's items.",
     skipPortfolioQuery: true,
     guideTarget: "nav-inheritance",
   },
@@ -292,6 +292,10 @@ function NavLink({
   );
 }
 
+function SidebarSectionTitle({ children }: { children: ReactNode }) {
+  return <p className="px-3 pb-1 text-ui-caps text-muted-foreground">{children}</p>;
+}
+
 function SidebarNavSection({
   title,
   items,
@@ -307,7 +311,7 @@ function SidebarNavSection({
 }) {
   return (
     <div className="space-y-1">
-      <p className="px-3 pb-1 text-ui-caps text-muted-foreground">{title}</p>
+      <SidebarSectionTitle>{title}</SidebarSectionTitle>
       <nav className="flex flex-col gap-0.5">
         {items.map((item) => (
           <NavLink
@@ -410,7 +414,7 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
   const remaining = !paidApi ? data?.valuationsRemainingFree : null;
   const briefHref = paidApi ? "/settings" : "/pricing#plans";
 
-  const trackName = isProfessional ? "Professional desk" : "Everyday steward";
+  const trackName = isProfessional ? "Professional desk" : "Everyday";
 
   return (
     <Link
@@ -583,7 +587,10 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
             portfolioHrefSuffix={portfolioQuerySuffix}
           />
           {SHOW_STUB_PLAN_TOGGLE ? (
-            <StubBillingPlanSwitcher />
+            <div className="space-y-1">
+              <SidebarSectionTitle>Subscription</SidebarSectionTitle>
+              <StubBillingPlanSwitcher />
+            </div>
           ) : (
             <>
               {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle /> : null}

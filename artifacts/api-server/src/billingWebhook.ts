@@ -2,6 +2,10 @@ import type { Request, Response } from "express";
 import Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { db, billingSubscriptionsTable } from "@workspace/db";
+import {
+  notifyBillingRenewalUpcoming,
+  notifyBillingSubscriptionConfirmed,
+} from "./lib/billingRenewalEmail";
 import { logger } from "./lib/logger";
 import { isStripeStubMode } from "./lib/stripeStub";
 import {
@@ -204,6 +208,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           try {
             const full = await hydrateSubscription(stripe, subId);
             await applyStripeSubscription(full);
+            await notifyBillingSubscriptionConfirmed(userId, full);
           } catch (err) {
             logger.error({ err, subId }, "inheritance checkout hydrate failed");
             const existing = await selectBillingRow(userId);
@@ -236,6 +241,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           try {
             const full = await hydrateSubscription(stripe, subId);
             await applyStripeSubscription(full);
+            await notifyBillingSubscriptionConfirmed(userId, full);
           } catch (err) {
             logger.error({ err, subId }, "Could not hydrate subscription after checkout");
             const existing = await selectBillingRow(userId);
@@ -266,6 +272,19 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
                 },
               });
           }
+        }
+        break;
+      }
+      case "invoice.upcoming": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId =
+          typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        const userId = await resolveUserIdFromCustomer(customerId);
+        if (!userId) break;
+        try {
+          await notifyBillingRenewalUpcoming(userId, invoice);
+        } catch (err) {
+          logger.error({ err, invoiceId: invoice.id, userId }, "Renewal notice handler failed");
         }
         break;
       }

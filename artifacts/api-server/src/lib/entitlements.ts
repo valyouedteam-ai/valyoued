@@ -32,7 +32,7 @@ export type PlanSlug = "none" | "everyday_plus" | "professional";
 export interface UserEntitlements {
   /** Free vs any paid valuation subscription (Everyday or Professional). */
   tier: "free" | "pro";
-  /** `none` when free; `everyday_plus` (£7.99) or `professional` (£14.99) when subscribed. */
+  /** `none` when free; `everyday_plus` (£7.99) or `professional` (£19.99) when subscribed. */
   planSlug: PlanSlug;
   subscriptionStatus: string;
   /** Inheritance workspace add-on Stripe subscription snapshot (standalone line item supported). */

@@ -108,7 +108,7 @@ function InheritancePreview() {
     <MockShell label="Inheritance" className="ring-1 ring-violet-500/15">
       <div className="space-y-3">
         <div className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">Separate ledger</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">Separate workspace</p>
           <p className="mt-1 text-sm leading-relaxed text-violet-950/80">
             Heirloom holdings stay off your primary portfolio totals.
           </p>

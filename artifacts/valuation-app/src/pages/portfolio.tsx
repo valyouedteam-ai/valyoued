@@ -269,7 +269,7 @@ export default function PortfolioPage() {
           </h3>
           <p className="mb-6 max-w-md text-muted-foreground">
             {nonPrimaryWorkspace
-              ? "Run a valuation and attach it to this workspace. Pick another workspace in Settings to see your main ledger."
+              ? "Run a valuation and attach it to this workspace. Pick another workspace in Settings to see your main portfolio."
               : "Run a valuation and attach it to this workspace to see holdings, shelf mix, and listing shortcuts."}
           </p>
           <Link href={mergePortfolioHref("/estimate/new", portfolioQuerySuffix)}>

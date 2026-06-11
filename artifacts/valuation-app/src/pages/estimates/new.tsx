@@ -404,7 +404,7 @@ function DynamicAssetFieldRow({
   );
 }
 
-/** Human hint for the wizard portfolio dropdown (shown next to the ledger name). */
+/** Human hint for the wizard portfolio dropdown (shown next to the workspace name). */
 function portfolioWorkspaceHelpText(purpose: Portfolio["purpose"]): string {
   if (purpose === "primary") return "Your main holdings";
   if (purpose === "inheritance") return "Estate, heirlooms, or items you track for others";
@@ -1009,7 +1009,7 @@ function NewEstimatePageInner({
           </div>
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-sans">Valuating Asset</h2>
+          <h2 className="text-2xl font-sans">Valuing asset</h2>
           <p className="text-muted-foreground text-sm animate-pulse">{loadingMessage}</p>
         </div>
       </div>
@@ -1441,7 +1441,7 @@ function NewEstimatePageInner({
                         </SelectContent>
                       </Select>
                       <p className="text-[0.8rem] text-muted-foreground">
-                        Choose which ledger receives this valuation after the model runs. Matches the workspace pills under
+                        Choose which workspace receives this valuation after the model runs. Matches the workspace pills under
                         the navigation bar so you can jump between personal and inheritance dashboards without mixing items.
                       </p>
                     </div>

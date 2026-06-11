@@ -45,7 +45,7 @@ export type MeBillingResponse = {
   hasPaidValuationTier: boolean;
   canUsePortfolioAnalytics?: boolean;
   canUseTraderWorkspace?: boolean;
-  /** Separate inheritance ledger billing (standalone Stripe subscription). */
+  /** Separate inheritance workspace billing (standalone Stripe subscription). */
   hasInheritanceAddon?: boolean;
   /** comparable grid: preview shows first two comps for unsubscribed Everyday accounts on free-tier snapshots. */
   comparableUiMode?: "full" | "preview";

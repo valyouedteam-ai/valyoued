@@ -78,8 +78,8 @@ export const MAIN_PLAN_CARDS: MarketingPlanCardDef[] = [
   {
     title: "Professional",
     subtitle: `${PROFESSIONAL_TRIAL_DAYS_DEFAULT}-day free trial · then billed monthly`,
-    price: "£14.99/mo",
-    priceAnnual: "£12.49/mo",
+    price: "£19.99/mo",
+    priceAnnual: "£16.66/mo",
     bullets: [
       "Everything in Everyday plus Market Watch and deal scoring",
       "Inventory pipeline, max buy price, and repricing alerts",
@@ -154,7 +154,7 @@ export const PRICING_FAQ: PricingFaqItem[] = [
   {
     question: "Can I cancel anytime?",
     answer:
-      "Paid plans cancel through Billing in Settings. You keep access through the end of the current billing period. Free never requires a card.",
+      "Paid plans cancel through Billing in Settings. You keep access through the end of the current billing period. Free never requires a card. Before each renewal, we email you about three days ahead of the charge so you can review or cancel in time.",
   },
   {
     question: "How does the Professional trial work?",
@@ -163,7 +163,7 @@ export const PRICING_FAQ: PricingFaqItem[] = [
   {
     question: "What is the inheritance add-on?",
     answer:
-      "It spins up a separate portfolio workspace for estate rehearsal, heirs, or heirloom tracking alongside your main ledger. It bills monthly on top of Free or Everyday.",
+      "It spins up a separate portfolio workspace for estate rehearsal, heirs, or heirloom tracking alongside your main portfolio. It bills monthly on top of Free or Everyday.",
   },
   {
     question: "Do you offer annual billing?",
@@ -191,7 +191,7 @@ export const INHERITANCE_ADDON_CARD: MarketingPlanCardDef = {
   ctaLabel: "Sign up, then add inheritance in Billing",
   ctaHref: "/sign-up",
   authenticatedCta: {
-    label: "Learn about the inheritance ledger",
+    label: "Learn about the inheritance workspace",
     href: "/inheritance",
   },
   variant: "outline",

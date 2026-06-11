@@ -37,7 +37,7 @@ function formatProvisionError(err: unknown): string {
 }
 
 /**
- * Dedicated hub for the inheritance ledger: explains how it differs from the primary portfolio,
+ * Dedicated hub for the inheritance workspace: explains how it differs from the primary portfolio,
  * links into workspace actions once the add-on is active, or Billing to enable it.
  *
  * With the dev Subscription strip, `/inheritance` redirects to `/dashboard` unless the inheritance toggle is on.
@@ -118,7 +118,7 @@ export default function InheritancePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-700/90 dark:text-violet-400/90">
               Inheritance workspace
             </p>
-            <PageTitle className="mt-1">A ledger separate from your main portfolio</PageTitle>
+            <PageTitle className="mt-1">A workspace separate from your main portfolio</PageTitle>
           </div>
         </div>
         <p className="max-w-none text-base leading-relaxed text-muted-foreground">
@@ -175,7 +175,7 @@ export default function InheritancePage() {
               Enable the inheritance add-on
             </CardTitle>
             <CardDescription>
-              Turn on Billing to create your separate inheritance ledger. You can undo later; we move valuations back onto
+              Turn on Billing to create your separate inheritance workspace. You can undo later; we move valuations back onto
               your primary portfolio before closing the workspace.
             </CardDescription>
           </CardHeader>
@@ -194,7 +194,7 @@ export default function InheritancePage() {
             <CardTitle className="text-lg">Your inheritance portfolio</CardTitle>
             <CardDescription>
               {inh
-                ? "Browse holdings, dashboards, or new valuations that stay scoped to this ledger."
+                ? "Browse holdings, dashboards, or new valuations that stay scoped to this workspace."
                 : provisionPending
                   ? "Creating your inheritance workspace on the server. This usually finishes in under a second."
                   : provisionFailed

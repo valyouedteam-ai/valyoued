@@ -764,7 +764,7 @@ function SettingsPageInner({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="everyday_plus">Everyday · £7.99/mo</SelectItem>
-                      <SelectItem value="professional">Professional · £14.99/mo</SelectItem>
+                      <SelectItem value="professional">Professional · £19.99/mo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -773,7 +773,8 @@ function SettingsPageInner({
               <p className="text-sm text-muted-foreground leading-relaxed">
                 You&apos;re subscribed. Everyday adds unlimited valuations, full arbitrage payout rows, and configurable
                 monitor alerts. Professional also adds seller-grade listing presets, the seller playbook on new valuations,
-                and desk portfolios. Use the portal to change plans or payment details.
+                and desk portfolios. We email you about three days before each renewal charge. Use the portal to change
+                plans or payment details.
               </p>
             )}
             <Button
@@ -801,10 +802,10 @@ function SettingsPageInner({
                 id="inheritance-addon"
                 className="scroll-mt-28 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-4 text-sm text-muted-foreground"
               >
-                <p className="font-medium text-foreground">Inheritance add-on ledger</p>
+                <p className="font-medium text-foreground">Inheritance add-on workspace</p>
                 <p className="mt-2 leading-relaxed">
                   Spins up a tinted workspace beside your everyday portfolio once Stripe confirms the addon subscription.
-                  Use it for estate rehearsal, heirloom tracking, or a second household ledger.
+                  Use it for estate rehearsal, heirloom tracking, or a second household portfolio.
                 </p>
                 <Button
                   type="button"
@@ -820,7 +821,7 @@ function SettingsPageInner({
             ) : billing?.hasInheritanceAddon ? (
               <div id="inheritance-addon" className="scroll-mt-28 space-y-2">
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  <span className="font-medium text-foreground">What this adds:</span> a second tinted Portfolio ledger next to your
+                  <span className="font-medium text-foreground">What this adds:</span> a second tinted Portfolio workspace next to your
                   everyday holdings. Use it so estate rehearsals, heirloom lists, or a spare household tally stay visually and
                   structurally apart from daily net worth tracking.
                 </p>

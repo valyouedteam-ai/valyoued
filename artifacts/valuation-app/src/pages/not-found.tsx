@@ -8,7 +8,7 @@ export default function NotFound() {
       <div className="text-[12rem] font-sans font-bold text-muted/30 leading-none">404</div>
       <h2 className="text-2xl font-sans">Asset Not Found</h2>
       <p className="text-muted-foreground max-w-md">
-        The page or report you are looking for has been moved, deleted, or never existed in the ledger.
+        The page or report you are looking for has been moved, deleted, or never existed.
       </p>
       <Link href="/">
         <Button size="lg" className="mt-4">Return to Terminal</Button>

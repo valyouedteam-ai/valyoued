@@ -260,45 +260,35 @@ export function DashboardOverview({
         <OverviewCard title="Market insights" icon={Sparkles}>
           {loading ? (
             <Skeleton className="h-24 w-full rounded-xl" />
-          ) : stats && Number.isFinite(stats.averageUplift) ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Average adjustment vs baseline:{" "}
-                <span className="font-semibold tabular-nums text-foreground">
-                  {formatPercent(stats.averageUplift, true)}
-                </span>
-              </p>
-              {topRegions.length > 0 ? (
-                <div className="space-y-2">
-                  {topRegions.slice(0, 3).map((r, idx) => {
-                    const total = topRegions.reduce((s, row) => s + (row.count ?? 0), 0) || 1;
-                    const pct = (r.count ?? 0) / total;
-                    const focused = pickedRegionIdx === idx;
-                    return (
-                      <button
-                        key={`${r.region}-${idx}`}
-                        type="button"
-                        onClick={() => setPickedRegionIdx((i) => (i === idx ? null : idx))}
-                        aria-pressed={focused}
-                        className={cn(
-                          "relative w-full overflow-hidden rounded-lg border px-3 py-2 text-left text-xs transition-colors",
-                          "border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-                          focused && "border-accent/50 bg-accent/10",
-                        )}
-                      >
-                        <div
-                          className="pointer-events-none absolute inset-y-0 left-0 bg-accent/20"
-                          style={{ width: `${Math.round(pct * 100)}%` }}
-                        />
-                        <span className="relative z-10 flex items-center justify-between gap-3">
-                          <span className="truncate font-medium">{r.region}</span>
-                          <span className="shrink-0 tabular-nums text-muted-foreground">{formatPercent(pct)}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
+          ) : topRegions.length > 0 ? (
+            <div className="space-y-2">
+              {topRegions.slice(0, 3).map((r, idx) => {
+                const total = topRegions.reduce((s, row) => s + (row.count ?? 0), 0) || 1;
+                const pct = (r.count ?? 0) / total;
+                const focused = pickedRegionIdx === idx;
+                return (
+                  <button
+                    key={`${r.region}-${idx}`}
+                    type="button"
+                    onClick={() => setPickedRegionIdx((i) => (i === idx ? null : idx))}
+                    aria-pressed={focused}
+                    className={cn(
+                      "relative w-full overflow-hidden rounded-lg border px-3 py-2 text-left text-xs transition-colors",
+                      "border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                      focused && "border-accent/50 bg-accent/10",
+                    )}
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-y-0 left-0 bg-accent/20"
+                      style={{ width: `${Math.round(pct * 100)}%` }}
+                    />
+                    <span className="relative z-10 flex items-center justify-between gap-3">
+                      <span className="truncate font-medium">{r.region}</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">{formatPercent(pct)}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Insights fill in as your workspace grows.</p>

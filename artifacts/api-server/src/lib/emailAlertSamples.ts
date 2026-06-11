@@ -19,6 +19,52 @@ export function escapeHtml(s: string): string {
 const FOOTER =
   '<p style="color:#666;font-size:12px;margin-top:24px">You are receiving this because email alerts are enabled in ValYoued settings. You can turn them off anytime in Settings.</p>';
 
+const BILLING_FOOTER =
+  '<p style="color:#666;font-size:12px;margin-top:24px">You are receiving this because you have a ValYoued subscription or add-on. To update payment details or cancel before the next charge, open Settings and use Manage subscription.</p>';
+
+export function buildBillingRenewalReminderEmailHtml(params: {
+  planLabels: string[];
+  amountFormatted: string;
+  chargeDateFormatted: string;
+  settingsUrl: string;
+}): string {
+  const plans = escapeHtml(params.planLabels.join(", "));
+  const safeAmount = escapeHtml(params.amountFormatted);
+  const safeDate = escapeHtml(params.chargeDateFormatted);
+  const safeSettings = escapeHtml(params.settingsUrl);
+  return `<p style="font-size:16px;line-height:1.5">This is advance notice before your next ValYoued charge.</p>
+<p style="line-height:1.5"><strong>Plan:</strong> ${plans}<br/>
+<strong>Amount:</strong> ${safeAmount}<br/>
+<strong>Charge date:</strong> ${safeDate}</p>
+<p style="line-height:1.5">We send this reminder about three days before each renewal so you can review or cancel in time.</p>
+<p><a href="${safeSettings}">Manage subscription in Settings</a></p>
+${BILLING_FOOTER}`;
+}
+
+export function buildBillingSubscriptionConfirmedEmailHtml(params: {
+  planLabels: string[];
+  amountFormatted: string;
+  renewalDateFormatted: string;
+  isTrial: boolean;
+  settingsUrl: string;
+}): string {
+  const plans = escapeHtml(params.planLabels.join(", "));
+  const safeAmount = escapeHtml(params.amountFormatted);
+  const safeDate = escapeHtml(params.renewalDateFormatted);
+  const safeSettings = escapeHtml(params.settingsUrl);
+  const renewalLabel = params.isTrial ? "First charge date" : "Next renewal date";
+  const intro = params.isTrial
+    ? "Your ValYoued trial is active. When the trial ends, billing continues unless you cancel beforehand."
+    : "Thanks for subscribing. Your plan is active and will renew monthly unless you cancel.";
+  return `<p style="font-size:16px;line-height:1.5">${intro}</p>
+<p style="line-height:1.5"><strong>Plan:</strong> ${plans}<br/>
+<strong>Price:</strong> ${safeAmount} per billing period<br/>
+<strong>${renewalLabel}:</strong> ${safeDate}</p>
+<p style="line-height:1.5">Before each renewal, we email you about three days ahead of the charge so you can review or cancel in Settings.</p>
+<p><a href="${safeSettings}">Open Billing in Settings</a></p>
+${BILLING_FOOTER}`;
+}
+
 export function buildConnectivityTestEmailHtml(appUrl: string): string {
   const base = appUrl.replace(/\/$/, "");
   return `<p>This is a test message from ValYoued.</p><p>If you received it, email delivery is working. Open the app: <a href="${escapeHtml(base)}">${escapeHtml(base)}</a></p>`;

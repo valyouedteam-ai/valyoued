@@ -144,7 +144,7 @@ function WelcomeContinueSignedIn() {
               ) : null}
               <div className="grid gap-4 sm:grid-cols-2">
                 <PersonaCard
-                  title="Everyday steward"
+                  title="Everyday use"
                   description="Personal collections, wardrobes, and side-hustle resale."
                   icon={Shirt}
                   disabled={savingChoice !== null}
