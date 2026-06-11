@@ -77,7 +77,7 @@ export function DashboardHubLower({
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">Asset buckets</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Asset buckets</h2>
             <p className="mt-1 text-base text-muted-foreground">Tap a bucket to add items or open recent valuations.</p>
           </div>
           <Button size="sm" variant="secondary" className="rounded-full" asChild>

@@ -31,14 +31,15 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-full border border-border/70 bg-card/85 py-1 pl-4 pr-2.5 shadow-sm sm:gap-2.5 sm:pl-5 sm:pr-3",
-        compact && "justify-center px-3 py-0.5 pl-4",
+        compact
+          ? "flex flex-wrap items-center justify-center gap-2 rounded-full border border-border/70 bg-card/85 px-3 py-0.5 pl-4 shadow-sm sm:gap-2.5"
+          : "flex flex-col gap-2",
       )}
       title="Dev subscription simulation. SPA sends X-Stub-Billing-Plan. Auth stub: API uses it everywhere. Clerk: api-server must overlay (NODE_ENV=development or ALLOW_DEV_STUB_BILLING_HEADERS=1) or desk creation stays on your real Stripe plan."
     >
       <span
         className={cn(
-          "hidden whitespace-nowrap min-[980px]:inline font-mono text-xs font-medium tabular-nums tracking-tight text-muted-foreground sm:text-sm",
+          "text-ui-caps text-muted-foreground",
           compact && "hidden",
         )}
       >
@@ -52,10 +53,11 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
       >
         <SelectTrigger
           className={cn(
-            "relative flex h-7 min-h-7 w-fit min-w-[5.25rem] shrink-0 justify-center rounded-full border-border/60 px-6 py-0 text-xs font-medium shadow-none",
-            "[&>span]:w-full [&>span]:truncate [&>span]:pr-4 [&>span]:text-center [&>span]:leading-none",
-            "[&>svg]:pointer-events-none [&>svg]:absolute [&>svg]:right-1.5 [&>svg]:top-1/2 [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:-translate-y-1/2 [&>svg]:shrink-0 [&>svg]:opacity-60",
-            compact && "h-6 min-h-6 min-w-[4.875rem] px-5 text-[11px] [&>span]:pr-3.5 [&>svg]:right-1 [&>svg]:h-3 [&>svg]:w-3",
+            "relative flex h-8 min-h-8 w-full shrink-0 justify-between rounded-lg border-border/60 px-3 py-0 text-xs font-medium shadow-none",
+            "[&>span]:w-full [&>span]:truncate [&>span]:pr-4 [&>span]:text-left [&>span]:leading-none",
+            "[&>svg]:pointer-events-none [&>svg]:absolute [&>svg]:right-2 [&>svg]:top-1/2 [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:-translate-y-1/2 [&>svg]:shrink-0 [&>svg]:opacity-60",
+            compact &&
+              "h-6 min-h-6 w-fit min-w-[4.875rem] justify-center rounded-full px-5 text-[11px] [&>span]:pr-3.5 [&>span]:text-center [&>svg]:right-1 [&>svg]:h-3 [&>svg]:w-3",
           )}
           aria-label="Subscription tier"
         >
@@ -75,8 +77,8 @@ export function StubBillingPlanSwitcher({ compact }: { compact?: boolean }) {
       </Select>
       <div
         className={cn(
-          "flex items-center gap-1.5 border-border/60 min-[980px]:border-l min-[980px]:pl-3 min-[980px]:ml-0.5",
-          compact && "min-[980px]:pl-2",
+          "flex items-center justify-between gap-2",
+          compact && "min-[980px]:border-l min-[980px]:border-border/60 min-[980px]:pl-2",
         )}
       >
         <Label

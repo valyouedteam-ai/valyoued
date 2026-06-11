@@ -451,13 +451,8 @@ export default function PortfolioPage() {
 
       {/* Collection: single grouped view (by valuation track), highest approximate value first */}
       <section className="space-y-8" id="collection-section" data-testid="collection-section">
-        <div className="max-w-2xl space-y-1.5">
-          <h2 className="text-xl font-semibold tracking-tight">Your collection</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Valuations are grouped by the track you chose when you ran them. Within each group, larger holdings (by
-            approximate value in your display currency) appear first. Open a card for the full report, or use{" "}
-            <span className="font-medium text-foreground">List for sale</span> for listing help.
-          </p>
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your collection</h2>
         </div>
 
         <div className="space-y-12">

@@ -57,7 +57,6 @@ export function DashboardNextStep({ scopedEstimates }: { scopedEstimates: Estima
     const emptyBucket = HOME_BUCKET_ORDER.find((k) => bucketCounts[k] === 0);
     if (emptyBucket) {
       title = `Add your first ${HOME_BUCKET_LABEL[emptyBucket].toLowerCase()} item`;
-      body = "Buckets stay empty until you save a valuation tagged like that asset class.";
       href = buildEstimateNewHref(portfolioQuerySuffix, emptyBucket);
       cta = "Add item";
       icon = Wallet;

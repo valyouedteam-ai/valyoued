@@ -131,7 +131,7 @@ export function LandingHero() {
     <section className="mx-auto max-w-6xl px-4 pb-8 pt-16 text-center sm:px-6 sm:pt-20 lg:pb-16 lg:pt-24">
       <Reveal className="mx-auto max-w-4xl">
         <h1 className="text-balance text-[2.75rem] font-bold leading-[1.02] tracking-[-0.03em] text-foreground sm:text-6xl lg:text-[4.5rem]">
-          One ledger for everything you own and sell.
+          One place for everything you own and sell.
         </h1>
       </Reveal>
 

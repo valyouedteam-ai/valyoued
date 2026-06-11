@@ -533,7 +533,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
     <div className="no-print flex min-h-[100dvh] bg-background">
       {/* Desktop sidebar: logo left, grouped nav, clearer hierarchy */}
       <aside
-        className="hidden lg:flex w-[15.5rem] shrink-0 flex-col border-r border-border/60 bg-card/40"
+        className="hidden lg:sticky lg:top-0 lg:flex lg:h-[100dvh] w-[15.5rem] shrink-0 flex-col self-start border-r border-border/60 bg-card/40"
         data-workspace-guide="main-nav"
       >
         <div className="flex flex-col gap-1 px-4 py-5">
