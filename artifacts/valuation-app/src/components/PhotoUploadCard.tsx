@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { compressJpegIfLarge, preparePhotoUploadFile } from "@/lib/prepare-photo-upload";
 
@@ -35,6 +36,9 @@ export function PhotoUploadCard({
   const [mimeType, setMimeType] = useState<VisionExtractInputMimeType | null>(null);
   const [result, setResult] = useState<VisionExtractResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingRetryFile, setPendingRetryFile] = useState<File | null>(null);
   const { toast } = useToast();
   const extract = useExtractFromPhoto({ request: { attachAuthToken: false } });
   const realEstate = assetCategory === "Real Estate";
@@ -62,14 +66,22 @@ export function PhotoUploadCard({
 
   const handleFile = async (file: File) => {
     requestTokenRef.current += 1;
+    setUploadError(null);
+    setPendingRetryFile(null);
+    setUploadProgress(8);
     let workingFile = file;
     let normalizedMime: VisionExtractInputMimeType | null = null;
     try {
       const prepared = await preparePhotoUploadFile(file);
+      setUploadProgress(45);
       workingFile = await compressJpegIfLarge(prepared.file, MAX_BYTES);
       normalizedMime = prepared.mimeType;
+      setUploadProgress(70);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unsupported file type";
+      setUploadProgress(null);
+      setUploadError(msg.includes("iPhone") ? msg : "Please upload a JPG, PNG, WebP, GIF, or iPhone photo.");
+      setPendingRetryFile(file);
       toast({
         title: "Unsupported file type",
         description: msg.includes("iPhone") ? msg : "Please upload a JPG, PNG, WebP, GIF, or iPhone photo.",
@@ -78,9 +90,13 @@ export function PhotoUploadCard({
       return;
     }
     if (workingFile.size > MAX_BYTES) {
+      setUploadProgress(null);
+      const tooLarge = "Please upload an image under 5MB.";
+      setUploadError(tooLarge);
+      setPendingRetryFile(file);
       toast({
         title: "Photo is too large",
-        description: "Please upload an image under 5MB.",
+        description: tooLarge,
         variant: "destructive",
       });
       return;
@@ -89,17 +105,26 @@ export function PhotoUploadCard({
     setFilename(workingFile.name);
     setMimeType(normalizedMime);
     setResult(null);
-    // Mark this upload as eligible for auto-extraction. The effect will pick it
-    // up once base64 + assetTypeId are both ready.
     autoTriggerRef.current = true;
 
     const reader = new FileReader();
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) {
+        setUploadProgress(70 + Math.round((event.loaded / event.total) * 25));
+      }
+    };
     reader.onload = () => {
       const dataUrl = String(reader.result || "");
       setPreview(dataUrl);
-      // Strip the data URL prefix to get pure base64
       const idx = dataUrl.indexOf(",");
       setBase64(idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl);
+      setUploadProgress(100);
+      setTimeout(() => setUploadProgress(null), 400);
+    };
+    reader.onerror = () => {
+      setUploadProgress(null);
+      setUploadError("Could not read this file. Try again or pick a different photo.");
+      setPendingRetryFile(file);
     };
     reader.readAsDataURL(workingFile);
   };
@@ -123,6 +148,9 @@ export function PhotoUploadCard({
     setBase64(null);
     setMimeType(null);
     setResult(null);
+    setUploadProgress(null);
+    setUploadError(null);
+    setPendingRetryFile(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -246,6 +274,34 @@ export function PhotoUploadCard({
             </p>
           </div>
         </div>
+
+        {uploadProgress != null ? (
+          <div className="space-y-2 rounded-lg border border-border bg-muted/20 px-4 py-3">
+            <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>Preparing photo…</span>
+              <span className="tabular-nums">{uploadProgress}%</span>
+            </div>
+            <Progress value={uploadProgress} className="h-2" />
+          </div>
+        ) : null}
+
+        {uploadError ? (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+            <p className="font-medium text-destructive">Upload failed</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{uploadError}</p>
+            {pendingRetryFile ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-3"
+                onClick={() => void handleFile(pendingRetryFile)}
+              >
+                Retry upload
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
         {!preview ? (
           <div

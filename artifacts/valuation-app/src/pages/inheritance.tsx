@@ -13,6 +13,7 @@ import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { AUTH_STUB_MODE } from "@/lib/auth-stub";
 import { isDevBillingUiEnabled } from "@/lib/dev-billing-ui";
 import { cn } from "@/lib/utils";
+import { PageTitle } from "@/components/layout/PageTitle";
 import { portfolioWorkspaceButtonLabel } from "@/components/layout/PortfolioWorkspaceStrip";
 import {
   ApiError,
@@ -117,9 +118,7 @@ export default function InheritancePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-700/90 dark:text-violet-400/90">
               Inheritance workspace
             </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              A ledger separate from your main portfolio
-            </h1>
+            <PageTitle className="mt-1">A ledger separate from your main portfolio</PageTitle>
           </div>
         </div>
         <p className="max-w-none text-base leading-relaxed text-muted-foreground">

@@ -15,6 +15,7 @@ import { useDisplayCurrency } from "@/hooks/use-display-currency";
 import { useGetFxRates, getGetFxRatesQueryKey } from "@workspace/api-client-react";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 const ACTION_COPY = {
   sell: { label: "Sell", icon: TrendingUp, tone: "text-rose-600" },
@@ -60,7 +61,7 @@ export default function EstimateWelcomePage() {
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 pb-20">
       <header className="space-y-2">
         <p className="text-ui-caps text-accent">Added to portfolio</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">{estimate.input.title}</h1>
+        <PageTitle>{estimate.input.title}</PageTitle>
         <p className="text-muted-foreground">
           {paid
             ? "Your asset is in the portfolio with a live confidence score and action hint."

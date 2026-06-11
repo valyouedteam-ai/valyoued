@@ -18,6 +18,7 @@ import { formatPercent } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, TrendingUp, Globe2, Shapes } from "lucide-react";
+import { PageTitle } from "@/components/layout/PageTitle";
 import { Button } from "@/components/ui/button";
 
 const COLORS = [
@@ -88,7 +89,7 @@ export default function StatsPage() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-16">
       <div>
-        <h1 className="text-3xl font-sans font-bold text-foreground">Market Aggregates</h1>
+        <PageTitle>Market Aggregates</PageTitle>
         <p className="text-muted-foreground mt-1">
           Aggregates from valuations saved to your account. Money averages below use your Settings reference currency
           ({displayCcy}) with mid-market-style FX hints so mixed-currency valuations can sit on one scale; amounts are

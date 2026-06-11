@@ -9,6 +9,7 @@ import {
   Landmark,
   LayoutDashboard,
   LogOut,
+  Lock,
   Megaphone,
   Menu,
   PanelsTopLeft,
@@ -34,7 +35,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { PortfolioWorkspaceStrip } from "@/components/layout/PortfolioWorkspaceStrip";
 import { WorkspaceGuideTour } from "@/components/onboarding/WorkspaceGuideTour";
 import {
@@ -60,6 +60,8 @@ type NavItem = {
   skipPortfolioQuery?: boolean;
   /** Target id for the first-time workspace guide spotlight. */
   guideTarget?: string;
+  /** Visible on Free but links to upgrade instead of the feature route. */
+  locked?: boolean;
 };
 
 const NAV_MARKETS: NavItem = {
@@ -157,34 +159,36 @@ function buildInsightNavigation(input: {
   primaryPortfolio: Portfolio | null;
 }): NavItem[] {
   const rows: NavItem[] = [...navInsights];
-  const { portfolios, primaryPortfolio } = input;
+  const { portfolios, primaryPortfolio, paidTier, professionalPlan } = input;
 
-  if (input.paidTier) {
-    rows.push(NAV_MARKETS);
-    rows.push({
-      href: "/alerts",
-      label: "Alerts",
-      icon: Bell,
-      navTitle: "Portfolio value and health notifications",
-    });
-  }
+  rows.push({
+    ...NAV_MARKETS,
+    locked: !paidTier,
+  });
+  rows.push({
+    href: "/alerts",
+    label: "Alerts",
+    icon: Bell,
+    navTitle: "Portfolio value and health notifications",
+    locked: !paidTier,
+  });
 
-  if (input.professionalPlan) {
-    rows.push({
-      href: "/market-watch",
-      label: "Watch",
-      icon: LineChart,
-      navTitle: "Market Watch niches and buy-below targets",
-    });
-    rows.push({
-      href: "/inventory",
-      label: "Inventory",
-      icon: Package,
-      navTitle: "Inventory pipeline and business exports",
-    });
-  }
+  rows.push({
+    href: "/market-watch",
+    label: "Watch",
+    icon: LineChart,
+    navTitle: "Market Watch niches and buy-below targets",
+    locked: !professionalPlan,
+  });
+  rows.push({
+    href: "/inventory",
+    label: "Inventory",
+    icon: Package,
+    navTitle: "Inventory pipeline and business exports",
+    locked: !professionalPlan,
+  });
 
-  if (input.professionalPlan) {
+  if (professionalPlan) {
     const desks = [...(portfolios?.filter((p) => p.purpose === "pro_board") ?? [])].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
@@ -237,6 +241,7 @@ function NavLink({
   className,
   block,
   portfolioHrefSuffix,
+  sidebar,
 }: {
   item: NavItem;
   pathname: string;
@@ -246,32 +251,76 @@ function NavLink({
   block?: boolean;
   /** Optional `?portfolio=` tail from the active workspace. */
   portfolioHrefSuffix?: string;
+  sidebar?: boolean;
 }) {
   const Icon = item.icon;
-  const href = resolveNavHref(item, portfolioHrefSuffix ?? "");
-  const active = isResolvedNavActive(pathname, search, href);
+  const resolvedHref = resolveNavHref(item, portfolioHrefSuffix ?? "");
+  const href = item.locked ? "/pricing#plans" : resolvedHref;
+  const active = !item.locked && isResolvedNavActive(pathname, search, resolvedHref);
   return (
     <Link
       href={href}
       onClick={onNavigate}
       className={cn(block && "block w-full")}
-      {...(item.navTitle ? { title: item.navTitle, "aria-label": item.navTitle } : {})}
+      {...(item.navTitle ? { title: item.locked ? `${item.navTitle} (upgrade to unlock)` : item.navTitle, "aria-label": item.label } : {})}
     >
       <span
         data-workspace-guide={item.guideTarget}
         className={cn(
-          "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-all",
-          block && "w-full flex",
-          active
-            ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          sidebar
+            ? "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors"
+            : "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-all",
+          block && !sidebar && "w-full flex",
+          item.locked
+            ? "text-muted-foreground/90 hover:bg-muted/60 hover:text-foreground"
+            : active
+              ? sidebar
+                ? "bg-accent/12 text-foreground shadow-sm ring-1 ring-accent/25"
+                : "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
           className,
         )}
       >
-        <Icon className={cn("h-4 w-4 shrink-0", active ? "opacity-100" : "opacity-80")} />
-        {item.label}
+        <Icon className={cn("h-4 w-4 shrink-0", active && !item.locked ? "opacity-100" : "opacity-80")} />
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        {item.locked ? (
+          <Lock className="h-3.5 w-3.5 shrink-0 text-accent/80" aria-hidden />
+        ) : null}
       </span>
     </Link>
+  );
+}
+
+function SidebarNavSection({
+  title,
+  items,
+  pathname,
+  search,
+  portfolioHrefSuffix,
+}: {
+  title: string;
+  items: NavItem[];
+  pathname: string;
+  search: string;
+  portfolioHrefSuffix: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="px-3 pb-1 text-ui-caps text-muted-foreground">{title}</p>
+      <nav className="flex flex-col gap-0.5">
+        {items.map((item) => (
+          <NavLink
+            key={`${item.label}:${item.href}`}
+            item={item}
+            pathname={pathname}
+            search={search}
+            block
+            sidebar
+            portfolioHrefSuffix={portfolioHrefSuffix}
+          />
+        ))}
+      </nav>
+    </div>
   );
 }
 
@@ -479,99 +528,115 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile();
   const { portfolioQuerySuffix } = usePortfolioWorkspace();
   const insightNav = useDashboardNavInsights();
-  const shellIconActiveSettings = pathname === "/settings" || pathname.startsWith("/settings/");
-  const shellIconActiveAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
-    <div className="no-print flex min-h-[100dvh] flex-col bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
-        <div className="flex w-full items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4">
+    <div className="no-print flex min-h-[100dvh] bg-background">
+      {/* Desktop sidebar: logo left, grouped nav, clearer hierarchy */}
+      <aside
+        className="hidden lg:flex w-[15.5rem] shrink-0 flex-col border-r border-border/60 bg-card/40"
+        data-workspace-guide="main-nav"
+      >
+        <div className="flex flex-col gap-1 px-4 py-5">
           <Link
             href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}
-            className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition-opacity hover:opacity-90"
+            className="flex items-center gap-3 rounded-xl py-1 pr-1 transition-opacity hover:opacity-90"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-sm ring-1 ring-border/60">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background shadow-sm ring-1 ring-border/60">
               <img src={LOGO_URL} alt="ValYoued" className="h-7 w-7 object-contain" />
             </div>
-            <span className="font-brand text-xl text-foreground hidden min-[400px]:inline">
-              ValYoued
-            </span>
+            <span className="font-brand text-lg text-foreground">ValYoued</span>
           </Link>
+        </div>
 
-          <nav className="hidden min-w-0 flex-1 justify-center md:flex" data-workspace-guide="main-nav">
-            <div className="flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none rounded-full border border-border/60 bg-muted/40 p-1">
-              {navWorkspace.map((item) => (
-                <NavLink
-                  key={`${item.label}:${item.href}`}
-                  item={item}
-                  pathname={pathname}
-                  search={search}
-                  portfolioHrefSuffix={portfolioQuerySuffix}
-                />
-              ))}
-              <Separator orientation="vertical" className="mx-1 h-7 bg-border/80" />
-              {insightNav.map((item) => (
-                <NavLink
-                  key={`${item.label}:${item.href}`}
-                  item={item}
-                  pathname={pathname}
-                  search={search}
-                  portfolioHrefSuffix={portfolioQuerySuffix}
-                />
-              ))}
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 pb-4">
+          <SidebarNavSection
+            title="Workspace"
+            items={navWorkspace}
+            pathname={pathname}
+            search={search}
+            portfolioHrefSuffix={portfolioQuerySuffix}
+          />
+          <SidebarNavSection
+            title="Insights"
+            items={insightNav}
+            pathname={pathname}
+            search={search}
+            portfolioHrefSuffix={portfolioQuerySuffix}
+          />
+        </div>
+
+        <div className="space-y-3 border-t border-border/50 px-3 py-4">
+          <SidebarNavSection
+            title="Account"
+            items={[
+              {
+                href: "/settings",
+                label: "Settings",
+                icon: Settings,
+                guideTarget: "settings",
+              },
+              { href: "/admin", label: "Admin", icon: ShieldHalf },
+            ]}
+            pathname={pathname}
+            search={search}
+            portfolioHrefSuffix={portfolioQuerySuffix}
+          />
+          {SHOW_STUB_PLAN_TOGGLE ? (
+            <div className="px-1">
+              <StubBillingPlanSwitcher />
             </div>
-          </nav>
-
-          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {SHOW_STUB_PLAN_TOGGLE ? (
-              <StubBillingPlanSwitcher compact={isMobile} />
-            ) : SHOW_DEV_PRO_CHROME_PREVIEW ? (
-              !isMobile ? (
-                <ProPreviewToggle />
-              ) : null
-            ) : null}
-            {!isMobile && !SHOW_STUB_PLAN_TOGGLE ? <PlanBrief className="hidden lg:flex" /> : null}
-            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} title="Settings" aria-label="Settings" className="hidden md:block" data-workspace-guide="settings">
-              <Button
-                variant={shellIconActiveSettings ? "secondary" : "ghost"}
-                size="icon"
-                className={cn("h-9 w-9 shrink-0 rounded-full", shellIconActiveSettings && "ring-1 ring-border")}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/admin" title="Admin dashboard" aria-label="Admin dashboard" className="hidden md:block">
-              <Button
-                variant={shellIconActiveAdmin ? "secondary" : "ghost"}
-                size="icon"
-                className={cn("h-9 w-9 shrink-0 rounded-full", shellIconActiveAdmin && "ring-1 ring-border")}
-              >
-                <ShieldHalf className="h-4 w-4" />
-              </Button>
-            </Link>
-            <UserMenu compact />
-            <MobileNavSheet insightNav={insightNav} />
+          ) : (
+            <>
+              {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle /> : null}
+              {!SHOW_STUB_PLAN_TOGGLE ? <PlanBrief block className="mx-1 w-full justify-between" /> : null}
+            </>
+          )}
+          <div className="px-1">
+            <UserMenu />
           </div>
         </div>
-        <PortfolioWorkspaceStrip />
-        {isMobile && !SHOW_STUB_PLAN_TOGGLE ? (
-          <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2 md:hidden">
-            {SHOW_DEV_PRO_CHROME_PREVIEW ? (
-              <ProPreviewToggle compact />
-            ) : null}
-            <PlanBrief />
-          </div>
-        ) : null}
-      </header>
+      </aside>
 
-      <main className="mesh-bg flex-1">
-        <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]">
-          <div className="grid-bg absolute inset-0" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl lg:hidden">
+          <div className="flex w-full items-center gap-3 px-4 py-3">
+            <Link
+              href={mergePortfolioHref("/dashboard", portfolioQuerySuffix)}
+              className="flex shrink-0 items-center gap-2.5 rounded-xl py-1 pr-2"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-card shadow-sm ring-1 ring-border/60">
+                <img src={LOGO_URL} alt="ValYoued" className="h-6 w-6 object-contain" />
+              </div>
+              <span className="font-brand text-lg text-foreground">ValYoued</span>
+            </Link>
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              {SHOW_STUB_PLAN_TOGGLE ? <StubBillingPlanSwitcher compact /> : null}
+              <UserMenu compact />
+              <MobileNavSheet insightNav={insightNav} />
+            </div>
+          </div>
+          <PortfolioWorkspaceStrip />
+          {!SHOW_STUB_PLAN_TOGGLE ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border/40 bg-muted/20 px-4 py-2">
+              {SHOW_DEV_PRO_CHROME_PREVIEW ? <ProPreviewToggle compact /> : null}
+              <PlanBrief />
+            </div>
+          ) : null}
+        </header>
+
+        <div className="hidden lg:block">
+          <PortfolioWorkspaceStrip />
         </div>
-        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
-          {children}
-        </div>
-      </main>
+
+        <main className="mesh-bg flex-1">
+          <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]">
+            <div className="grid-bg absolute inset-0" />
+          </div>
+          <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
+            {children}
+          </div>
+        </main>
+      </div>
       <WorkspaceGuideTour />
     </div>
   );

@@ -9,6 +9,7 @@ import { buildEstimateNewHref } from "@/components/dashboard/DashboardNextStep";
 import { Button } from "@/components/ui/button";
 import type { HomeBucketKey } from "@/lib/home-buckets";
 import { HOME_BUCKET_ORDER } from "@/lib/home-buckets";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 function parseBucketFilter(search: string): HomeBucketKey | null {
   const q = search.startsWith("?") ? search.slice(1) : search;
@@ -37,7 +38,7 @@ export default function EstimatesPage() {
     <div className="mx-auto w-full max-w-5xl space-y-8 pb-16">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-sans font-bold text-foreground">Recent valuations</h1>
+          <PageTitle>Recent valuations</PageTitle>
           <p className="mt-1 text-muted-foreground">
             Saved runs for this workspace, newest first. Filter by shelf, intent, or asset bucket.
           </p>

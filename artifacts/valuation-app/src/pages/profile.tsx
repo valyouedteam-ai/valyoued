@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatIsoDateTime } from "@/lib/format";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 function ProfilePageClerk() {
   const { user, isLoaded } = useUser();
@@ -40,7 +41,7 @@ function ProfilePageClerk() {
             <ArrowLeft className="h-4 w-4" />
             Back to home
           </Link>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Profile</h1>
+          <PageTitle>Profile</PageTitle>
           <p className="text-sm text-muted-foreground">Your account details.</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -143,7 +144,7 @@ function ProfilePageStub() {
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Profile</h1>
+        <PageTitle>Profile</PageTitle>
         <p className="text-sm text-muted-foreground">
           Dev auth stub: no live session. Use sign-in to manage a profile.
         </p>

@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
 import { planTierDisplayName } from "@/lib/marketing-plan-tiers";
 import { useQueryClient } from "@tanstack/react-query";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 type BillingInfo = {
   tier: string;
@@ -488,9 +489,7 @@ function SettingsPageInner({
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-brand font-semibold tracking-tight text-foreground">
-            Settings & privacy
-          </h1>
+          <PageTitle>Settings & privacy</PageTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Email alerts, account, portfolio currency, then data export and subscription billing.
           </p>

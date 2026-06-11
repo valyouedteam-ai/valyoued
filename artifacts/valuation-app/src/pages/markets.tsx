@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageTitle } from "@/components/layout/PageTitle";
 import {
   ArrowRight,
   Globe2,
@@ -64,9 +65,7 @@ export default function MarketsPage() {
             Comparative pricing
           </Badge>
         </div>
-        <h1 className="text-4xl md:text-5xl font-sans font-bold text-foreground leading-tight">
-          Regions and pricing context
-        </h1>
+        <PageTitle>Regions and pricing context</PageTitle>
         <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
           See which regions show up most often as the strongest match across your saved valuations,
           and open any report for fees, shipping, and marketplace links.
@@ -74,7 +73,7 @@ export default function MarketsPage() {
       </header>
       ) : (
         <header className="space-y-3 pt-4">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Markets overview</h1>
+          <PageTitle>Markets overview</PageTitle>
           <p className="max-w-2xl text-sm text-muted-foreground leading-relaxed">
             Upgrade in{" "}
             <Link href="/settings" className="font-medium text-accent hover:underline">

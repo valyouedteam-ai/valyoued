@@ -84,6 +84,7 @@ import { tryUsePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
 import { PhotoUploadCard } from "@/components/PhotoUploadCard";
 import { AssetCategoriesLoadHint } from "@/lib/asset-categories-fetch-hint";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 const PENDING_KEY = "valyoued.pendingEstimate";
 /** When a type has more driver fields than this, the wizard adds a second "details" step. */
@@ -266,7 +267,7 @@ function stepTitle(id: WizardStepId): string {
     case "title":
       return "Short listing headline";
     case "region":
-      return "Where you are selling from";
+      return "Where are you selling?";
     case "identity":
       return "Basics: brand, model, year";
     case "valueDrivers":
@@ -598,6 +599,14 @@ function NewEstimatePageInner({
     [regions, selectedRegionName],
   );
 
+  useEffect(() => {
+    if (!selectedRegion?.currencyCode) return;
+    const sale = form.getValues("saleCurrency");
+    if (!sale) form.setValue("saleCurrency", selectedRegion.currencyCode);
+    const purchase = form.getValues("purchaseCurrency");
+    if (!purchase) form.setValue("purchaseCurrency", selectedRegion.currencyCode);
+  }, [selectedRegion?.currencyCode, form]);
+
   const tierFilteredAssetTypes = useMemo((): AssetType[] => {
     if (!assetTypes?.length || !selectedTier) return [];
     return assetTypes.filter((t) => assetTypeAllowedForSellerTier(t.id, selectedTier));
@@ -922,6 +931,8 @@ function NewEstimatePageInner({
       const v = data[f.key];
       if (v !== undefined && v !== "" && v !== null) extras[f.key] = String(v);
     }
+    if (data.purchaseCurrency) extras.purchaseCurrency = String(data.purchaseCurrency);
+    if (data.saleCurrency) extras.saleCurrency = String(data.saleCurrency);
     if (Object.keys(extras).length > 0) payload.extraFields = extras;
 
     const pfResolved = portfolioChoice ?? portfolioCtx?.primaryPortfolio?.id ?? portfoliosList?.[0]?.id;
@@ -1008,7 +1019,7 @@ function NewEstimatePageInner({
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
       <div>
-        <h1 className="text-3xl font-sans font-bold text-foreground">Start a valuation</h1>
+        <PageTitle>Start a valuation</PageTitle>
         {authLoaded && !authStubMode && !isSignedIn ? (
           <p className="text-muted-foreground mt-2 max-w-xl leading-relaxed">
             Next we ask for a quick free login so your report saves to your account.
@@ -1081,7 +1092,14 @@ function NewEstimatePageInner({
                             <button
                               type="button"
                               key={opt.value}
-                              onClick={() => field.onChange(opt.value)}
+                              onClick={() => {
+                                field.onChange(opt.value);
+                                requestAnimationFrame(() => {
+                                  if (validateWizardStep("tier")) {
+                                    setWizardStep((s) => Math.min(s + 1, wizardSteps.length - 1));
+                                  }
+                                });
+                              }}
                               data-testid={`tier-${opt.value}`}
                               className={`rounded-lg border p-4 text-left transition-all ${
                                 active
@@ -1243,6 +1261,11 @@ function NewEstimatePageInner({
                                           selectedType.fields.forEach((f) => form.setValue(f.key as any, undefined));
                                         }
                                         field.onChange(type.id);
+                                        requestAnimationFrame(() => {
+                                          if (validateWizardStep("pickType")) {
+                                            setWizardStep((s) => Math.min(s + 1, wizardSteps.length - 1));
+                                          }
+                                        });
                                       }}
                                       data-testid={`asset-type-${type.id}`}
                                       className={`rounded-lg border p-3 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
@@ -1323,11 +1346,11 @@ function NewEstimatePageInner({
                     name="currentRegion"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Region</FormLabel>
+                        <FormLabel>Where are you selling?</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="h-10 bg-background">
-                              <SelectValue placeholder="Select region" />
+                              <SelectValue placeholder="Country or market you will list in" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1340,13 +1363,67 @@ function NewEstimatePageInner({
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          We value the asset in your local currency
-                          {selectedRegion ? `: ${selectedRegion.currencyCode}` : ""}.
+                          Pick the country or market where you plan to sell. We use this for local comps and listing
+                          currency{selectedRegion ? ` (${selectedRegion.currencyCode})` : ""}.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  {selectedType?.internationallyTradeable && regions && regions.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="purchaseCurrency"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Purchase currency</FormLabel>
+                            <Select onValueChange={field.onChange} value={String(field.value ?? "")}>
+                              <FormControl>
+                                <SelectTrigger className="h-10 bg-background">
+                                  <SelectValue placeholder="Currency you paid in" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {regions.map((r) => (
+                                  <SelectItem key={`purchase-${r.currencyCode}`} value={r.currencyCode}>
+                                    {r.currencyCode} · {r.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>Optional. What currency did you pay when you bought it?</FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="saleCurrency"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sale currency</FormLabel>
+                            <Select onValueChange={field.onChange} value={String(field.value ?? "")}>
+                              <FormControl>
+                                <SelectTrigger className="h-10 bg-background">
+                                  <SelectValue placeholder="Currency you expect to receive" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {regions.map((r) => (
+                                  <SelectItem key={`sale-${r.currencyCode}`} value={r.currencyCode}>
+                                    {r.currencyCode} · {r.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              Optional. For cross-border sales, pick where you expect to be paid.
+                            </FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ) : null}
                   {portfoliosList && portfoliosList.length > 0 ? (
                     <div className="space-y-2">
                       <Label htmlFor="estimate-portfolio-workspace">Portfolio workspace</Label>

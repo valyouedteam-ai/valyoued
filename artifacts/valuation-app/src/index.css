@@ -98,7 +98,7 @@
   --secondary-foreground: 224 30% 14%;
 
   --muted: 220 16% 93%;
-  --muted-foreground: 220 10% 44%;
+  --muted-foreground: 220 12% 38%;
 
   /* Teal-cyan accent, distinct from old electric blue */
   --accent: 175 55% 38%;
@@ -198,12 +198,13 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
+    font-weight: 500;
     letter-spacing: -0.013em;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply text-foreground font-sans;
-    font-weight: 650;
+    font-weight: 700;
     letter-spacing: -0.03em;
   }
 }
@@ -212,13 +213,13 @@
   .font-brand {
     font-family: var(--app-font-sans);
     letter-spacing: -0.035em;
-    font-weight: 650;
+    font-weight: 700;
   }
 
   .text-ui-caps {
     font-family: var(--app-font-sans);
     font-size: 0.625rem;
-    font-weight: 650;
+    font-weight: 700;
     letter-spacing: 0.11em;
     text-transform: uppercase;
   }
@@ -226,7 +227,7 @@
   .text-ui-meta {
     font-family: var(--app-font-sans);
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.01em;
   }
 

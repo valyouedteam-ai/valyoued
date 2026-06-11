@@ -26,6 +26,7 @@ import {
   formatMarketWatchCardTitle,
 } from "@/lib/market-watch-presets";
 import { useToast } from "@/hooks/use-toast";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 function marketWatchErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -166,7 +167,7 @@ export default function MarketWatchPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-4 py-10 text-center">
         <LineChart className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold">Market Watch</h1>
+        <PageTitle>Market Watch</PageTitle>
         <p className="text-muted-foreground">
           Professional traders track specific models with price trends, sold comps, and buy-below targets here.
         </p>
@@ -180,7 +181,7 @@ export default function MarketWatchPage() {
   return (
     <div className="space-y-8 pb-16">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Market Watch</h1>
+        <PageTitle>Market Watch</PageTitle>
         <p className="text-muted-foreground leading-relaxed max-w-3xl">
           Keep watch over a product brand and model you trade often to get alerts on list prices, buy-below targets and
           resale timing.

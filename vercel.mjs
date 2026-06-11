@@ -28,25 +28,35 @@ export const config = (() => {
 
   const spa = { source: "/(.*)", destination: "/index.html" };
 
+  const shared = {
+    installCommand: "pnpm install",
+    buildCommand: "pnpm --filter @workspace/valuation-app run build",
+    outputDirectory: "artifacts/valuation-app/dist/public",
+    framework: null,
+    /** Apex must resolve to Vercel (GoDaddy A record) before this redirect can run. */
+    redirects: [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "valyoued.ai" }],
+        destination: "https://www.valyoued.ai/:path*",
+        permanent: true,
+      },
+    ],
+  };
+
   if (!apiOrigin) {
     console.warn(
       "[vercel] VITE_API_ORIGIN is unset: /api/* will serve the SPA (broken API calls). " +
         "Set VITE_API_ORIGIN to your API origin on Vercel and redeploy.",
     );
     return {
-      installCommand: "pnpm install",
-      buildCommand: "pnpm --filter @workspace/valuation-app run build",
-      outputDirectory: "artifacts/valuation-app/dist/public",
-      framework: null,
+      ...shared,
       rewrites: [spa],
     };
   }
 
   return {
-    installCommand: "pnpm install",
-    buildCommand: "pnpm --filter @workspace/valuation-app run build",
-    outputDirectory: "artifacts/valuation-app/dist/public",
-    framework: null,
+    ...shared,
     rewrites: [
       { source: "/api/(.*)", destination: `${apiOrigin}/api/$1` },
       spa,

@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { formatDistanceToNow } from "date-fns";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 export default function AlertsPage() {
   const { portfolioQuerySuffix } = usePortfolioWorkspace();
@@ -22,7 +23,7 @@ export default function AlertsPage() {
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Portfolio alerts</h1>
+          <PageTitle>Portfolio Alerts</PageTitle>
           <p className="mt-1 text-muted-foreground">
             Value changes, revaluation nudges, and receipt reminders for Everyday holdings.
           </p>

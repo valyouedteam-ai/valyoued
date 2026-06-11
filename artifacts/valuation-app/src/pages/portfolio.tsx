@@ -4,6 +4,10 @@ import {
   Briefcase,
   Plus,
   Activity,
+  Calculator,
+  LayoutDashboard,
+  Megaphone,
+  Globe2,
   PieChart as PieIcon,
 } from "lucide-react";
 import {
@@ -37,6 +41,7 @@ import { DashboardHubLower } from "@/components/dashboard/DashboardHubLower";
 import { DashboardNextStep } from "@/components/dashboard/DashboardNextStep";
 import { PortfolioHealthStrip } from "@/components/portfolio/PortfolioHealthStrip";
 import { PortfolioAssetCard } from "@/components/portfolio/PortfolioAssetCard";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 type PortfolioItem = EstimateSummary & {
   liveValue: number;
@@ -127,7 +132,7 @@ function PortfolioPageHeader({
   return (
     <div className="flex items-start justify-between flex-wrap gap-4">
       <div>
-        <h1 className="text-3xl font-sans font-bold text-foreground">Portfolio</h1>
+        <PageTitle>Portfolio</PageTitle>
         <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{subtitle}</p>
       </div>
       {action}
@@ -300,9 +305,34 @@ export default function PortfolioPage() {
     <div className="mx-auto max-w-6xl space-y-8 pb-16">
       <PortfolioPageHeader subtitle={portfolioHeaderSubtitle} action={newValuationButton} />
 
+      <nav
+        className="flex flex-wrap gap-2 rounded-2xl border border-border/60 bg-card/50 p-2"
+        aria-label="Quick actions"
+      >
+        {[
+          { href: mergePortfolioHref("/estimate/new", portfolioQuerySuffix), label: "Valuate", icon: Calculator },
+          { href: mergePortfolioHref("/estimates", portfolioQuerySuffix), label: "Recent", icon: LayoutDashboard },
+          { href: mergePortfolioHref("/markets", portfolioQuerySuffix), label: "Regions", icon: Globe2 },
+          { href: mergePortfolioHref("/listings", portfolioQuerySuffix), label: "Ads", icon: Megaphone },
+        ].map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link
+              key={action.href}
+              href={action.href}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Icon className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+              {action.label}
+            </Link>
+          );
+        })}
+      </nav>
+
       {/* Top stats: total + diversification */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-1 bg-card/60 backdrop-blur border-accent/20 relative overflow-hidden">
+        <Link href="#collection-section" className="block lg:col-span-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Card className="h-full bg-card/60 backdrop-blur border-accent/20 relative overflow-hidden transition-colors hover:border-accent/35 hover:bg-card/80">
           <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent pointer-events-none" />
           <CardHeader className="pb-2 relative">
             <CardDescription className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -332,6 +362,7 @@ export default function PortfolioPage() {
             </div>
           </CardContent>
         </Card>
+        </Link>
 
         <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/40 relative overflow-hidden">
           <CardHeader className="pb-2">

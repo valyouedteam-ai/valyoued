@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageTitle } from "@/components/layout/PageTitle";
 import {
   Table,
   TableBody,
@@ -132,10 +133,10 @@ function AdminDashboardInner({
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-brand font-semibold tracking-tight text-foreground flex items-center gap-2">
+          <PageTitle className="flex items-center gap-2">
             Admin dashboard
             <ShieldAlert className="h-7 w-7 text-amber-400" />
-          </h1>
+          </PageTitle>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import { useBillingSummary } from "@/hooks/use-billing-summary";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { PageTitle } from "@/components/layout/PageTitle";
 
 const STAGES = [
   "sourced",
@@ -162,7 +163,7 @@ export default function InventoryPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-4 py-10 text-center">
         <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold">Inventory pipeline</h1>
+        <PageTitle>Inventory pipeline</PageTitle>
         <p className="text-muted-foreground">
           Professional traders move stock from sourced → listed → sold with repricing alerts and margin tracking.
         </p>
@@ -177,7 +178,7 @@ export default function InventoryPage() {
     <div className="space-y-8 pb-16">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Inventory</h1>
+          <PageTitle>Inventory</PageTitle>
           <p className="mt-1 max-w-2xl text-muted-foreground">
             Deal scoring, max buy price, and stage-based workflow for resale operations.
           </p>

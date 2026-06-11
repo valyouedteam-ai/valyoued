@@ -60,6 +60,8 @@ import {
   platformsForAssetType,
 } from "@/lib/platforms";
 import { safeHttpUrl } from "@/lib/safe-url";
+import { PageTitle } from "@/components/layout/PageTitle";
+import { LockedProOverlay } from "@/components/home/LockedProFeature";
 
 /** Free Everyday snapshots show this many comparable cards without a paid subscription. */
 const FREE_COMP_GRID_PREVIEW = 2;
@@ -325,7 +327,7 @@ export default function EstimateReportPage() {
   const uplift = (estimate.netMarketFactor ?? 1) - 1;
   const ccy = estimate.currency ?? "USD";
   const assetTypeName = estimate.assetType?.name ?? "Asset";
-  const isMobile = estimate.assetType?.internationallyTradeable ?? false;
+  const isInternationallyTradeable = estimate.assetType?.internationallyTradeable ?? false;
   const stripQ = stripRedundantOuterQuotes;
   const estimateTitle = estimate.input?.title ?? "Untitled";
   const sellerRegion = estimate.input?.currentRegion ?? estimate.bestArbitrageRegion ?? "";
@@ -465,9 +467,7 @@ export default function EstimateReportPage() {
               <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-medium text-accent">Full report</span>
             )}
           </div>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-[2.5rem] md:leading-[1.15]">
-            {report.headline}
-          </h1>
+          <PageTitle className="text-balance">{report.headline}</PageTitle>
           {report.summary ? (
             <p className="w-full max-w-none text-sm leading-snug text-muted-foreground sm:text-base">{report.summary}</p>
           ) : null}
@@ -680,11 +680,11 @@ export default function EstimateReportPage() {
         )}
 
         {/* Where listing might pay best: same tier preview gate as other full-report sections */}
-        {showExpandedPro && arbitrageRows.length > 0 && (
+        {(showExpandedPro || isInternationallyTradeable) && arbitrageRows.length > 0 && (
           <section className="space-y-4 print:break-inside-avoid">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                {isMobile ? "Where listing might pay best" : "Local sites and payouts"}
+                {isInternationallyTradeable ? "Where listing might pay best" : "Local sites and payouts"}
               </h2>
               <p className="mt-1 w-full max-w-none text-sm leading-snug text-muted-foreground">
                 {report.arbitrageNarrative
@@ -693,7 +693,14 @@ export default function EstimateReportPage() {
               </p>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-border/50 bg-card shadow-sm">
+            <div className="relative overflow-x-auto rounded-xl border border-border/50 bg-card shadow-sm">
+              {!showExpandedPro && isInternationallyTradeable ? (
+                <LockedProOverlay
+                  title="International payout rows"
+                  description="Everyday unlocks multi-market arbitrage: fees, shipping, duties, and net payout by region."
+                  cta="Unlock with Everyday"
+                />
+              ) : null}
               <Table className="min-w-[58rem] w-full table-fixed lg:min-w-full">
                 <TableHeader className="border-b border-border/50 bg-muted/30">
                   <TableRow className="hover:bg-transparent">
