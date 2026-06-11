@@ -69,6 +69,7 @@ function isMacPlatform() {
 
 export function AppSearch({
   insightNav,
+  isAdmin,
   className,
 }: {
   insightNav: Array<{
@@ -79,6 +80,7 @@ export function AppSearch({
     locked?: boolean;
     skipPortfolioQuery?: boolean;
   }>;
+  isAdmin: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -109,13 +111,13 @@ export function AppSearch({
         locked: item.locked,
         skipPortfolioQuery: item.skipPortfolioQuery,
       })),
-      ...ACCOUNT_PAGES.map((item) => ({ ...item, group: "Account" })),
+      ...ACCOUNT_PAGES.filter((item) => isAdmin || item.href !== "/admin").map((item) => ({ ...item, group: "Account" })),
     ];
     return rows.map((item) => ({
       ...item,
       href: resolveSearchHref(item, portfolioQuerySuffix),
     }));
-  }, [insightNav, portfolioQuerySuffix]);
+  }, [insightNav, isAdmin, portfolioQuerySuffix]);
 
   const valuationItems = useMemo(() => {
     const rows = Array.isArray(estimates) ? estimates : [];

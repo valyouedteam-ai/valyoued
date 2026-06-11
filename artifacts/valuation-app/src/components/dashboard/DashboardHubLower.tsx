@@ -24,7 +24,6 @@ import { useBillingSummary } from "@/hooks/use-billing-summary";
 import type { HomeBucketKey } from "@/lib/home-buckets";
 import { HOME_BUCKET_LABEL, HOME_BUCKET_ORDER, countItemsByBucket } from "@/lib/home-buckets";
 import { PaidFeatureTeaser } from "@/components/home/PaidFeatureTeaser";
-import { buildEstimateNewHref } from "@/components/dashboard/DashboardNextStep";
 
 const BUCKET_ICONS: Record<HomeBucketKey, typeof Gem> = {
   jewellery: Watch,
@@ -66,13 +65,8 @@ export function DashboardHubLower({
   return (
     <div className="mt-14 space-y-12 border-t border-border/50 pt-12">
       <section className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Asset buckets</h2>
-          </div>
-          <Button size="sm" variant="secondary" className="rounded-full" asChild>
-            <Link href={buildEstimateNewHref(portfolioQuerySuffix)}>Add item</Link>
-          </Button>
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">Asset buckets</h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {HOME_BUCKET_ORDER.map((key) => {
@@ -88,26 +82,21 @@ export function DashboardHubLower({
                 transition={{ duration: 0.3 }}
               >
                 {empty ? (
-                  <Link
-                    href={buildEstimateNewHref(portfolioQuerySuffix, key)}
-                    className={cn(
-                      "block w-full rounded-2xl border border-dashed border-accent/35 bg-accent/5 p-4 text-left shadow-sm transition-colors",
-                      "hover:border-accent/55 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35",
-                    )}
-                  >
-                    <BucketCardInner Icon={Icon} keyName={key} count={count} empty />
-                  </Link>
+                  <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4">
+                    <BucketCardInner Icon={Icon} keyName={key} count={count} />
+                  </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => openRecentForBucket(key)}
+                    aria-label={`${HOME_BUCKET_LABEL[key]}, ${count} items`}
                     className={cn(
                       "block w-full rounded-2xl border border-border/60 bg-dashboard-elevated p-4 text-left shadow-sm transition-colors",
                       "hover:border-accent/35 hover:bg-card/85",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35",
                     )}
                   >
-                    <BucketCardInner Icon={Icon} keyName={key} count={count} empty={false} />
+                    <BucketCardInner Icon={Icon} keyName={key} count={count} />
                   </button>
                 )}
               </motion.div>
@@ -173,30 +162,20 @@ function BucketCardInner({
   Icon,
   keyName,
   count,
-  empty,
 }: {
   Icon: typeof Gem;
   keyName: HomeBucketKey;
   count: number;
-  empty: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-        <Icon className="h-5 w-5" aria-hidden />
-      </span>
-      <div className="space-y-1">
-        <p className="text-base font-medium leading-snug text-foreground">{HOME_BUCKET_LABEL[keyName]}</p>
-        <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-semibold tabular-nums text-foreground">{count}</span>
-          <span className="text-sm text-muted-foreground">items</span>
-        </div>
-        <p className={cn("text-sm", empty ? "font-medium text-accent" : "text-muted-foreground")}>
-          {empty
-            ? `Add your first ${HOME_BUCKET_LABEL[keyName].toLowerCase()} item`
-            : `${count} saved here · tap to filter collection`}
-        </p>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+          <Icon className="h-5 w-5" aria-hidden />
+        </span>
+        <p className="truncate text-sm font-medium text-foreground">{HOME_BUCKET_LABEL[keyName]}</p>
       </div>
+      <span className="shrink-0 text-xl font-semibold tabular-nums text-foreground">{count}</span>
     </div>
   );
 }

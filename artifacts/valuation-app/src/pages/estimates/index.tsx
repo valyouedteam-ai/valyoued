@@ -5,7 +5,7 @@ import { useListEstimates } from "@workspace/api-client-react";
 import { mergePortfolioHref, usePortfolioWorkspace } from "@/context/PortfolioWorkspaceContext";
 import { estimateInActiveWorkspace } from "@/lib/portfolio-workspace-scope";
 import { DashboardRecentValuations } from "@/components/dashboard/DashboardRecentValuations";
-import { buildEstimateNewHref } from "@/components/dashboard/DashboardNextStep";
+import { buildEstimateNewHref } from "@/lib/estimate-new-href";
 import { Button } from "@/components/ui/button";
 import type { HomeBucketKey } from "@/lib/home-buckets";
 import { HOME_BUCKET_ORDER } from "@/lib/home-buckets";

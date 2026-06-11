@@ -21,6 +21,7 @@ import {
 } from "../lib/emailAlertSamples";
 import { runMonitorValueChangeScan } from "../lib/monitorValueChangeEmail";
 import { resolveUserEntitlements } from "../lib/entitlements";
+import { isAdminUserId } from "../lib/adminAccess";
 import { sanitizeListingDraftTitle, stripSellerTodoBlockFromDraftBody } from "../lib/listing";
 
 const router: IRouter = Router();
@@ -227,6 +228,11 @@ router.get("/me/billing", requireAuth, async (req, res): Promise<void> => {
     canUseTraderWorkspace: ent.canUseTraderWorkspace,
     comparableUiMode: ent.hasPaidValuationTier ? ("full" as const) : ("preview" as const),
   });
+});
+
+router.get("/me/admin", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthedRequest).userId!;
+  res.json({ isAdmin: isAdminUserId(userId) });
 });
 
 /** GDPR-oriented bundle of the authenticated user's platform data (JSON). */

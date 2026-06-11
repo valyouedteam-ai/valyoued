@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, Redirect } from "wouter";
 import { ArrowLeft, ShieldAlert } from "lucide-react";
 import {
   BarChart,
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { useAuthStubContext } from "@/context/AuthStubContext";
 import { useAuth } from "@clerk/react";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { apiFetchCredentials, apiUrl } from "@/lib/api-url";
 
 const CHART_AXIS = {
@@ -67,8 +68,11 @@ function AdminDashboardInner({
           headers: token ? { authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) {
-          const msg = res.status === 403 ? "Your account is not an administrator." : await res.text();
-          if (!cancelled) setError(msg);
+          const msg =
+            res.status === 503
+              ? "Admin access is not configured on the server (ADMIN_USER_IDS)."
+              : await res.text();
+          if (!cancelled) setError(msg || `Request failed (${res.status})`);
           return;
         }
         const j = (await res.json()) as Overview;
@@ -143,7 +147,7 @@ function AdminDashboardInner({
       {error ? (
         <Card className="border-destructive/40 bg-destructive/5">
           <CardHeader>
-            <CardTitle className="text-destructive">Access denied or misconfigured</CardTitle>
+            <CardTitle className="text-destructive">Could not load admin analytics</CardTitle>
             <CardDescription>{error}</CardDescription>
           </CardHeader>
         </Card>
@@ -331,6 +335,19 @@ function AdminWithClerk() {
 
 export default function AdminDashboardPage() {
   const authStub = useAuthStubContext();
+  const { isAdmin, isLoading } = useIsAdmin();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+  if (!isAdmin) {
+    return <Redirect to="/dashboard" />;
+  }
+
   if (authStub) {
     return <AdminDashboardInner getToken={async () => null} />;
   }

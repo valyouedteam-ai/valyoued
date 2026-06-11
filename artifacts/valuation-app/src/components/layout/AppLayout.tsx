@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { SellerPersonaProvider, useSellerPersona } from "@/hooks/use-seller-persona";
 import { ProPreviewToggle } from "@/components/ProPreviewToggle";
 import { StubBillingPlanSwitcher } from "@/components/dev/StubBillingPlanSwitcher";
@@ -450,7 +451,7 @@ function PlanBrief({ className, block }: { className?: string; block?: boolean }
   );
 }
 
-function MobileNavSheet({ insightNav }: { insightNav: NavItem[] }) {
+function MobileNavSheet({ insightNav, isAdmin }: { insightNav: NavItem[]; isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const [pathname] = useLocation();
   const search = useSearch();
@@ -504,18 +505,20 @@ function MobileNavSheet({ insightNav }: { insightNav: NavItem[] }) {
           </div>
           <div className="flex flex-wrap gap-2 px-2">
             <p className="w-full text-ui-caps text-muted-foreground px-2">Shortcuts</p>
-            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]" data-workspace-guide="settings">
+            <Link href={mergePortfolioHref("/settings", portfolioQuerySuffix)} onClick={() => setOpen(false)} className={isAdmin ? "flex-1 min-w-[calc(50%-4px)]" : "w-full"} data-workspace-guide="settings">
               <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Settings">
                 <Settings className="h-4 w-4 shrink-0" />
                 Settings
               </Button>
             </Link>
-            <Link href="/admin" onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
-              <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Admin dashboard">
-                <ShieldHalf className="h-4 w-4 shrink-0" />
-                Admin
-              </Button>
-            </Link>
+            {isAdmin ? (
+              <Link href="/admin" onClick={() => setOpen(false)} className="flex-1 min-w-[calc(50%-4px)]">
+                <Button variant="outline" className="h-11 w-full justify-start gap-2 rounded-xl" aria-label="Admin dashboard">
+                  <ShieldHalf className="h-4 w-4 shrink-0" />
+                  Admin
+                </Button>
+              </Link>
+            ) : null}
           </div>
         </div>
         <div className="mt-auto space-y-4 border-t border-border px-4 py-5">
@@ -533,6 +536,21 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile();
   const { portfolioQuerySuffix } = usePortfolioWorkspace();
   const insightNav = useDashboardNavInsights();
+  const { isAdmin } = useIsAdmin();
+
+  const accountNav = useMemo(
+    () =>
+      [
+        {
+          href: "/settings",
+          label: "Settings",
+          icon: Settings,
+          guideTarget: "settings" as const,
+        },
+        ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldHalf }] : []),
+      ] satisfies NavItem[],
+    [isAdmin],
+  );
 
   return (
     <div className="no-print flex min-h-[100dvh] bg-background">
@@ -573,15 +591,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
         <div className="space-y-3 border-t border-border/50 px-3 py-4">
           <SidebarNavSection
             title="Account"
-            items={[
-              {
-                href: "/settings",
-                label: "Settings",
-                icon: Settings,
-                guideTarget: "settings",
-              },
-              { href: "/admin", label: "Admin", icon: ShieldHalf },
-            ]}
+            items={accountNav}
             pathname={pathname}
             search={search}
             portfolioHrefSuffix={portfolioQuerySuffix}
@@ -619,7 +629,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
               <div className="ml-auto flex shrink-0 items-center gap-2">
                 {SHOW_STUB_PLAN_TOGGLE ? <StubBillingPlanSwitcher compact /> : null}
                 <UserMenu compact />
-                <MobileNavSheet insightNav={insightNav} />
+                <MobileNavSheet insightNav={insightNav} isAdmin={isAdmin} />
               </div>
             </div>
             {!SHOW_STUB_PLAN_TOGGLE ? (
@@ -631,7 +641,7 @@ function AppLayoutShell({ children }: { children: ReactNode }) {
           </header>
 
           <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:py-2.5">
-            <AppSearch insightNav={insightNav} />
+            <AppSearch insightNav={insightNav} isAdmin={isAdmin} />
           </div>
           <PortfolioWorkspaceStrip />
         </div>
