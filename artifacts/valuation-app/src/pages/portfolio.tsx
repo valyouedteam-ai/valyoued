@@ -92,16 +92,19 @@ function portfolioWorkspaceSubtitle(
 ): string | null {
   if (!active) return null;
   const trimmed = active.label?.trim();
+  let redundantLabel = false;
   if (trimmed) {
     const norm = trimmed.toLowerCase().replace(/\s+/g, " ").trim();
-    if (norm === "my portfolio" || norm === "portfolio") return null;
-    return trimmed;
+    if (norm === "my portfolio" || norm === "portfolio") {
+      redundantLabel = true;
+    } else {
+      return trimmed;
+    }
   }
-  return active.purpose === "pro_board"
-    ? "Professional board"
-    : active.purpose === "inheritance"
-      ? "Inheritance workspace"
-      : "Primary";
+  if (active.purpose === "pro_board") return "Professional board";
+  if (active.purpose === "inheritance") return "Inheritance workspace";
+  if (redundantLabel && active.purpose === "primary") return null;
+  return "Primary";
 }
 
 const PALETTE = [
@@ -113,14 +116,16 @@ function PortfolioPageHeader({
   subtitle,
   action,
 }: {
-  subtitle: string;
+  subtitle: string | null;
   action?: ReactNode;
 }) {
   return (
     <div className="flex items-start justify-between flex-wrap gap-4">
       <div>
         <PageTitle>Portfolio</PageTitle>
-        <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{subtitle}</p>
+        {subtitle ? (
+          <p className="mt-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">{subtitle}</p>
+        ) : null}
       </div>
       {action}
     </div>
@@ -218,10 +223,7 @@ export default function PortfolioPage() {
 
   const formatRollup = (usd: number) => formatUsdRollupForDisplay(usd, displayCcy, fxMult);
 
-  const portfolioHeaderSubtitle =
-    portfolioWorkspaceSubtitle(activePortfolio) ??
-    activePortfolio?.label ??
-    (activePortfolio?.purpose === "pro_board" ? "Professional board" : "Primary");
+  const portfolioHeaderSubtitle = portfolioWorkspaceSubtitle(activePortfolio);
 
   const hubLowerProps = {
     scopedEstimates: scopedRows,
